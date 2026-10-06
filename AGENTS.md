@@ -29,7 +29,7 @@ python3 -m unittest discover -s tests -v
 python3 scripts/run_catalog.py
 ```
 
-See `README.md` for PostgreSQL setup and import commands. The catalog launcher requests local credentials privately. Database tests require Docker or a separate `mbm_test` database; report skipped tests explicitly. Validate edited JSON:
+See `docs/Development_Guide.md` for PostgreSQL setup and import commands; `README.md` is the repository overview. The catalog launcher requests local credentials privately. Database tests require Docker or a separate `mbm_test` database; report skipped tests explicitly. Validate edited JSON:
 
 ```sh
 python3 -m json.tool postman/assets/CloudShop_ReadOnly.postman_collection.json > /dev/null
