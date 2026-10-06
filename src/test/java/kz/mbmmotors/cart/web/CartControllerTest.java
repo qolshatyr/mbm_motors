@@ -26,6 +26,42 @@ class CartControllerTest {
   @MockitoBean CartService service;
 
   @Test
+  void continueSearchKeepsCartStoreAndEmptyCartUsesDefault() throws Exception {
+    when(service.view(any()))
+        .thenReturn(new CartService.CartView(null, null, List.of(), "0 ₸", false));
+    mvc.perform(get("/cart"))
+        .andExpect(status().isOk())
+        .andExpect(
+            content()
+                .string(
+                    org.hamcrest.Matchers.containsString(
+                        "href=\"/catalog\">Продолжить поиск</a>")));
+    var item =
+        new CartService.CartItem(
+            "000000000000000000000001",
+            "Запчасть",
+            "SKU",
+            1,
+            "шт",
+            "3000 ₸",
+            "3000 ₸",
+            null,
+            false,
+            new java.math.BigDecimal("3000"));
+    when(service.view(any()))
+        .thenReturn(
+            new CartService.CartView(
+                "698c479d4bb8342bd30e3c33", "БАКОРДА", List.of(item), "3000 ₸", false));
+    mvc.perform(get("/cart"))
+        .andExpect(status().isOk())
+        .andExpect(
+            content()
+                .string(
+                    org.hamcrest.Matchers.containsString(
+                        "href=\"/catalog?store=698c479d4bb8342bd30e3c33\">Продолжить поиск</a>")));
+  }
+
+  @Test
   void formIsCsrfProtectedAndQuantityCannotBeFractional() throws Exception {
     mvc.perform(post("/cart/add").param("productId", "id").param("storeId", "store"))
         .andExpect(status().isForbidden());
