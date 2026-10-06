@@ -1,0 +1,185 @@
+{
+  "info": {
+    "name": "CloudShop — безопасная проверка чтения",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Только GET. По ранее изученной спецификации 1.0.14; не проверено на аккаунте магазина. Токен вводить локально, не публиковать. Тесты проверяют HTTP/JSON, содержимое нужно сверять вручную."
+  },
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      {
+        "key": "key",
+        "value": "X-CloudShop-API-Access-Token",
+        "type": "string"
+      },
+      {
+        "key": "value",
+        "value": "{{access_token}}",
+        "type": "string"
+      },
+      {
+        "key": "in",
+        "value": "header",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "01 — Магазины",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/stores",
+        "description": "Выберите ID нужного магазина вручную. Не брать первый автоматически."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "if (pm.response.code === 200) { pm.test(\"Ответ JSON\", function () { pm.response.json(); }); }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 — Категории",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/product/ext-categories",
+        "description": "Проверить группы каталога."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "if (pm.response.code === 200) { pm.test(\"Ответ JSON\", function () { pm.response.json(); }); }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 — Первая страница товаров",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/product?limit=10&offset=0&store_id={{store_id}}",
+        "description": "Проверить цену, sku, img и stock нужного магазина. Выбрать product_id вручную."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "if (pm.response.code === 200) { pm.test(\"Ответ JSON\", function () { pm.response.json(); }); }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 — Один товар",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/product/{{product_id}}",
+        "description": "Сравнить с карточкой CloudShop."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "if (pm.response.code === 200) { pm.test(\"Ответ JSON\", function () { pm.response.json(); }); }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 — Вторая страница товаров",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/product?limit=10&offset=10&store_id={{store_id}}",
+        "description": "Проверить пагинацию и отсутствие повторов между страницами."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "if (pm.response.code === 200) { pm.test(\"Ответ JSON\", function () { pm.response.json(); }); }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 — Изменения с даты",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/product/updated?start_time={{start_time}}",
+        "description": "Указать дату в формате YYYY-MM-DD HH:mm:ss. Часовой пояс API пока требует проверки."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "if (pm.response.code === 200) { pm.test(\"Ответ JSON\", function () { pm.response.json(); }); }"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

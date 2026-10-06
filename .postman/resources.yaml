@@ -1,0 +1,8 @@
+localResources:
+  collections:
+    - ../postman/assets/CloudShop_ReadOnly.postman_collection.json
+    - ../postman/assets/CloudShop_Sync_ReadOnly.postman_collection.json
+  environments:
+    - ../postman/assets/CloudShop_Local.postman_environment.json
+workspace:
+  id: ''

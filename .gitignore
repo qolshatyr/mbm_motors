@@ -1,0 +1,18 @@
+# Local credentials and verification data
+.env
+.env.*
+!.env.example
+.cloudshop-test-sales/
+.cloudshop-audit/
+
+# Generated output
+target/
+__pycache__/
+*.py[cod]
+
+# Local agent, cloud and IDE configuration
+.agents/
+.codex/
+.aws/
+.idea/
+*.iml

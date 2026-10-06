@@ -1,0 +1,44 @@
+spring:
+  application:
+    name: mbm-motors
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/mbm_motors}
+    username: ${DB_USER:mbm}
+    password: ${DB_PASSWORD:}
+    hikari:
+      maximum-pool-size: 5
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+          batch_size: 100
+        order_inserts: true
+        order_updates: true
+  flyway:
+    enabled: true
+server:
+  address: 127.0.0.1
+  servlet:
+    session:
+      timeout: 30m
+      cookie:
+        http-only: true
+        same-site: lax
+cloudshop:
+  base-url: https://connect-api.cloudshop.ru/api/v4
+  token: ${CLOUDSHOP_TOKEN:}
+  timeout: 30s
+catalog:
+  sync:
+    enabled: false
+    interval: 5m
+    overlap: 5m
+    full-interval: 24h
+    page-size: 1000
+    max-pages: 100
+    request-delay: 1s
+    startup-mode: NONE

@@ -1,0 +1,187 @@
+{
+  "info": {
+    "name": "CloudShop — проверка синхронизации (только чтение)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Четыре GET-запроса по схеме 1.0.15. Пустые массивы допустимы. Тесты не доказывают обновление только остатков, полноту истории удалений или доступность фото."
+  },
+  "item": [
+    {
+      "name": "01 — Группы каталога",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "X-CloudShop-API-Access-Token",
+            "value": "{{access_token}}"
+          }
+        ],
+        "auth": {
+          "type": "noauth"
+        },
+        "url": "{{base_url}}/product/ext-categories"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "console.log(\"HTTP_STATUS:\" + pm.response.code);",
+              "if (pm.response.code === 200) {",
+              "  const rows = pm.response.json();",
+              "  pm.test(\"Ответ — массив\", function () { pm.expect(rows).to.be.an(\"array\"); });",
+              "  if (Array.isArray(rows)) {",
+              "    console.log(\"COUNT:\" + rows.length);",
+              "    pm.test(\"У групп есть ID и название\", function () { rows.forEach(c => { pm.expect(c).to.be.an(\"object\"); pm.expect(c.id).to.be.a(\"string\").and.not.empty; pm.expect(c.name).to.be.a(\"string\"); }); });",
+              "    const ids = rows.map(c => c.id);",
+              "    pm.test(\"ID групп уникальны\", function () { pm.expect(new Set(ids).size).to.eql(ids.length); });",
+              "    console.log(\"GROUP_SAMPLE:\" + JSON.stringify(rows.slice(0, 5).map(c => ({id:c.id, name:c.name, parent_id:c.parent_id}))));",
+              "    console.log(\"ROOT_GROUPS:\" + rows.filter(c => !c.parent_id).length);",
+              "  }",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 — Метки каталога",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "X-CloudShop-API-Access-Token",
+            "value": "{{access_token}}"
+          }
+        ],
+        "auth": {
+          "type": "noauth"
+        },
+        "url": "{{base_url}}/product/ext-tags"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "console.log(\"HTTP_STATUS:\" + pm.response.code);",
+              "if (pm.response.code === 200) {",
+              "  const rows = pm.response.json();",
+              "  pm.test(\"Ответ — массив\", function () { pm.expect(rows).to.be.an(\"array\"); });",
+              "  if (Array.isArray(rows)) {",
+              "    console.log(\"COUNT:\" + rows.length);",
+              "    pm.test(\"Метки — строки\", function () { rows.forEach(t => pm.expect(t).to.be.a(\"string\")); });",
+              "    console.log(\"TAG_SAMPLE:\" + JSON.stringify(rows.slice(0, 10)));",
+              "  }",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 — Изменения с даты",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "X-CloudShop-API-Access-Token",
+            "value": "{{access_token}}"
+          }
+        ],
+        "auth": {
+          "type": "noauth"
+        },
+        "url": "{{base_url}}/product/updated?start_time={{start_time}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "console.log(\"HTTP_STATUS:\" + pm.response.code);",
+              "if (pm.response.code === 200) {",
+              "  const rows = pm.response.json();",
+              "  pm.test(\"Ответ — массив\", function () { pm.expect(rows).to.be.an(\"array\"); });",
+              "  if (Array.isArray(rows)) {",
+              "    console.log(\"COUNT:\" + rows.length);",
+              "    pm.test(\"Каждая запись — объект с ID\", function () { rows.forEach(p => { pm.expect(p).to.be.an(\"object\"); pm.expect(p.id).to.be.a(\"string\").and.not.empty; }); });",
+              "    const ids = rows.map(p => p.id);",
+              "    console.log(\"DUPLICATE_IDS:\" + (ids.length - new Set(ids).size));",
+              "    console.log(\"ITEM_SAMPLE:\" + JSON.stringify(rows.slice(0, 3).map(p => ({id:p.id, updated_at:p.updated_at, unit:p.unit, image_count:Array.isArray(p.img) ? p.img.length : null}))));",
+              "    console.log(\"FIRST_RECORD_KEYS:\" + JSON.stringify(rows.length ? Object.keys(rows[0]) : []));",
+              "    const control = rows.filter(p => p.id === \"6a6e12abb0b00726916dde8b\");",
+              "    console.log(\"CONTROL_PRODUCT_FOUND:\" + (control.length > 0));",
+              "    control.forEach(p => console.log(\"CONTROL_PRODUCT:\" + JSON.stringify({id:p.id, unit:p.unit, updated_at:p.updated_at, stock:p.stock})));",
+              "    console.log(\"PRODUCTS_WITH_IMAGES:\" + rows.filter(p => Array.isArray(p.img) && p.img.length > 0).length);",
+              "    console.log(\"PRODUCTS_WITHOUT_UNIT:\" + rows.filter(p => !p.unit || !String(p.unit).trim()).length);",
+              "  }",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 — Удалённые с даты",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "X-CloudShop-API-Access-Token",
+            "value": "{{access_token}}"
+          }
+        ],
+        "auth": {
+          "type": "noauth"
+        },
+        "url": "{{base_url}}/product/deleted?start_time={{start_time}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "console.log(\"HTTP_STATUS:\" + pm.response.code);",
+              "if (pm.response.code === 200) {",
+              "  const rows = pm.response.json();",
+              "  pm.test(\"Ответ — массив\", function () { pm.expect(rows).to.be.an(\"array\"); });",
+              "  if (Array.isArray(rows)) {",
+              "    console.log(\"COUNT:\" + rows.length);",
+              "    pm.test(\"Каждая запись — объект с ID\", function () { rows.forEach(p => { pm.expect(p).to.be.an(\"object\"); pm.expect(p.id).to.be.a(\"string\").and.not.empty; }); });",
+              "    const ids = rows.map(p => p.id);",
+              "    console.log(\"DUPLICATE_IDS:\" + (ids.length - new Set(ids).size));",
+              "    console.log(\"ITEM_SAMPLE:\" + JSON.stringify(rows.slice(0, 3).map(p => ({id:p.id, updated_at:p.updated_at, unit:p.unit, image_count:Array.isArray(p.img) ? p.img.length : null}))));",
+              "    console.log(\"FIRST_RECORD_KEYS:\" + JSON.stringify(rows.length ? Object.keys(rows[0]) : []));",
+              "  }",
+              "}"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

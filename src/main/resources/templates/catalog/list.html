@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/catalog :: head('Каталог запчастей — MBM Motors')}"></head>
+<body>
+<header th:replace="~{fragments/catalog :: header}"></header>
+<main id="main" class="container catalog-main">
+  <section class="catalog-search" aria-labelledby="catalog-title">
+    <div class="heading-row"><h1 id="catalog-title">Найдите нужную деталь</h1><span class="section-caption">Артикул, название или код товара</span></div>
+    <form method="get" th:action="@{/catalog}" class="search-form">
+      <div class="search-field"><label for="query">Поиск запчастей</label><input type="search" id="query" name="q" maxlength="120" th:value="${catalog.query}" placeholder="Например, 54610-2T000" class="form-control"></div>
+      <div class="store-field"><label for="store">Магазин или склад</label><select id="store" name="store" class="form-select"><option th:each="store : ${catalog.stores}" th:value="${store.id}" th:text="${store.name}" th:selected="${store.id == catalog.storeId}">Car City</option></select></div>
+      <button type="submit" class="btn search-button">Найти</button>
+      <div class="search-bottom"><label class="available-filter" for="available"><input type="checkbox" id="available" name="available" value="true" th:checked="${available}"> Только в наличии</label><a class="reset-link" th:href="@{/catalog}">Сбросить фильтры</a></div>
+    </form>
+  </section>
+  <div th:replace="~{fragments/catalog :: sync(${catalog.lastSyncText}, ${catalog.stale})}"></div>
+  <section aria-labelledby="results-title" class="results-section">
+    <div class="results-heading"><div><h2 id="results-title">Каталог запчастей</h2><p th:if="${catalog.storeName != null}" th:text="${catalog.storeName}">Все точки</p></div><span class="results-count" th:text="|Найдено: ${catalog.totalProducts}|">Найдено: 0</span></div>
+    <div th:if="${catalog.products.isEmpty()}" class="empty-state"><h3>Товары не найдены</h3><p>Проверьте артикул или попробуйте более короткое название. Можно выбрать другую точку или снять фильтр наличия.</p><a class="btn outline-button" th:href="@{/catalog}">Показать весь каталог</a></div>
+    <div class="product-grid" th:unless="${catalog.products.isEmpty()}">
+      <article class="product-card" th:each="product : ${catalog.products}">
+        <a class="product-image-link" th:href="@{/catalog/{id}(id=${product.id},store=${catalog.storeId})}" tabindex="-1" aria-hidden="true"><img class="product-image" th:src="${product.imageUrl != null ? product.imageUrl : '/images/part-placeholder.svg'}" alt="" width="112" height="112" loading="lazy"></a>
+        <div class="product-copy"><p class="product-sku" th:text="${product.sku != null && !product.sku.isBlank() ? product.sku : 'Артикул не указан'}">Артикул</p><h3><a th:href="@{/catalog/{id}(id=${product.id},store=${catalog.storeId})}" th:text="${product.name}">Название запчасти</a></h3><p class="product-code" th:if="${product.code != null && !product.code.isBlank()}" th:text="|Код: ${product.code}|">Код</p><div class="product-summary"><strong class="product-price" th:text="${product.priceText}">Цена уточняется</strong><span class="product-stock" th:text="${product.stockText}">Наличие уточняется</span></div></div>
+      </article>
+    </div>
+    <nav class="catalog-pagination" aria-label="Страницы каталога" th:if="${catalog.totalPages > 1}"><a class="btn outline-button" th:if="${catalog.page > 0}" th:href="@{/catalog(q=${catalog.query},store=${catalog.storeId},available=${available},page=${catalog.page - 1})}" rel="prev">Назад</a><span th:text="|Страница ${catalog.page + 1} из ${catalog.totalPages}|">Страница 1</span><a class="btn outline-button" th:if="${catalog.page + 1 < catalog.totalPages}" th:href="@{/catalog(q=${catalog.query},store=${catalog.storeId},available=${available},page=${catalog.page + 1})}" rel="next">Далее</a></nav>
+  </section>
+</main>
+<footer th:replace="~{fragments/catalog :: footer}"></footer>
+</body>
+</html>

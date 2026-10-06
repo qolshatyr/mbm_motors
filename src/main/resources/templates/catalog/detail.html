@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/catalog :: head(${product.name + ' — MBM Motors'})}"></head>
+<body>
+<header th:replace="~{fragments/catalog :: header}"></header>
+<main id="main" class="container catalog-main">
+  <nav class="back-nav" aria-label="Навигация"><a th:href="@{/catalog(store=${selectedStore})}">Вернуться в каталог</a></nav>
+  <section class="detail-product" aria-labelledby="product-title">
+    <div class="detail-image"><img th:src="${product.imageUrl != null ? product.imageUrl : '/images/part-placeholder.svg'}" alt="" width="320" height="320"></div>
+    <div class="detail-copy"><h1 id="product-title" th:text="${product.name}">Запчасть</h1><dl class="product-specs"><div><dt>Артикул</dt><dd th:text="${product.sku != null && !product.sku.isBlank() ? product.sku : 'Не указан'}">Не указан</dd></div><div><dt>Код товара</dt><dd th:text="${product.code != null && !product.code.isBlank() ? product.code : 'Не указан'}">Не указан</dd></div><div><dt>Единица измерения</dt><dd th:text="${product.unit != null && !product.unit.isBlank() ? product.unit : 'Не указана'}">Не указана</dd></div></dl><p class="detail-hint">Сравните цену и наличие в каждой точке.</p></div>
+  </section>
+  <div th:replace="~{fragments/catalog :: sync(${lastSyncText}, ${stale})}"></div>
+  <section class="offers-section" aria-labelledby="offers-title">
+    <div class="results-heading"><h2 id="offers-title">Цена и наличие</h2><span class="section-caption">По магазинам и складу</span></div>
+    <div class="offer-list">
+      <article class="offer-row" th:each="offer : ${offers}" th:classappend="${offer.storeId == selectedStore} ? ' selected-offer' : ''">
+        <h3 th:text="${offer.storeName}">Магазин</h3><span class="offer-stock" th:text="${offer.stockText}">Наличие</span><strong class="offer-price" th:text="${offer.priceText}">Цена уточняется</strong>
+        <form method="post" th:action="@{/cart/add}" th:if="${offer.canAdd}">
+          <input type="hidden" name="productId" th:value="${product.id}"><input type="hidden" name="storeId" th:value="${offer.storeId}">
+          <button class="btn search-button" type="submit" th:aria-label="|Добавить из ${offer.storeName} в корзину|">В корзину</button>
+        </form>
+      </article>
+    </div>
+    <p class="offers-note">Для корзины нужны актуальные наличие, положительная цена и единица «шт» или «шт.». Одна корзина относится к одной точке. Наличие не является резервом.</p>
+  </section>
+</main>
+<footer th:replace="~{fragments/catalog :: footer}"></footer>
+</body>
+</html>
