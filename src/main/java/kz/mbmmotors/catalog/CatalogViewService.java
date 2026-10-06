@@ -123,7 +123,8 @@ public class CatalogViewService {
         products.getFirst(), offers, selected.id(), freshness.text(), freshness.stale());
   }
 
-  private List<StoreView> stores() {
+  @Transactional(readOnly = true)
+  public List<StoreView> stores() {
     return jdbc.query(
         """
             select id,name from stores order by case id when '64feaaa51c9799143b532fcf' then 0

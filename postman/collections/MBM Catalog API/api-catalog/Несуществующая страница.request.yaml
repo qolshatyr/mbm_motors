@@ -1,0 +1,18 @@
+$kind: http-request
+name: Несуществующая страница
+url: '{{baseUrl}}/api/catalog/products?page=1000000'
+method: GET
+headers:
+  - key: Accept
+    value: application/json
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |
+      pm.test("HTTP 404", () => pm.response.to.have.status(404));
+      pm.test("ProblemDetail", () => {
+        pm.expect(pm.response.headers.get('Content-Type')).to.include('application/problem+json');
+        const body = pm.response.json();
+        pm.expect(body.status).to.equal(404);
+        pm.expect(body.detail).to.be.a('string');
+      });

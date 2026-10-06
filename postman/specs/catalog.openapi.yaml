@@ -1,0 +1,113 @@
+openapi: 3.0.3
+info:
+  title: MBM Motors Catalog API
+  version: 1.0.0
+  description: Публичное чтение локального каталога. Цены и свежесть определяет сервер. Корзина и оформление не входят в этот контракт.
+servers:
+  - url: http://localhost:8080
+tags:
+  - name: Catalog
+    description: Локальный каталог PostgreSQL
+paths:
+  /api/catalog/stores:
+    get:
+      operationId: listStores
+      tags: [Catalog]
+      summary: Места хранения, не согласованные точки самовывоза
+      responses:
+        '200':
+          description: Список мест хранения
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [stores, defaultStoreId]
+                properties:
+                  stores:
+                    type: array
+                    items: {$ref: '#/components/schemas/Store'}
+                  defaultStoreId: {type: string}
+  /api/catalog/products:
+    get:
+      operationId: listProducts
+      tags: [Catalog]
+      summary: Поиск товаров по выбранному месту хранения
+      parameters:
+        - in: query
+          name: q
+          schema: {type: string, maxLength: 120, default: ''}
+        - in: query
+          name: store
+          description: При отсутствии используется Car City.
+          schema: {type: string}
+        - in: query
+          name: available
+          description: Положительный сохранённый остаток, включая устаревшие данные.
+          schema: {type: boolean, default: false}
+        - in: query
+          name: page
+          schema: {type: integer, minimum: 0, maximum: 1000000, default: 0}
+      responses:
+        '200':
+          description: Страница до 24 товаров; stale запрещает считать сохранённые остатки текущими.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/CatalogPage'}
+        '400':
+          description: Неверные параметры
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+        '404':
+          description: Страница вне выдачи
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+components:
+  schemas:
+    Store:
+      type: object
+      required: [id, name]
+      properties:
+        id: {type: string}
+        name: {type: string}
+    Product:
+      type: object
+      required: [id, name, priceText, stockText]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        sku: {type: string, nullable: true}
+        code: {type: string, nullable: true}
+        unit: {type: string, nullable: true}
+        priceText: {type: string}
+        stockText: {type: string}
+        imageUrl: {type: string, nullable: true, format: uri}
+    CatalogPage:
+      type: object
+      required: [products, query, storeId, storeName, stores, page, totalPages, totalProducts, stale]
+      properties:
+        products:
+          type: array
+          maxItems: 24
+          items: {$ref: '#/components/schemas/Product'}
+        query: {type: string}
+        storeId: {type: string}
+        storeName: {type: string}
+        stores:
+          type: array
+          items: {$ref: '#/components/schemas/Store'}
+        page: {type: integer, minimum: 0}
+        totalPages: {type: integer, minimum: 0}
+        totalProducts: {type: integer, minimum: 0, format: int64}
+        lastSyncText: {type: string, nullable: true, description: 'Время по Алматы, dd.MM.yyyy HH:mm'}
+        stale: {type: boolean}
+    Problem:
+      type: object
+      required: [type, title, status, detail]
+      properties:
+        type: {type: string}
+        title: {type: string}
+        status: {type: integer}
+        detail: {type: string}
+        instance: {type: string}

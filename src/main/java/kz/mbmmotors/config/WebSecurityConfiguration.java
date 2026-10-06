@@ -3,6 +3,7 @@ package kz.mbmmotors.config;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -15,7 +16,9 @@ public class WebSecurityConfiguration {
   SecurityFilterChain publicCatalogSecurity(HttpSecurity http) throws Exception {
     return http.authorizeHttpRequests(
             auth ->
-                auth.requestMatchers(
+                auth.requestMatchers(HttpMethod.GET, "/api/catalog/stores", "/api/catalog/products")
+                    .permitAll()
+                    .requestMatchers(
                         "/",
                         "/catalog/**",
                         "/cart/**",

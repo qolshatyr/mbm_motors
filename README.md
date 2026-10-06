@@ -25,7 +25,8 @@
 | Область | Стек |
 |---|---|
 | Backend | Java 21, Spring Boot 4.0.8, Spring MVC |
-| Интерфейс | Thymeleaf, Bootstrap 5.3.8 |
+| Новый интерфейс | React, TypeScript, Vite, Tailwind CSS 4; тема и компоненты в `frontend/` |
+| Текущие карточки и корзина | Thymeleaf, Bootstrap 5.3.8; сохраняются во время перехода |
 | Данные | PostgreSQL 17.6, Spring Data JPA, JdbcTemplate, Flyway |
 | Интеграция | Spring RestClient, CloudShop API |
 | Защита | Spring Security, CSRF, серверная валидация |
@@ -44,6 +45,7 @@ src/main/java/kz/mbmmotors/
 src/main/resources/  # Шаблоны, статические ресурсы и миграции
 src/test/java/       # Тесты приложения
 scripts/             # Запуск каталога и импорта
+frontend/            # Новый каталог, UI-компоненты и тема
 tools/cloudshop/      # Инструменты проверки интеграции
 tests/               # Python-тесты инструментов
 docs/                # Документация проекта
@@ -55,6 +57,8 @@ postman/             # Коллекции, шаблон окружения и н
 Для локальной работы нужны Java 21 и PostgreSQL. Maven запускается через Wrapper; `compose.yml` поднимает локальную базу данных.
 
 Настройка окружения, первичный импорт, запуск каталога и проверки описаны в [руководстве для разработки](docs/Development_Guide.md).
+
+Новый frontend запускается отдельно: `cd frontend`, `npm ci`, `npm run dev`. Он читает тот же Spring Boot API; backend должен работать на порту 8080. [Архитектура и настройка темы](docs/Frontend_Architecture.md).
 
 Основные команды проверки:
 
