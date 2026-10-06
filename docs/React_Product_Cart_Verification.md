@@ -1,6 +1,6 @@
 # Проверка React-карточки и корзины
 
-Дата: 06.10.2026. Ветка: `feature/react-product-cart`, база — `feature/frontend-foundation` (PR #3).
+Дата: 06.10.2026. [PR #4](https://github.com/qolshatyr/mbm_motors/pull/4), коммит `1bde70f`. Ветка: `feature/react-product-cart`, база — `feature/frontend-foundation` (PR #3).
 
 ## Выполнено
 
