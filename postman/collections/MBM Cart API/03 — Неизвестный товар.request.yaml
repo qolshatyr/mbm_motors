@@ -1,0 +1,35 @@
+$kind: http-request
+name: 03 — Неизвестный товар
+description: Только собственная серверная сессия. Требует заголовок из GET /api/csrf
+  и cookie той же сессии; продажи и резервы не создаёт.
+url: '{{baseUrl}}/api/cart/add'
+method: POST
+headers:
+- key: Accept
+  value: application/json
+- key: Content-Type
+  value: application/x-www-form-urlencoded
+- key: X-CSRF-TOKEN
+  value: '{{csrfToken}}'
+- key: Cookie
+  value: '{{sessionCookie}}'
+  description: Cookie собственной сессии из шага 01; явный заголовок для локального
+    CLI.
+body:
+  type: urlencoded
+  content:
+  - key: productId
+    value: not-an-id
+  - key: storeId
+    value: not-an-id
+  - key: quantity
+    value: '1'
+settings: {}
+order: 3000
+scripts:
+- type: afterResponse
+  language: text/javascript
+  code: |
+    pm.test('HTTP 409', () => pm.response.to.have.status(409));
+    const body = pm.response.json();
+    pm.test('ProblemDetail', () => { pm.expect(body.status).to.equal(409); pm.expect(body.detail).to.be.a('string').and.not.empty; });

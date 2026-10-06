@@ -1,0 +1,33 @@
+$kind: http-request
+name: 05 — Цена отсутствующей позиции
+description: Только собственная серверная сессия. Требует заголовок из GET /api/csrf
+  и cookie той же сессии; продажи и резервы не создаёт.
+url: '{{baseUrl}}/api/cart/confirm-price'
+method: POST
+headers:
+- key: Accept
+  value: application/json
+- key: Content-Type
+  value: application/x-www-form-urlencoded
+- key: X-CSRF-TOKEN
+  value: '{{csrfToken}}'
+- key: Cookie
+  value: '{{sessionCookie}}'
+  description: Cookie собственной сессии из шага 01; явный заголовок для локального
+    CLI.
+body:
+  type: urlencoded
+  content:
+  - key: productId
+    value: '000000000000000000000000'
+  - key: expectedPrice
+    value: '1.00'
+settings: {}
+order: 5000
+scripts:
+- type: afterResponse
+  language: text/javascript
+  code: |
+    pm.test('HTTP 409', () => pm.response.to.have.status(409));
+    const body = pm.response.json();
+    pm.test('ProblemDetail', () => { pm.expect(body.status).to.equal(409); pm.expect(body.detail).to.be.a('string').and.not.empty; });

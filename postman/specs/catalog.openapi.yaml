@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: MBM Motors Catalog API
-  version: 1.0.0
+  version: 1.1.0
   description: Публичное чтение локального каталога. Цены и свежесть определяет сервер. Корзина и оформление не входят в этот контракт.
 servers:
   - url: http://localhost:8080
@@ -63,6 +63,35 @@ paths:
           content:
             application/problem+json:
               schema: {$ref: '#/components/schemas/Problem'}
+  /api/catalog/products/{id}:
+    get:
+      operationId: productDetail
+      tags: [Catalog]
+      summary: Карточка товара с предложениями по местам хранения
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string}
+        - in: query
+          name: store
+          schema: {type: string}
+      responses:
+        '200':
+          description: Серверные цена, наличие и возможность добавления
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Detail'}
+        '400':
+          description: Неверное место хранения
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+        '404':
+          description: Товар отсутствует
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
 components:
   schemas:
     Store:
@@ -111,3 +140,23 @@ components:
         status: {type: integer}
         detail: {type: string}
         instance: {type: string}
+    Detail:
+      type: object
+      required: [product, offers, selectedStore, stale]
+      properties:
+        product: {$ref: '#/components/schemas/Product'}
+        offers:
+          type: array
+          items: {$ref: '#/components/schemas/Offer'}
+        selectedStore: {type: string}
+        lastSyncText: {type: string, nullable: true}
+        stale: {type: boolean}
+    Offer:
+      type: object
+      required: [storeId, storeName, priceText, stockText, canAdd]
+      properties:
+        storeId: {type: string}
+        storeName: {type: string}
+        priceText: {type: string}
+        stockText: {type: string}
+        canAdd: {type: boolean}

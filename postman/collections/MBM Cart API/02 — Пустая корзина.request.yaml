@@ -1,0 +1,21 @@
+$kind: http-request
+name: 02 — Пустая корзина
+description: ''
+url: '{{baseUrl}}/api/cart'
+method: GET
+headers:
+- key: Accept
+  value: application/json
+- key: Cookie
+  value: '{{sessionCookie}}'
+  description: Cookie собственной сессии из шага 01; явный заголовок для локального
+    CLI.
+settings: {}
+order: 2000
+scripts:
+- type: afterResponse
+  language: text/javascript
+  code: |
+    pm.test('HTTP 200', () => pm.response.to.have.status(200));
+    const body = pm.response.json();
+    pm.test('Пустая сессионная корзина', () => { pm.expect(body.cart.items).to.eql([]); pm.expect(body.itemCount).to.equal(0); pm.expect(body.cart.hasIssues).to.equal(false); pm.expect(pm.response.headers.get('Cache-Control')).to.include('no-store'); });

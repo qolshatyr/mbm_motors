@@ -25,8 +25,8 @@
 | Область | Стек |
 |---|---|
 | Backend | Java 21, Spring Boot 4.0.8, Spring MVC |
-| Новый интерфейс | React, TypeScript, Vite, Tailwind CSS 4; тема и компоненты в `frontend/` |
-| Текущие карточки и корзина | Thymeleaf, Bootstrap 5.3.8; сохраняются во время перехода |
+| Интерфейс | React, TypeScript, Vite, Tailwind CSS 4; каталог, карточка и корзина |
+| Серверные страницы | Thymeleaf, Bootstrap 5.3.8; сохраняются во время перехода |
 | Данные | PostgreSQL 17.6, Spring Data JPA, JdbcTemplate, Flyway |
 | Интеграция | Spring RestClient, CloudShop API |
 | Защита | Spring Security, CSRF, серверная валидация |
@@ -45,7 +45,7 @@ src/main/java/kz/mbmmotors/
 src/main/resources/  # Шаблоны, статические ресурсы и миграции
 src/test/java/       # Тесты приложения
 scripts/             # Запуск каталога и импорта
-frontend/            # Новый каталог, UI-компоненты и тема
+frontend/            # Каталог, карточка, корзина, UI-компоненты и тема
 tools/cloudshop/      # Инструменты проверки интеграции
 tests/               # Python-тесты инструментов
 docs/                # Документация проекта

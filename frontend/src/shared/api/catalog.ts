@@ -3,14 +3,9 @@ export interface Product { id: string; name: string; sku: string | null; code: s
 export interface CatalogPage { products: Product[]; query: string; storeId: string; storeName: string; stores: Store[]; page: number; totalPages: number; totalProducts: number; lastSyncText: string | null; stale: boolean }
 export interface Stores { stores: Store[]; defaultStoreId: string }
 
-export class ApiError extends Error { constructor(public status: number, message: string) { super(message); } }
-async function get<T>(url: string, signal: AbortSignal): Promise<T> {
-  const response = await fetch(url, { signal, credentials: 'same-origin', headers: { Accept: 'application/json' } });
-  if (!response.ok) {
-    const problem = await response.json().catch(() => null);
-    throw new ApiError(response.status, problem?.detail ?? 'Не удалось загрузить каталог. Попробуйте ещё раз.');
-  }
-  return response.json() as Promise<T>;
-}
-export const fetchStores = (signal: AbortSignal) => get<Stores>('/api/catalog/stores', signal);
-export const fetchProducts = (params: URLSearchParams, signal: AbortSignal) => get<CatalogPage>(`/api/catalog/products?${params}`, signal);
+export interface Detail { product: Product; offers: { storeId: string; storeName: string; priceText: string; stockText: string; canAdd: boolean }[]; selectedStore: string; lastSyncText: string | null; stale: boolean }
+export const fetchStores = (signal: AbortSignal) => request<Stores>('/api/catalog/stores', { signal });
+export const fetchProducts = (params: URLSearchParams, signal: AbortSignal) => request<CatalogPage>(`/api/catalog/products?${params}`, { signal });
+export const fetchDetail = (id: string, store: string, signal: AbortSignal) => request<Detail>(`/api/catalog/products/${encodeURIComponent(id)}${store ? `?store=${encodeURIComponent(store)}` : ''}`, { signal });
+import { request } from './http';
+export { ApiError } from './http';

@@ -16,7 +16,21 @@ public class WebSecurityConfiguration {
   SecurityFilterChain publicCatalogSecurity(HttpSecurity http) throws Exception {
     return http.authorizeHttpRequests(
             auth ->
-                auth.requestMatchers(HttpMethod.GET, "/api/catalog/stores", "/api/catalog/products")
+                auth.requestMatchers(
+                        HttpMethod.GET,
+                        "/api/catalog/stores",
+                        "/api/catalog/products",
+                        "/api/catalog/products/{id}",
+                        "/api/cart",
+                        "/api/csrf")
+                    .permitAll()
+                    .requestMatchers(
+                        HttpMethod.POST,
+                        "/api/cart/add",
+                        "/api/cart/update",
+                        "/api/cart/remove",
+                        "/api/cart/clear",
+                        "/api/cart/confirm-price")
                     .permitAll()
                     .requestMatchers(
                         "/",
@@ -42,6 +56,14 @@ public class WebSecurityConfiguration {
                 errors.accessDeniedHandler(
                     (request, response, error) -> {
                       response.setStatus(403);
+                      if (request.getRequestURI().startsWith(request.getContextPath() + "/api/")) {
+                        response.setContentType("application/problem+json;charset=UTF-8");
+                        response
+                            .getWriter()
+                            .write(
+                                "{\"type\":\"urn:mbm:security:forbidden\",\"title\":\"Forbidden\",\"status\":403,\"detail\":\"Запрос отклонён. Обновите страницу и повторите действие.\"}");
+                        return;
+                      }
                       response.setContentType("text/plain;charset=UTF-8");
                       response
                           .getWriter()

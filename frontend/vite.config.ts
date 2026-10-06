@@ -8,6 +8,6 @@ export default defineConfig({
     host: '127.0.0.1',
     port: 5173,
     strictPort: true,
-    proxy: Object.fromEntries(['/api', '/catalog', '/cart', '/images', '/css', '/webjars'].map((path) => [path, { target: 'http://127.0.0.1:8080' }])),
+    proxy: Object.fromEntries(['/api', '/catalog', '/cart', '/images', '/css', '/webjars'].map((path) => [path, { target: process.env.MBM_BACKEND_URL ?? 'http://127.0.0.1:8080' }])),
   },
 });

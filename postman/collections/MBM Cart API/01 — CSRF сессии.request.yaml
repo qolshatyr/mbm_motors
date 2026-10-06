@@ -1,0 +1,22 @@
+$kind: http-request
+name: 01 — CSRF сессии
+description: ''
+url: '{{baseUrl}}/api/csrf'
+method: GET
+headers:
+- key: Accept
+  value: application/json
+settings: {}
+order: 1000
+scripts:
+- type: afterResponse
+  language: text/javascript
+  code: |
+    pm.test('HTTP 200', () => pm.response.to.have.status(200));
+    const body = pm.response.json();
+    pm.test('Маскированный токен и no-store', () => { pm.expect(body.headerName).to.equal('X-CSRF-TOKEN'); pm.expect(body.token).to.be.a('string').and.not.empty; pm.expect(pm.response.headers.get('Cache-Control')).to.include('no-store'); });
+    pm.collectionVariables.set('csrfToken', body.token);
+
+    const sessionCookie = pm.response.headers.get('Set-Cookie').split(';')[0];
+    pm.test('Сессионная cookie получена', () => pm.expect(sessionCookie).to.match(/^JSESSIONID=/));
+    pm.collectionVariables.set('sessionCookie', sessionCookie);

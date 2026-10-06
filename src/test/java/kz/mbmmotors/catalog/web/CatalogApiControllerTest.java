@@ -95,9 +95,32 @@ class CatalogApiControllerTest {
     assertThat(mvc.post().uri("/api/catalog/products")).hasStatus(HttpStatus.FORBIDDEN);
     assertThat(mvc.post().uri("/api/catalog/products").with(csrf()))
         .hasStatus(HttpStatus.FORBIDDEN);
-    assertThat(mvc.get().uri("/api/catalog/products/unknown")).hasStatus(HttpStatus.FORBIDDEN);
+    assertThat(mvc.get().uri("/api/catalog/products/unknown/extra"))
+        .hasStatus(HttpStatus.FORBIDDEN);
     assertThat(mvc.get().uri("/api/admin")).hasStatus(HttpStatus.FORBIDDEN);
     verifyNoInteractions(service);
+  }
+
+  @Test
+  void detailUsesExistingServiceAndReturnsMissingProductAs404() throws Exception {
+    var detail =
+        new CatalogViewService.Detail(
+            page().products().getFirst(),
+            List.of(
+                new CatalogViewService.OfferView(
+                    store().id(), store().name(), "3000 ₸", "4 шт", true)),
+            store().id(),
+            "06.10.2026",
+            false);
+    when(service.detail("item", store().id())).thenReturn(detail);
+    var result =
+        mvc.get().uri("/api/catalog/products/item").param("store", store().id()).exchange();
+    assertThat(result).hasStatusOk();
+    var body = json.readTree(result.getResponse().getContentAsString());
+    assertThat(body.path("offers").get(0).path("canAdd").asBoolean()).isTrue();
+    assertThat(body.path("selectedStore").asString()).isEqualTo(store().id());
+    when(service.detail("missing", null)).thenThrow(new CatalogViewService.CatalogNotFound());
+    assertThat(mvc.get().uri("/api/catalog/products/missing")).hasStatus(HttpStatus.NOT_FOUND);
   }
 
   private void assertProblem(String content, int status) throws Exception {
