@@ -1,0 +1,136 @@
+package kz.mbmmotors.admin;
+
+import java.math.BigDecimal;
+import java.text.NumberFormat;
+import java.time.Instant;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class StaffRequestService {
+  private final JdbcTemplate jdbc;
+
+  public StaffRequestService(JdbcTemplate jdbc) {
+    this.jdbc = jdbc;
+  }
+
+  @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+  public Page list(int page) {
+    long count = jdbc.queryForObject("select count(*) from local_orders", Long.class);
+    var items =
+        jdbc.query(
+            """
+        select number,status,created_at,store_name,item_count,total_text from local_orders
+        order by created_at desc,number desc limit 20 offset ?
+        """,
+            (rs, row) ->
+                new Summary(
+                    Long.toString(rs.getLong("number")),
+                    rs.getString("status"),
+                    rs.getTimestamp("created_at").toInstant(),
+                    rs.getString("store_name"),
+                    rs.getInt("item_count"),
+                    rs.getString("total_text")),
+            page * 20L);
+    return new Page(items, page, 20, count, (int) Math.min(Integer.MAX_VALUE, (count + 19) / 20));
+  }
+
+  @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+  public Optional<Detail> detail(long number) {
+    return jdbc
+        .query(
+            """
+        select number,status,created_at,store_name,item_count,total_text,customer_name,phone,comment
+        from local_orders where number = ?
+        """,
+            (rs, row) ->
+                new Detail(
+                    Long.toString(rs.getLong("number")),
+                    rs.getString("status"),
+                    rs.getTimestamp("created_at").toInstant(),
+                    rs.getString("store_name"),
+                    rs.getInt("item_count"),
+                    rs.getString("total_text"),
+                    rs.getString("customer_name"),
+                    rs.getString("phone"),
+                    rs.getString("comment"),
+                    List.of()),
+            number)
+        .stream()
+        .findFirst()
+        .map(
+            detail -> {
+              var items =
+                  jdbc.query(
+                      """
+              select position,product_name,sku,unit,quantity,price,line_total from local_order_items
+              where order_id = (select id from local_orders where number = ?) order by position
+              """,
+                      (rs, row) ->
+                          new Item(
+                              rs.getInt("position"),
+                              rs.getString("product_name"),
+                              rs.getString("sku"),
+                              rs.getString("unit"),
+                              rs.getInt("quantity"),
+                              money(rs.getBigDecimal("price")),
+                              money(rs.getBigDecimal("line_total"))),
+                      number);
+              return new Detail(
+                  detail.number(),
+                  detail.status(),
+                  detail.createdAt(),
+                  detail.storeName(),
+                  detail.itemCount(),
+                  detail.totalText(),
+                  detail.customerName(),
+                  detail.phone(),
+                  detail.comment(),
+                  items);
+            });
+  }
+
+  static String money(BigDecimal value) {
+    var format = NumberFormat.getNumberInstance(Locale.forLanguageTag("ru-RU"));
+    format.setMinimumFractionDigits(0);
+    format.setMaximumFractionDigits(2);
+    return format.format(value) + " ₸";
+  }
+
+  public record Summary(
+      String number,
+      String status,
+      Instant createdAt,
+      String storeName,
+      int itemCount,
+      String totalText) {}
+
+  public record Item(
+      int position,
+      String productName,
+      String sku,
+      String unit,
+      int quantity,
+      String priceText,
+      String lineTotalText) {}
+
+  public record Detail(
+      String number,
+      String status,
+      Instant createdAt,
+      String storeName,
+      int itemCount,
+      String totalText,
+      String customerName,
+      String phone,
+      String comment,
+      List<Item> items) {}
+
+  public record Page(
+      List<Summary> items, int page, int pageSize, long totalItems, int totalPages) {}
+}

@@ -1,0 +1,17 @@
+$kind: http-request
+name: '12 — После выхода доступа нет'
+order: 12000
+method: GET
+url: '{{baseUrl}}/admin/api/requests'
+settings:
+  followRedirects: false
+headers:
+  - key: Accept
+    value: application/json
+  - key: Cookie
+    value: '{{sessionCookie}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Сессия завершена',()=>pm.response.to.have.status(401));

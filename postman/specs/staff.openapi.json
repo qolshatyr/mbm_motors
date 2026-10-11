@@ -1,0 +1,360 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "MBM Motors Staff Requests API",
+    "version": "1.0.0",
+    "description": "Только просмотр локальных заявок сотрудником. Не передаёт данные в CloudShop и не меняет статусы. admin.enabled=false по умолчанию. Вход POST /admin/login (username/password/_csrf), выход POST /admin/logout (_csrf); серверная сессия ROLE_STAFF. При истечении сессии API возвращает JSON 401, страницы перенаправляют на /admin/login. Контакты только в подробностях; кеширование запрещено."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8080"
+    }
+  ],
+  "security": [
+    {
+      "staffSession": []
+    }
+  ],
+  "paths": {
+    "/admin/api/requests": {
+      "get": {
+        "operationId": "listStaffRequests",
+        "summary": "Список локальных заявок, новые сначала",
+        "description": "Фиксированный размер 20. Порядок created_at DESC, number DESC. Нет контактов, UUID владельца, ключа повторной отправки. Страница вне диапазона — пустые items. Номер — десятичная строка.",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100000,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Список",
+            "headers": {
+              "Cache-Control": {
+                "description": "no-store",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Page"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Некорректная страница",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Войдите в служебный раздел",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Нет роли STAFF / раздел отключён",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/api/requests/{number}": {
+      "get": {
+        "operationId": "getStaffRequest",
+        "summary": "Снимок заявки и контакты покупателя",
+        "parameters": [
+          {
+            "name": "number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,18}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Подробности",
+            "headers": {
+              "Cache-Control": {
+                "description": "no-store",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Detail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Некорректный номер",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Войдите в служебный раздел",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Нет роли STAFF / раздел отключён",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Заявка не найдена",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "staffSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "JSESSIONID",
+        "description": "Серверная сессия после CSRF-защищённого входа /admin/login"
+      }
+    },
+    "schemas": {
+      "Summary": {
+        "type": "object",
+        "required": [
+          "number",
+          "status",
+          "createdAt",
+          "storeName",
+          "itemCount",
+          "totalText"
+        ],
+        "properties": {
+          "number": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "RECEIVED"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "storeName": {
+            "type": "string"
+          },
+          "itemCount": {
+            "type": "integer"
+          },
+          "totalText": {
+            "type": "string"
+          }
+        }
+      },
+      "Item": {
+        "type": "object",
+        "required": [
+          "position",
+          "productName",
+          "sku",
+          "unit",
+          "quantity",
+          "priceText",
+          "lineTotalText"
+        ],
+        "properties": {
+          "position": {
+            "type": "integer"
+          },
+          "productName": {
+            "type": "string"
+          },
+          "sku": {
+            "type": "string",
+            "nullable": true
+          },
+          "unit": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "priceText": {
+            "type": "string"
+          },
+          "lineTotalText": {
+            "type": "string"
+          }
+        }
+      },
+      "Detail": {
+        "type": "object",
+        "required": [
+          "number",
+          "status",
+          "createdAt",
+          "storeName",
+          "itemCount",
+          "totalText",
+          "customerName",
+          "phone",
+          "comment",
+          "items"
+        ],
+        "properties": {
+          "number": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "RECEIVED"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "storeName": {
+            "type": "string"
+          },
+          "itemCount": {
+            "type": "integer"
+          },
+          "totalText": {
+            "type": "string"
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "comment": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Item"
+            }
+          }
+        }
+      },
+      "Page": {
+        "type": "object",
+        "required": [
+          "items",
+          "page",
+          "pageSize",
+          "totalItems",
+          "totalPages"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Summary"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "pageSize": {
+            "type": "integer",
+            "enum": [
+              20
+            ]
+          },
+          "totalItems": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        }
+      },
+      "Problem": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status",
+          "detail"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "detail": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

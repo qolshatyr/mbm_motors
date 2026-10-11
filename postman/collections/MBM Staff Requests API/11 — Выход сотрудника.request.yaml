@@ -1,0 +1,24 @@
+$kind: http-request
+name: '11 — Выход сотрудника'
+order: 11000
+method: POST
+url: '{{baseUrl}}/admin/logout'
+settings:
+  followRedirects: false
+headers:
+  - key: Accept
+    value: application/json
+  - key: Cookie
+    value: '{{sessionCookie}}'
+  - key: Content-Type
+    value: application/x-www-form-urlencoded
+body:
+  type: urlencoded
+  content:
+    - key: _csrf
+      value: '{{csrfToken}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Выход завершён',()=>pm.response.to.have.status(302));

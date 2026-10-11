@@ -8,7 +8,14 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 @ConditionalOnProperty(name = "frontend.enabled", havingValue = "true")
 public class FrontendController {
-  @GetMapping({"/products/{id}", "/basket", "/checkout", "/checkout/success"})
+  @GetMapping({
+    "/products/{id}",
+    "/basket",
+    "/checkout",
+    "/checkout/success",
+    "/admin/requests",
+    "/admin/requests/{number}"
+  })
   String page() {
     return "forward:/frontend/index.html";
   }

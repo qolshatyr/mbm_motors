@@ -150,3 +150,7 @@ MBM_Motors/
 Инструменты CloudShop перенесены из корня в [tools/cloudshop](../tools/cloudshop/README.md). Все команды выполняются из корня проекта, например `python3 tools/cloudshop/cloudshop_check_stores.py`. Коллекции и шаблон окружения находятся в `postman/assets/`; пути `.postman/resources.yaml` обновлены. Содержимое коллекций и режим GET-only сохранены.
 
 Локальные `.env`, `.cloudshop-test-sales/` и `.cloudshop-audit/` остаются в корне и исключены из Git. Не удаляйте журнал продаж: он защищает от повторных отправок. `target/` и `__pycache__/` — игнорируемые результаты сборки и Python-кэши.
+
+## Служебный просмотр заявок
+
+После сборки: `python3 scripts/run_site.py --sync --admin --port 8081`. Скрипт приватно запрашивает отдельные логин и пароль сотрудника. Вход — `/admin/requests`; по умолчанию раздел отключён. Подробности и ограничения: [служебный просмотр](Staff_Requests.md).

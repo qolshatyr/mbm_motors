@@ -1,15 +1,22 @@
 package kz.mbmmotors.config;
 
+import kz.mbmmotors.admin.AdminProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration(proxyBeanMethods = false)
+@EnableConfigurationProperties(AdminProperties.class)
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class WebSecurityConfiguration {
   @Bean
@@ -80,9 +87,21 @@ public class WebSecurityConfiguration {
         .build();
   }
 
-  // No accounts or login endpoints exist yet; avoid Boot's generated development user.
   @Bean
-  UserDetailsService noAccountsYet() {
+  PasswordEncoder staffPasswordEncoder() {
+    return new BCryptPasswordEncoder();
+  }
+
+  @Bean
+  UserDetailsService accounts(AdminProperties properties) {
+    properties.validate();
+    if (properties.isEnabled()) {
+      return new InMemoryUserDetailsManager(
+          User.withUsername(properties.getUsername())
+              .password(properties.getPasswordHash())
+              .roles("STAFF")
+              .build());
+    }
     return username -> {
       throw new UsernameNotFoundException("Authentication is not configured");
     };

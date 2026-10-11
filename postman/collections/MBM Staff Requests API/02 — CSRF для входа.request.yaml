@@ -1,0 +1,15 @@
+$kind: http-request
+name: '02 — CSRF для входа'
+order: 2000
+method: GET
+url: '{{baseUrl}}/api/csrf'
+settings:
+  followRedirects: false
+headers:
+  - key: Accept
+    value: application/json
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('CSRF получен',()=>pm.response.to.have.status(200));const b=pm.response.json();pm.collectionVariables.set('csrfToken',b.token);pm.collectionVariables.set('sessionCookie',pm.response.headers.get('Set-Cookie').split(';')[0]);
