@@ -1,6 +1,6 @@
 # Локальное оформление: реализация и проверка
 
-Дата: 11.10.2026. Ветка `feature/local-checkout`, база — `feature/react-product-cart` (PR #4).
+Дата: 11.10.2026. [PR #5](https://github.com/qolshatyr/mbm_motors/pull/5), коммит `86d5e0f`. Ветка `feature/local-checkout`, база — `feature/react-product-cart` (PR #4).
 
 ## Реализовано
 
