@@ -1,0 +1,18 @@
+$kind: http-request
+name: 03 — Проверка фактических записей
+order: 3000
+method: GET
+url: http://127.0.0.1:4900/__test__/state
+scripts:
+- type: beforeRequest
+  language: text/javascript
+  code: const u=pm.variables.replaceIn(pm.request.url.toString()); if (!u.startsWith('http://127.0.0.1:4900/'))
+    { pm.execution.skipRequest(); throw new Error('Synthetic localhost fixture only');
+    }
+- type: afterResponse
+  language: text/javascript
+  code: pm.test('One customer, one sale', () => { const s=pm.response.json(); pm.expect(s.customers).to.have.lengthOf(1);
+    pm.expect(s.sales).to.have.lengthOf(1); }); pm.test('Unposted and unpaid', ()
+    => { const s=pm.response.json().sales[0]; pm.expect(s.status).to.equal(false);
+    pm.expect(s).not.to.have.property('payment_details'); pm.expect(s.products[0].price).to.equal(2500.01);
+    });

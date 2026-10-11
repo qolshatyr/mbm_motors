@@ -1,0 +1,24 @@
+$kind: http-request
+name: 00 — Сброс синтетического стенда
+order: 0
+method: POST
+url: http://127.0.0.1:4900/__test__/reset
+headers:
+- key: Content-Type
+  value: application/json
+- key: X-CloudShop-API-Access-Token
+  value: synthetic-local-only
+body:
+  type: json
+  content: '{}'
+settings:
+  followRedirects: false
+scripts:
+- type: beforeRequest
+  language: text/javascript
+  code: const u=pm.variables.replaceIn(pm.request.url.toString()); if (!u.startsWith('http://127.0.0.1:4900/'))
+    { pm.execution.skipRequest(); throw new Error('Synthetic localhost fixture only');
+    }
+- type: afterResponse
+  language: text/javascript
+  code: pm.test('Fixture reset', () => pm.response.to.have.status(200));

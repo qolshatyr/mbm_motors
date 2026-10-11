@@ -1,0 +1,10 @@
+version: 1
+id: 6867ebd5-de5f-4ad8-b2cc-25899d66c71a
+name: cloudshop-delivery
+slug: cloudshop-delivery
+protocol: http
+port: 4900
+scenarios:
+  - name: default
+    path: ./default.js
+    default: true
