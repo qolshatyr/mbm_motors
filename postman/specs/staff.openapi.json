@@ -3,7 +3,7 @@
   "info": {
     "title": "MBM Motors Staff Requests API",
     "version": "1.1.0",
-    "description": "Только просмотр локальных заявок сотрудником. Не передаёт данные в CloudShop и не меняет статусы. admin.enabled=false по умолчанию. Вход POST /admin/login (username/password/_csrf), выход POST /admin/logout (_csrf); серверная сессия ROLE_STAFF. При истечении сессии API возвращает JSON 401, страницы перенаправляют на /admin/login. Контакты только в подробностях; кеширование запрещено. Внутренняя задача передачи сохраняется атомарно с заявкой. WAITING_CONFIGURATION — ожидает согласованного подключения, без внешних попыток; NOT_PREPARED — служебная задача отсутствует. Нет маршрутов запуска/повтора отправки."
+    "description": "Только просмотр локальных заявок сотрудником. Не передаёт данные в CloudShop и не меняет статусы. admin.enabled=false по умолчанию. Вход POST /admin/login (username/password/_csrf), выход POST /admin/logout (_csrf); серверная сессия ROLE_STAFF. При истечении сессии API возвращает JSON 401, страницы перенаправляют на /admin/login. Контакты только в подробностях; кеширование запрещено. Внутренняя задача передачи сохраняется атомарно с заявкой. WAITING_CONFIGURATION — ожидает согласованного подключения, без внешних попыток; NOT_PREPARED — служебная задача отсутствует. Нет маршрутов запуска/повтора отправки. Внутренний обработчик поддерживает этапы READY, CUSTOMER_IN_FLIGHT, CUSTOMER_CREATED, SALE_IN_FLIGHT, SENT, UNKNOWN; production-адаптер отсутствует, состояния проверяются только с тестовым адаптером. UNKNOWN запрещает автоматический повтор."
   },
   "servers": [
     {
@@ -374,6 +374,12 @@
             "type": "string",
             "enum": [
               "WAITING_CONFIGURATION",
+              "READY",
+              "CUSTOMER_IN_FLIGHT",
+              "CUSTOMER_CREATED",
+              "SALE_IN_FLIGHT",
+              "SENT",
+              "UNKNOWN",
               "NOT_PREPARED"
             ]
           },

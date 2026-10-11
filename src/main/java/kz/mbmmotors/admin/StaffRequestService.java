@@ -101,9 +101,26 @@ public class StaffRequestService {
   }
 
   static Delivery delivery(String state) {
-    return state == null
-        ? new Delivery("NOT_PREPARED", "Передача ещё не подготовлена. Обратитесь к администратору.")
-        : new Delivery(state, "Передача ещё не подключена. Ожидает настройки.");
+    if (state == null) {
+      return new Delivery(
+          "NOT_PREPARED", "Передача ещё не подготовлена. Обратитесь к администратору.");
+    }
+    String message =
+        switch (state) {
+          case "WAITING_CONFIGURATION" -> "Передача ещё не подключена. Ожидает настройки.";
+          case "READY" -> "Заявка подготовлена к передаче.";
+          case "CUSTOMER_IN_FLIGHT" ->
+              "Выполняется создание покупателя. Повтор запрещён до проверки результата.";
+          case "CUSTOMER_CREATED" -> "Покупатель создан. Ожидается передача продажи.";
+          case "SALE_IN_FLIGHT" ->
+              "Выполняется создание непроведённой продажи. Повтор запрещён до проверки результата.";
+          case "SENT" ->
+              "Адаптер подтвердил создание непроведённой продажи. Это не подтверждает резерв или оплату.";
+          case "UNKNOWN" ->
+              "Результат передачи неизвестен. Нужна ручная сверка; автоматический повтор запрещён.";
+          default -> "Неизвестное состояние передачи. Обратитесь к администратору.";
+        };
+    return new Delivery(state, message);
   }
 
   public record Delivery(String state, String message) {}
