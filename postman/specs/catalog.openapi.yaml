@@ -153,10 +153,11 @@ components:
         stale: {type: boolean}
     Offer:
       type: object
-      required: [storeId, storeName, priceText, stockText, canAdd]
+      required: [storeId, storeName, priceText, stockText, canAdd, unavailabilityReason]
       properties:
         storeId: {type: string}
         storeName: {type: string}
         priceText: {type: string}
         stockText: {type: string}
         canAdd: {type: boolean}
+        unavailabilityReason: {type: string, nullable: true, description: Причина блокировки добавления; null если canAdd=true}

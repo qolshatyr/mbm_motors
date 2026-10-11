@@ -84,6 +84,10 @@ class OrderIntegrationTest {
         "+77011234567", jdbc.queryForObject("select phone from local_orders", String.class));
     carts.clear(cart);
     assertFalse(orders.submit(cart, state, cmd).created());
+    assertEquals(1, jdbc.queryForObject("select count(*) from delivery_outbox", Integer.class));
+    assertEquals(
+        "WAITING_CONFIGURATION",
+        jdbc.queryForObject("select state from delivery_outbox", String.class));
     assertEquals(result.receipt(), orders.receipt(state.ownerId(), cmd.key()));
     assertEquals(
         404,
@@ -138,6 +142,49 @@ class OrderIntegrationTest {
   }
 
   @Test
+  void rollbackWhenOutboxInsertFailsLeavesNoOrderItemsOrJobAndKeepsCart() {
+    var cart = cart();
+    var state = new CheckoutSession();
+    var cmd = command(orders.preview(cart, state));
+    jdbc.execute(
+        "alter table delivery_outbox add constraint test_reject_outbox check (state <> 'WAITING_CONFIGURATION')");
+    try {
+      assertThrows(
+          org.springframework.dao.DataIntegrityViolationException.class,
+          () -> orders.submit(cart, state, cmd));
+      assertEquals(0, jdbc.queryForObject("select count(*) from local_orders", Integer.class));
+      assertEquals(0, jdbc.queryForObject("select count(*) from local_order_items", Integer.class));
+      var session = new MockHttpSession();
+      session.setAttribute("mbm.cart", cart);
+      session.setAttribute("mbm.checkout", state);
+      var failure =
+          assertThrows(
+              jakarta.servlet.ServletException.class,
+              () ->
+                  mvc.perform(
+                      post("/api/orders")
+                          .session(session)
+                          .with(csrf())
+                          .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                          .param("idempotencyKey", cmd.key().toString())
+                          .param("revision", cmd.revision())
+                          .param("customerName", cmd.customerName())
+                          .param("phone", cmd.phone())
+                          .param("comment", cmd.comment())
+                          .param("consent", "true")));
+      assertInstanceOf(
+          org.springframework.dao.DataIntegrityViolationException.class, failure.getCause());
+      assertEquals(0, jdbc.queryForObject("select count(*) from local_orders", Integer.class));
+      assertEquals(0, jdbc.queryForObject("select count(*) from local_order_items", Integer.class));
+      assertEquals(0, jdbc.queryForObject("select count(*) from delivery_outbox", Integer.class));
+      assertEquals(cmd.key(), state.key());
+      assertEquals(2, cart.itemCount());
+    } finally {
+      jdbc.execute("alter table delivery_outbox drop constraint test_reject_outbox");
+    }
+  }
+
+  @Test
   void concurrentSameKeyCreatesOneOrderAndOneReplay() throws Exception {
     var first = cart();
     var second = cart();
@@ -164,6 +211,7 @@ class OrderIntegrationTest {
       assertEquals(ar.receipt(), br.receipt());
     }
     assertEquals(1, jdbc.queryForObject("select count(*) from local_orders", Integer.class));
+    assertEquals(1, jdbc.queryForObject("select count(*) from delivery_outbox", Integer.class));
   }
 
   @Test

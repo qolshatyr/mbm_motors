@@ -7,6 +7,7 @@ export interface StaffSummary {
   storeName: string;
   itemCount: number;
   totalText: string;
+  delivery: { state: 'WAITING_CONFIGURATION' | 'NOT_PREPARED'; message: string };
 }
 export interface StaffPage {
   items: StaffSummary[];

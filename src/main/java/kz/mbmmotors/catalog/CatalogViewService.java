@@ -117,6 +117,12 @@ public class CatalogViewService {
                         rs.getBigDecimal("price"),
                         rs.getBigDecimal("quantity"),
                         rs.getString("unit"),
+                        freshness.stale()),
+                    ProductAvailability.problem(
+                        rs.getBigDecimal("price"),
+                        rs.getBigDecimal("quantity"),
+                        rs.getString("unit"),
+                        1,
                         freshness.stale())),
             id);
     return new Detail(
@@ -187,13 +193,7 @@ public class CatalogViewService {
   }
 
   static boolean canAdd(BigDecimal price, BigDecimal quantity, String unit, boolean stale) {
-    return !stale
-        && price != null
-        && price.signum() > 0
-        && quantity != null
-        && quantity.compareTo(BigDecimal.ONE) >= 0
-        && unit != null
-        && (unit.strip().equalsIgnoreCase("шт") || unit.strip().equalsIgnoreCase("шт."));
+    return ProductAvailability.problem(price, quantity, unit, 1, stale) == null;
   }
 
   private static String decimalText(BigDecimal value) {
@@ -241,7 +241,12 @@ public class CatalogViewService {
   public record StoreView(String id, String name) {}
 
   public record OfferView(
-      String storeId, String storeName, String priceText, String stockText, boolean canAdd) {}
+      String storeId,
+      String storeName,
+      String priceText,
+      String stockText,
+      boolean canAdd,
+      String unavailabilityReason) {}
 
   public record Detail(
       ProductView product,

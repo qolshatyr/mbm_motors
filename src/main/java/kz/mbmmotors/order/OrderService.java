@@ -126,6 +126,10 @@ public class OrderService {
           item.currentPrice(),
           item.currentPrice().multiply(BigDecimal.valueOf(item.quantity())));
     }
+    jdbc.update(
+        "insert into delivery_outbox(order_id,state,created_at) values (?,'WAITING_CONFIGURATION',?)",
+        orderId,
+        java.sql.Timestamp.from(now));
     return new Result(receipt(state.ownerId(), command.key()), true);
   }
 

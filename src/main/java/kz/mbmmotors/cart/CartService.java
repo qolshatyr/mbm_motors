@@ -169,19 +169,8 @@ public class CartService {
 
   private static String problem(Data product, int quantity, boolean stale) {
     if (product == null) return "Товар недоступен в выбранном магазине.";
-    if (stale)
-      return "Данные о наличии устарели. Попробуйте позже или уточните наличие в магазине.";
-    if (product.unit() == null
-        || !(product.unit().strip().equalsIgnoreCase("шт")
-            || product.unit().strip().equalsIgnoreCase("шт.")))
-      return "Для товара нужно уточнить единицу измерения. Сейчас доступны только штуки.";
-    if (product.price() == null || product.price().signum() <= 0)
-      return "Цену товара нужно уточнить.";
-    if (product.stock() == null || product.stock().signum() <= 0)
-      return "Товара нет в наличии в выбранном магазине.";
-    if (product.stock().compareTo(BigDecimal.valueOf(quantity)) < 0)
-      return "Запрошенное количество превышает остаток в выбранном магазине.";
-    return null;
+    return kz.mbmmotors.catalog.ProductAvailability.problem(
+        product.price(), product.stock(), product.unit(), quantity, stale);
   }
 
   private static String money(BigDecimal value) {

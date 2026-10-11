@@ -55,6 +55,7 @@ with sync_playwright() as p:
     number = detail_link.get_attribute('href').split('/')[-1]
     detail_link.click()
     expect(page.get_by_role('heading', name='Покупатель', exact=True)).to_be_visible()
+    expect(page.get_by_text('Передача ещё не подключена. Ожидает настройки.',exact=True)).to_be_visible()
     expect(page.get_by_text('+70000000000', exact=True)).to_be_visible()
     expect(page.get_by_text('5 000,02 ₸', exact=True).first).to_be_visible()
     assert page.locator('.staff-comment img').count() == 0

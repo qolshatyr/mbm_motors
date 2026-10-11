@@ -147,7 +147,13 @@ class AdminSecurityTest {
             new StaffRequestService.Page(
                 List.of(
                     new StaffRequestService.Summary(
-                        "123", "RECEIVED", created, "Test store", 1, "3 000 ₸")),
+                        "123",
+                        "RECEIVED",
+                        created,
+                        "Test store",
+                        1,
+                        "3 000 ₸",
+                        StaffRequestService.delivery("WAITING_CONFIGURATION"))),
                 0,
                 20,
                 1,
@@ -155,6 +161,7 @@ class AdminSecurityTest {
     mvc.perform(get("/admin/api/requests").with(user("staff").roles("STAFF")))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.items[0].number").value("123"))
+        .andExpect(jsonPath("$.items[0].delivery.state").value("WAITING_CONFIGURATION"))
         .andExpect(jsonPath("$.items[0].phone").doesNotExist())
         .andExpect(jsonPath("$.items[0].customerName").doesNotExist())
         .andExpect(jsonPath("$.items[0].ownerId").doesNotExist())
@@ -174,10 +181,12 @@ class AdminSecurityTest {
                     "Test comment",
                     List.of(
                         new StaffRequestService.Item(
-                            1, "Snapshot part", "TEST", "шт", 1, "3 000 ₸", "3 000 ₸")))));
+                            1, "Snapshot part", "TEST", "шт", 1, "3 000 ₸", "3 000 ₸")),
+                    StaffRequestService.delivery("WAITING_CONFIGURATION"))));
     mvc.perform(get("/admin/api/requests/123").with(user("staff").roles("STAFF")))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.customerName").value("Synthetic customer"))
+        .andExpect(jsonPath("$.delivery.state").value("WAITING_CONFIGURATION"))
         .andExpect(jsonPath("$.items[0].productName").value("Snapshot part"))
         .andExpect(jsonPath("$.id").doesNotExist())
         .andExpect(jsonPath("$.requestHash").doesNotExist())
