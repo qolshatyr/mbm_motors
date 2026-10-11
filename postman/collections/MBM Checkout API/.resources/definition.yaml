@@ -1,0 +1,14 @@
+$kind: collection
+description: Локальная проверка оформления в собственной пустой сессии, без создания
+  заявки или CloudShop записей. Запускать целиком.
+variables:
+- key: baseUrl
+  value: http://localhost:8080
+- key: csrfToken
+  value: ''
+- key: sessionCookie
+  value: ''
+- key: key
+  value: ''
+- key: revision
+  value: ''

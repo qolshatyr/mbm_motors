@@ -1,6 +1,7 @@
 package kz.mbmmotors.catalog.web;
 
 import kz.mbmmotors.catalog.CatalogViewService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -11,13 +12,16 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 public class CatalogController {
   private final CatalogViewService catalog;
 
+  @Value("${frontend.enabled:false}")
+  private boolean frontendEnabled;
+
   public CatalogController(CatalogViewService catalog) {
     this.catalog = catalog;
   }
 
   @GetMapping("/")
   String home() {
-    return "redirect:/catalog";
+    return frontendEnabled ? "forward:/frontend/index.html" : "redirect:/catalog";
   }
 
   @GetMapping("/catalog")

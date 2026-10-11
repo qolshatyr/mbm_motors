@@ -1,0 +1,36 @@
+$kind: http-request
+name: 04 — Пустая корзина не создаёт заявку
+order: 4000
+url: '{{baseUrl}}/api/orders'
+method: POST
+headers:
+- key: Accept
+  value: application/json
+- key: Cookie
+  value: '{{sessionCookie}}'
+- key: Content-Type
+  value: application/x-www-form-urlencoded
+- key: X-CSRF-TOKEN
+  value: '{{csrfToken}}'
+body:
+  type: urlencoded
+  content:
+  - key: idempotencyKey
+    value: '{{key}}'
+  - key: revision
+    value: '{{revision}}'
+  - key: customerName
+    value: Проверка
+  - key: phone
+    value: '+77000000000'
+  - key: comment
+    value: ''
+  - key: consent
+    value: 'true'
+scripts:
+- type: afterResponse
+  language: text/javascript
+  code: |
+    pm.test('HTTP 409',()=>pm.response.to.have.status(409));
+    const body=pm.response.json();
+    pm.test('Конфликт',()=>pm.expect(body.status).to.equal(409));

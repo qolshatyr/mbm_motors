@@ -1,0 +1,17 @@
+$kind: http-request
+name: 01 — CSRF собственной сессии
+order: 1000
+url: '{{baseUrl}}/api/csrf'
+method: GET
+headers:
+- key: Accept
+  value: application/json
+scripts:
+- type: afterResponse
+  language: text/javascript
+  code: |
+    pm.test('HTTP 200',()=>pm.response.to.have.status(200));
+    const body=pm.response.json();
+    pm.collectionVariables.set('csrfToken',body.token);
+    pm.collectionVariables.set('sessionCookie',pm.response.headers.get('Set-Cookie').split(';')[0]);
+    pm.test('Токен и cookie',()=>{pm.expect(body.token).to.be.a('string').and.not.empty;pm.expect(pm.response.headers.get('Set-Cookie')).to.include('JSESSIONID=');});

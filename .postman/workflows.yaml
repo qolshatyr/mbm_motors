@@ -4,3 +4,5 @@ workflows:
       collection: ../postman/collections/MBM Catalog API
     - spec: ../postman/specs/cart.openapi.json
       collection: ../postman/collections/MBM Cart API
+    - spec: ../postman/specs/checkout.openapi.json
+      collection: ../postman/collections/MBM Checkout API
