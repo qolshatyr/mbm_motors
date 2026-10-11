@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react';
-import { Link, Route, Routes, useLocation } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import type { FormEvent } from 'react';
+import { Link, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { Catalog } from '../features/catalog/Catalog';
 import { ProductDetail } from '../features/product/ProductDetail';
 import { Cart } from '../features/cart/Cart';
@@ -8,6 +9,7 @@ import { Receipt } from '../features/checkout/Receipt';
 import { useCart } from '../features/cart/cartQueries';
 import { EmptyState } from '../shared/ui/Feedback';
 import { Staff } from '../features/staff/Staff';
+import { Icon } from '../shared/ui/Icon';
 
 export function App() {
   const location = useLocation();
@@ -18,6 +20,17 @@ function CustomerApp() {
   const location = useLocation();
   const previousPath = useRef(location.pathname);
   const cart = useCart();
+  const navigate = useNavigate();
+  const onCatalog = location.pathname === '/';
+  const [headerQuery, setHeaderQuery] = useState('');
+  function searchCatalog(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const params = new URLSearchParams();
+    const store = new URLSearchParams(location.search).get('store');
+    if (store) params.set('store', store);
+    if (headerQuery.trim()) params.set('q', headerQuery.trim());
+    navigate(`/?${params}`);
+  }
   useEffect(() => {
     if (!location.pathname.startsWith('/products/')) document.title = location.pathname.startsWith('/checkout') ? 'Оформление заявки — MBM Motors' : location.pathname === '/basket' ? 'Корзина — MBM Motors' : location.pathname === '/' ? 'Каталог запчастей — MBM Motors' : 'Страница не найдена — MBM Motors';
     if (previousPath.current !== location.pathname) {
@@ -28,11 +41,14 @@ function CustomerApp() {
   }, [location.pathname]);
   return <>
     <a href="#main" className="skip-link">Перейти к содержимому</a>
-    <header className="site-header"><div className="page-width flex items-center justify-between gap-4">
-      <Link to="/" className="brand" aria-label="MBM Motors — каталог запчастей"><span className="brand-mark" aria-hidden="true">M</span><span>MBM <span className="brand-light">Motors</span></span></Link>
-      <nav aria-label="Основная навигация"><Link to="/basket" className="cart-link">Корзина{cart.data && !cart.isError ? ` (${cart.data.itemCount})` : ''}</Link></nav>
+    <header className="site-header"><div className="page-width header-inner">
+      <Link to="/" className="brand" aria-label="MBM Motors — каталог запчастей"><span className="brand-symbol" aria-hidden="true"><span>MBM</span><span className="brand-symbol-rule" /></span><span className="brand-name">Motors<span className="brand-subtitle">Автозапчасти</span></span></Link>
+      <nav className="header-nav" aria-label="Основная навигация"><Link to="/" className="catalog-nav-link" aria-current={onCatalog ? 'page' : undefined}>Каталог</Link>
+        {onCatalog ? <button type="button" className="header-search-trigger" aria-label="Перейти к поиску запчастей" onClick={() => { const input = document.getElementById('query'); input?.focus(); input?.scrollIntoView({ block: 'center', behavior: 'instant' }); }}><Icon name="search" /><span>Поиск запчастей</span></button> : <form className="header-search" role="search" onSubmit={searchCatalog}><label htmlFor="header-query" className="sr-only">Поиск запчастей в каталоге</label><input id="header-query" name="q" type="search" autoComplete="off" spellCheck={false} maxLength={120} placeholder="Название или артикул…" value={headerQuery} onChange={(event) => setHeaderQuery(event.target.value)} /><button type="submit" aria-label="Искать в каталоге"><Icon name="search" /></button></form>}
+        <Link to="/basket" className="cart-link" aria-current={location.pathname === '/basket' ? 'page' : undefined}><Icon name="cart" /><span>Корзина</span>{cart.data && !cart.isError && <span className="cart-count">{cart.data.itemCount}</span>}</Link>
+      </nav>
     </div></header>
     <main id="main" tabIndex={-1} className="page-width main-content"><Routes><Route path="/" element={<Catalog />} /><Route path="/products/:id" element={<ProductDetail />} /><Route path="/basket" element={<Cart />} /><Route path="/checkout" element={<Checkout />} /><Route path="/checkout/success" element={<Receipt />} /><Route path="*" element={<EmptyState title="Страница не найдена"><p>Вернитесь в каталог, чтобы продолжить поиск.</p><Link className="button" to="/">Перейти в каталог</Link></EmptyState>} /></Routes></main>
-    <footer className="page-width footer"><span>MBM Motors</span><span>Цены в тенге. Наличие по данным магазинов.</span></footer>
+    <footer className="page-width footer"><Link to="/" className="footer-brand">MBM Motors</Link><span>Цены в тенге. Наличие по данным магазинов.</span></footer>
   </>;
 }

@@ -29,7 +29,7 @@ def fill(page):
 def checkout(page):
     page.goto(f'{BASE}/products/{PRODUCT}?store={STORE}')
     page.get_by_role('button', name='Добавить из Car City в корзину', exact=True).click()
-    expect(page.locator('.cart-link')).to_have_text('Корзина (1)')
+    expect(page.locator('.cart-count')).to_have_text('1')
     page.get_by_role('link', name='Открыть корзину', exact=True).click()
     page.get_by_role('link', name='Оформить заявку', exact=True).click()
     expect(page.get_by_role('heading', name='Оформление заявки', exact=True)).to_be_visible()
@@ -106,7 +106,7 @@ with sync_playwright() as playwright:
     # Another store exists in the catalog but is not an approved pickup point.
     page.goto(f'{BASE}/products/{PRODUCT}?store=698c479d4bb8342bd30e3c33')
     page.get_by_role('button',name='Добавить из БАКОРДА в корзину',exact=True).click()
-    expect(page.locator('.cart-link')).to_have_text('Корзина (1)')
+    expect(page.locator('.cart-count')).to_have_text('1')
     page.get_by_role('link',name='Открыть корзину',exact=True).click()
     page.get_by_role('link',name='Оформить заявку',exact=True).click()
     expect(page.get_by_role('button',name='Сохранить заявку',exact=True)).to_be_disabled()
