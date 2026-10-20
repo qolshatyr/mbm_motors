@@ -1,6 +1,6 @@
 ---
 name: project-skills
-description: Каталог и маршрутизатор всех навыков проекта MBM Motors — Postman-навыков из postman/skills/ и пользовательских навыков из ~/.agents/skills/ (Spring Boot, отладка, проверка веб-приложения, дизайн, проверка перед завершением). Используй в начале любой нетривиальной задачи в этом репозитории — Java/Spring-код, React-фронтенд, CloudShop API, Postman-коллекции, ошибки и падающие тесты, UI и дизайн, завершение работы, коммит или PR — чтобы выбрать и прочитать нужные SKILL.md. Также используй, когда спрашивают «какие навыки есть», «какой скилл применить» или «список скиллов».
+description: Каталог и маршрутизатор всех навыков проекта MBM Motors — Postman-навыков из postman/skills/ пользовательских навыков из ~/.agents/skills/ (отладка, проверка веб-приложения, дизайн, проверка перед завершением) и плагинов java-backend-skills, frontend-design, code-simplifier. Используй в начале любой нетривиальной задачи в этом репозитории — Java/Spring-код, React-фронтенд, CloudShop API, Postman-коллекции, ошибки и падающие тесты, UI и дизайн, завершение работы, коммит или PR — чтобы выбрать и прочитать нужные SKILL.md. Также используй, когда спрашивают «какие навыки есть», «какой скилл применить» или «список скиллов».
 ---
 
 # Навыки проекта MBM Motors
@@ -18,7 +18,8 @@ Claude Code сам не находит навыки из `postman/skills/` и `~
 ## Как выбирать
 
 1. Определи, что за задача (таблица «Маршрутизация»).
-2. Прочитай `SKILL.md` выбранных навыков. Справочники из `reference/` и
+2. Навыки плагинов (с префиксом `плагин:`) вызывай через Skill. Для
+   остальных прочитай `SKILL.md` по пути. Справочники из `reference/` и
    `references/` читай, только когда навык на них отправляет.
 3. Проверь, подходит ли навык к стеку: Java 21, Spring Boot 4.0.8,
    Thymeleaf, PostgreSQL, Flyway, React 19, Vite, Tailwind 4, Postman CLI.
@@ -38,13 +39,25 @@ Claude Code сам не находит навыки из `postman/skills/` и `~
 
 | Задача в этом проекте | Навыки (по порядку) |
 | --- | --- |
-| Java/Spring-код: модули `catalog`, `cart`, `order`, `delivery`, `admin`, `sync`, `cloudshop`, `config`; контроллеры, сервисы, JPA, Flyway, Security | `spring-boot-skill` → `verification-before-completion` |
-| Новый или изменённый HTTP-эндпоинт приложения | `api-builder` → `spring-boot-skill` → `api-testing` → `verification-before-completion` |
-| Ошибка, падающий тест, неожиданное поведение, «не работает» | `systematic-debugging` (сначала причина, потом исправление) → навык области ошибки (`spring-boot-skill` для Java, `webapp-testing` для воспроизведения в браузере) → `verification-before-completion` |
+| Java/Spring-код: модули `catalog`, `cart`, `order`, `delivery`, `admin`, `sync`, `cloudshop`, `config` | `java-backend-skills:java-implement` + навык области из строк ниже → `verification-before-completion`. Если плагина нет, `spring-boot-skill` |
+| Бины, конфигурация, `@ConfigurationProperties`, запуск приложения | `java-backend-skills:spring-boot` |
+| JPA, запросы, транзакции, блокировки (`DatabaseSyncLock`), миграции Flyway | `java-backend-skills:spring-data` |
+| Spring Security, CSRF, вход сотрудника (`admin`), права на заявки | `java-backend-skills:spring-security` |
+| Внешние вызовы CloudShop, повторы, outbox и `delivery`, расписание `sync` | `java-backend-skills:spring-integrations` (повтор неясной отправки запрещён правилами проекта) |
+| Логи, метрики, health, корректное завершение | `java-backend-skills:spring-observability` |
+| Тесты Spring MVC, Testcontainers, PostgreSQL-интеграция | `java-backend-skills:spring-testing` |
+| Обычные unit-тесты JUnit/Mockito | `java-backend-skills:java-unit-testing` |
+| Сбой Maven, Spotless, зависимости, профиль `release-site` | `java-backend-skills:java-build` |
+| Границы модулей, ответственность классов, абстракции | `java-backend-skills:java-design` |
+| Потоки, executors, конкурентный доступ | `java-backend-skills:java-concurrency` |
+| Скорость, память, время запуска (с замерами) | `java-backend-skills:java-performance` |
+| Выбор представления данных: record, Optional, коллекции, stream | `java-backend-skills:java-idiomatic` |
+| Новый или изменённый HTTP-эндпоинт приложения | `api-builder` → `java-backend-skills:spring-web` (+ `java-backend-skills:spring-security`, если меняется доступ) → `api-testing` → `verification-before-completion` |
+| Ошибка, падающий тест, неожиданное поведение, «не работает» | `systematic-debugging` (сначала причина, потом исправление) → навык области ошибки (`java-backend-skills:java-debugging` для Java/Spring, `java-backend-skills:java-build` для сборки, `webapp-testing` для воспроизведения в браузере) → `verification-before-completion` |
 | Не визуальная работа во `frontend/`: логика, состояние, React Query, клиент API, сборка Vite | Специального навыка нет: следуй `docs/Frontend_Architecture.md` → `webapp-testing` → `verification-before-completion` |
 | Проверить, как работает сайт в браузере: каталог, корзина, checkout, React-витрина, прототип | `webapp-testing` (готовые сценарии есть в `tests/browser/`) |
 | Проверить удобство и доступность готового интерфейса | `web-design-guidelines` |
-| Создать или заметно изменить визуальный дизайн (страницы, витрина, `docs/Storefront_Design.md`) | `frontend-design` → `web-design-guidelines` → `webapp-testing` |
+| Создать или заметно изменить визуальный дизайн (страницы, витрина, `docs/Storefront_Design.md`) | `frontend-design:frontend-design` (если плагина нет — `~/.agents/skills/frontend-design`) → `web-design-guidelines` → `webapp-testing` |
 | Проверка CloudShop API через Postman, запуск коллекции, ad-hoc запрос | `api-testing` (+ `bootstrap`, если CLI или workspace не настроены). CloudShop — это v2.1 JSON `postman/assets/CloudShop_ReadOnly.postman_collection.json`, порядок шагов задаёт `docs/cloudshop/CloudShop_Postman_Guide.md` |
 | Документировать API, OpenAPI-спецификация, публикация документации | `api-builder` → `api-documentation` (+ `collection-schema-v3` для файлов v3) |
 | Ручная правка коллекций v3 приложения в `postman/collections/` (MBM Cart/Catalog/Checkout/Staff Requests API) или окружений в `postman/environments/` | `collection-schema-v3`. Коллекции CloudShop в `postman/assets/` остаются v2.1 и GET-only, в v3 их не переводят |
@@ -53,7 +66,7 @@ Claude Code сам не находит навыки из `postman/skills/` и `~
 | Postman в GitHub Actions, гейт на PR | `ci-integration` → `api-testing` |
 | Регулярные проверки живого API | `api-monitoring` (⚠ реальный трафик, облачный ресурс: только с согласия) |
 | Нагрузочное тестирование | `performance-testing` (⚠ реальный трафик: сначала подтверди цель и масштаб, для CloudShop предложи mock) |
-| Коммит, PR, «всё готово» | `finish-task` (включает `verification-before-completion`, `PROJECT_CONTEXT.md` и цепочку PR) → встроенные `code-review` / `security-review` по необходимости |
+| Коммит, PR, «всё готово» | `finish-task` (включает `verification-before-completion`, `PROJECT_CONTEXT.md` и цепочку PR) → встроенные `code-review` / `security-review` по необходимости. Для чистки изменённого кода — встроенный `simplify` или субагент `code-simplifier` |
 | Postman Flows | `flows` |
 | Поиск публичных API или сущностей Postman | `api-discovery` |
 | Насколько коллекция или спецификация понятна AI-агентам | `ai-readiness` |
@@ -63,7 +76,7 @@ Claude Code сам не находит навыки из `postman/skills/` и `~
 
 Если запрос смешанный, разбей его на части и пройди строки по очереди.
 Пример: «добавь эндпоинт истории заказов и проверь в браузере» →
-`api-builder` → `spring-boot-skill` → `api-testing` → `webapp-testing` →
+`api-builder` → `java-backend-skills:spring-web` → `api-testing` → `webapp-testing` →
 `verification-before-completion`.
 
 Для чистых вопросов, объяснений в режиме «Обучение» и однострочных правок
@@ -96,7 +109,7 @@ Claude Code сам не находит навыки из `postman/skills/` и `~
 
 | Навык | Путь | Когда |
 | --- | --- | --- |
-| spring-boot-skill | `~/.agents/skills/spring-boot-skill/SKILL.md` | Spring Boot 4.x: MVC, Data JPA, Security, структура пакетов |
+| spring-boot-skill | `~/.agents/skills/spring-boot-skill/SKILL.md` | Запасной для Spring Boot 4.x, если нет плагина java-backend-skills |
 | systematic-debugging | `~/.agents/skills/systematic-debugging/SKILL.md` | Любая ошибка или падение, до предложения исправления |
 | verification-before-completion | `~/.agents/skills/verification-before-completion/SKILL.md` | Перед заявлением «готово», коммитом, PR |
 | webapp-testing | `~/.agents/skills/webapp-testing/SKILL.md` | Playwright: проверка локального сайта, скриншоты, логи браузера |
@@ -110,6 +123,17 @@ Claude Code сам не находит навыки из `postman/skills/` и `~
 | --- | --- | --- |
 | project-skills | `.claude/skills/project-skills/SKILL.md` | Этот каталог |
 | finish-task | `.claude/skills/finish-task/SKILL.md` | Проверки, `PROJECT_CONTEXT.md`, коммит, PR в цепочке веток |
+
+### Плагины Claude Code (вызываются через Skill)
+
+| Плагин | Что даёт |
+| --- | --- |
+| java-backend-skills | 15 навыков `java-backend-skills:*` из таблицы выше. Для Java/Spring приоритет у них, `spring-boot-skill` остаётся запасным |
+| frontend-design | `frontend-design:frontend-design`, тот же навык, что в `~/.agents/skills/`. Приоритет у плагина |
+| code-simplifier | Субагент `code-simplifier`: упрощает недавно изменённый код без изменения поведения |
+
+Плагины установлены у пользователя, а не в репозитории. На другой машине
+их может не быть, тогда используй запасные навыки из каталога.
 
 ### Встроенные навыки Claude Code
 
