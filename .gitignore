@@ -21,3 +21,8 @@ __pycache__/
 frontend/node_modules/
 frontend/dist/
 frontend/*.tsbuildinfo
+
+# Isolated client prototype output and Sites checkout
+frontend/dist-demo/
+prototype/
+!frontend/.env.demo
