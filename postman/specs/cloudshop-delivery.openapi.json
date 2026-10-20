@@ -1,0 +1,606 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "CloudShop delivery adapter subset",
+    "version": "1.0.0",
+    "description": "Local adapter contract subset of official CloudShop 1.0.15 (https://connect-api.cloudshop.ru/docs?api-docs.json). Sale 200 top-level id/number observed in previously authorized verification; 201 documented. This file does not authorize live writes."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:4900/api/v4",
+      "description": "Synthetic local simulation only"
+    }
+  ],
+  "paths": {
+    "/customers": {
+      "post": {
+        "summary": "Create a new customer",
+        "description": "Create a new customer. Required fields are marked with an asterisk (*) in the documented schema.",
+        "operationId": "4200414c673edebcd23b1442f249c908",
+        "parameters": [
+          {
+            "name": "X-CloudShop-API-Access-Token",
+            "in": "header",
+            "description": "Access token for API authentication",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Customer data",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "person",
+                      "company"
+                    ],
+                    "example": "person"
+                  },
+                  "emails": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "email",
+                      "example": "TEST@TEST.com"
+                    }
+                  },
+                  "phones": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "example": "380000000000"
+                    }
+                  },
+                  "enable_savings": {
+                    "type": "boolean",
+                    "example": false
+                  },
+                  "address": {
+                    "properties": {
+                      "actual": {
+                        "type": "string",
+                        "example": null,
+                        "nullable": true
+                      },
+                      "legal": {
+                        "type": "string",
+                        "example": null,
+                        "nullable": true
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "details": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  },
+                  "bank_details": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  },
+                  "discount": {
+                    "type": "number",
+                    "format": "float",
+                    "example": 0
+                  },
+                  "default": {
+                    "type": "boolean",
+                    "example": false
+                  },
+                  "loyalty_type": {
+                    "type": "string",
+                    "enum": [
+                      "discount",
+                      "bonus"
+                    ],
+                    "example": "discount"
+                  },
+                  "bonus_balance": {
+                    "type": "number",
+                    "example": 0
+                  },
+                  "bonus_spent": {
+                    "type": "number",
+                    "example": 0
+                  },
+                  "cashback_rate": {
+                    "type": "number",
+                    "example": 0
+                  },
+                  "debt": {
+                    "type": "number",
+                    "example": 0
+                  },
+                  "rdebt": {
+                    "type": "number",
+                    "example": 0
+                  },
+                  "name": {
+                    "type": "string",
+                    "example": "ТЕСТ"
+                  },
+                  "bday": {
+                    "description": "Birthday as UNIX timestamp",
+                    "type": "integer",
+                    "example": 1753868484
+                  },
+                  "sex": {
+                    "type": "string",
+                    "enum": [
+                      "male",
+                      "female",
+                      "other"
+                    ],
+                    "example": "male"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Customer created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "id": {
+                      "description": "Unique customer identifier",
+                      "type": "string",
+                      "example": "686274c0baba51adda055e1f"
+                    },
+                    "uuid": {
+                      "description": "Customer UUID",
+                      "type": "string",
+                      "example": "15a000bd-ab2b-4ec2-bc92-fe3c11ca62e1"
+                    },
+                    "date_created": {
+                      "description": "Date and time when the customer was created",
+                      "type": "string",
+                      "format": "date-time",
+                      "example": "2017-03-21T16:09:28"
+                    },
+                    "date_modified": {
+                      "description": "Date and time when the customer was last modified",
+                      "type": "string",
+                      "format": "date-time",
+                      "example": "2017-03-21T16:09:30"
+                    },
+                    "emails": {
+                      "description": "List of customer email addresses",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "format": "email",
+                        "example": "user@example.com"
+                      }
+                    },
+                    "name": {
+                      "description": "Customer full name",
+                      "type": "string",
+                      "example": "Иван Иванов"
+                    },
+                    "sex": {
+                      "description": "Customer gender",
+                      "type": "string",
+                      "enum": [
+                        "male",
+                        "female",
+                        "other"
+                      ],
+                      "example": "male",
+                      "nullable": true
+                    },
+                    "birthday": {
+                      "description": "Date of birth in Y-m-d format (converted from upstream UNIX timestamp bday)",
+                      "type": "string",
+                      "format": "date",
+                      "example": "2025-07-30",
+                      "nullable": true
+                    },
+                    "billing": {
+                      "description": "Billing contact associated with the customer",
+                      "properties": {
+                        "id": {
+                          "description": "Billing contact identifier",
+                          "type": "string",
+                          "example": "68625d39439bfd7a7402615b"
+                        },
+                        "name": {
+                          "description": "Billing contact name",
+                          "type": "string",
+                          "example": "Иван"
+                        },
+                        "email": {
+                          "description": "Billing contact email address",
+                          "type": "string",
+                          "format": "email",
+                          "example": "john.doe@example.com"
+                        },
+                        "phone": {
+                          "description": "Billing contact phone number",
+                          "type": "string",
+                          "example": "+123456789"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "loyalty": {
+                      "description": "Loyalty program data",
+                      "properties": {
+                        "type": {
+                          "description": "Loyalty type",
+                          "type": "string",
+                          "enum": [
+                            "discount",
+                            "bonus"
+                          ],
+                          "example": "discount"
+                        },
+                        "bonus_balance": {
+                          "description": "Current bonus balance",
+                          "type": "number",
+                          "example": 150
+                        },
+                        "bonus_spent": {
+                          "description": "Total bonuses spent",
+                          "type": "number",
+                          "example": 50
+                        },
+                        "cashback_rate": {
+                          "description": "Cashback rate",
+                          "type": "number",
+                          "example": 5
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object",
+                  "required": [
+                    "id"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid or missing token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "boolean",
+                      "example": false
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Unauthorized"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "boolean",
+                      "example": false
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "API key does not have permission for this route."
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sales": {
+      "post": {
+        "summary": "Create a new sale",
+        "description": "Endpoint for creating a new sale. Required fields are marked with an asterisk (*) in the documented schema.",
+        "operationId": "createSale",
+        "parameters": [
+          {
+            "name": "X-CloudShop-API-Access-Token",
+            "in": "header",
+            "description": "Access token for API authentication",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": [
+                  "status",
+                  "store_id",
+                  "date",
+                  "discount_percent",
+                  "discount_sum",
+                  "products"
+                ],
+                "properties": {
+                  "status": {
+                    "description": "Controls posting of the document: true — create and post immediately; false — create as a new (unposted) document.",
+                    "type": "boolean",
+                    "example": false
+                  },
+                  "store_id": {
+                    "description": "Store ID (24-char ObjectId)",
+                    "type": "string",
+                    "example": "686e41e1334591c53507fac9"
+                  },
+                  "customer_id": {
+                    "description": "Customer ID (24-char ObjectId)",
+                    "type": "string",
+                    "example": "6895ebe3bd6637e139053e6a",
+                    "nullable": true
+                  },
+                  "date": {
+                    "description": "Document date and time",
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2025-09-11 15:30:00"
+                  },
+                  "discount_percent": {
+                    "description": "Overall discount percent",
+                    "type": "number",
+                    "format": "float",
+                    "example": 10
+                  },
+                  "discount_sum": {
+                    "description": "Overall discount amount",
+                    "type": "number",
+                    "format": "float",
+                    "example": 100
+                  },
+                  "products": {
+                    "description": "List of products in the sale",
+                    "type": "array",
+                    "items": {
+                      "required": [
+                        "product_id",
+                        "quantity",
+                        "discount_percent",
+                        "unit"
+                      ],
+                      "properties": {
+                        "product_id": {
+                          "description": "Product ID (24-char ObjectId)",
+                          "type": "string",
+                          "example": "686261d6c288a7a7e308bf99"
+                        },
+                        "quantity": {
+                          "description": "Quantity of the product",
+                          "type": "number",
+                          "example": 2
+                        },
+                        "price": {
+                          "description": "Optional custom unit price. When omitted, the catalog price from the product is used.",
+                          "type": "number",
+                          "format": "float",
+                          "example": 199.99,
+                          "nullable": true
+                        },
+                        "discount_percent": {
+                          "description": "Discount percent for this product",
+                          "type": "number",
+                          "example": 5
+                        },
+                        "barcode": {
+                          "description": "Product barcode",
+                          "type": "string",
+                          "example": "231321",
+                          "nullable": true
+                        },
+                        "unit": {
+                          "description": "Measurement unit",
+                          "type": "string",
+                          "example": "pcs"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "payment_details": {
+                    "description": "Payment details",
+                    "properties": {
+                      "sum": {
+                        "description": "Payment amount",
+                        "type": "number",
+                        "example": 1337
+                      },
+                      "type": {
+                        "description": "Payment type",
+                        "type": "string",
+                        "enum": [
+                          "debit",
+                          "credit"
+                        ],
+                        "example": "debit"
+                      },
+                      "status": {
+                        "description": "Is payed",
+                        "type": "boolean",
+                        "example": "true"
+                      },
+                      "date": {
+                        "description": "Payment date and time",
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2025-09-11 15:35:00"
+                      }
+                    },
+                    "type": "object",
+                    "nullable": true
+                  },
+                  "comment": {
+                    "description": "Comment for the sale",
+                    "type": "string",
+                    "example": "Комментарий к продаже"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Adapter requires confirmed top-level id and positive integral number; other replies fail closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "number"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{24}$"
+                    },
+                    "number": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  }
+                },
+                "example": {
+                  "id": "cccccccccccccccccccccccc",
+                  "number": 1
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found - either the customer or the store does not exist",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "boolean",
+                      "example": false
+                    },
+                    "error": {
+                      "type": "string",
+                      "enum": [
+                        "Customer not found",
+                        "Store not found"
+                      ],
+                      "example": "Customer not found"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - invalid or missing token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "boolean",
+                      "example": false
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "Unauthorized"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "boolean",
+                      "example": false
+                    },
+                    "error": {
+                      "type": "string",
+                      "example": "API key does not have permission for this route."
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Adapter requires confirmed top-level id and positive integral number; other replies fail closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "number"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{24}$"
+                    },
+                    "number": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  }
+                },
+                "example": {
+                  "id": "cccccccccccccccccccccccc",
+                  "number": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,7 @@
+$kind: collection
+name: CloudShop — только локальная передача
+description: Generated from cloudshop-delivery.openapi.json, restricted to synthetic
+  localhost fixture. Never send to CloudShop.
+variables:
+- key: customerId
+  value: ''

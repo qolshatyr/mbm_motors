@@ -1,0 +1,10 @@
+workflows:
+  syncSpecToCollection:
+    - spec: ../postman/specs/catalog.openapi.yaml
+      collection: ../postman/collections/MBM Catalog API
+    - spec: ../postman/specs/cart.openapi.json
+      collection: ../postman/collections/MBM Cart API
+    - spec: ../postman/specs/checkout.openapi.json
+      collection: ../postman/collections/MBM Checkout API
+    - spec: ../postman/specs/cloudshop-delivery.openapi.json
+      collection: ../postman/collections/CloudShop-Delivery-Local

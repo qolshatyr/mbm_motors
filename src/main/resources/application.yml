@@ -42,3 +42,10 @@ catalog:
     max-pages: 100
     request-delay: 1s
     startup-mode: NONE
+checkout:
+  # Set only after the client approves pickup stores; inventory stores are not pickup points.
+  pickup-store-ids: []
+admin:
+  enabled: ${MBM_ADMIN_ENABLED:false}
+  username: ${MBM_ADMIN_USERNAME:}
+  password-hash: ${MBM_ADMIN_PASSWORD_HASH:}

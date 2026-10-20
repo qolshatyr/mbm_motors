@@ -1,0 +1,5 @@
+simulation: cloudshop-delivery
+routing: path
+mocks:
+  - routeKey: cloudshop
+    path: ../mocks/cloudshop-delivery/config.yaml

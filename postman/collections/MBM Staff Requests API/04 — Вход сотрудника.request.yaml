@@ -1,0 +1,28 @@
+$kind: http-request
+name: '04 — Вход сотрудника'
+order: 4000
+method: POST
+url: '{{baseUrl}}/admin/login'
+settings:
+  followRedirects: false
+headers:
+  - key: Accept
+    value: application/json
+  - key: Cookie
+    value: '{{sessionCookie}}'
+  - key: Content-Type
+    value: application/x-www-form-urlencoded
+body:
+  type: urlencoded
+  content:
+    - key: username
+      value: '{{staffUsername}}'
+    - key: password
+      value: '{{staffPassword}}'
+    - key: _csrf
+      value: '{{csrfToken}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Вход подтверждён',()=>{pm.response.to.have.status(302);pm.expect(pm.response.headers.get('Location')).to.include('/admin/requests');});const cookie=pm.response.headers.get('Set-Cookie');pm.test('Сессия обновлена',()=>pm.expect(cookie).to.include('JSESSIONID='));if(cookie)pm.collectionVariables.set('sessionCookie',cookie.split(';')[0]);

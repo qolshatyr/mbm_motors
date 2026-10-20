@@ -1,0 +1,19 @@
+$kind: http-request
+name: 02 — Пустая корзина блокирует оформление
+order: 2000
+url: '{{baseUrl}}/api/checkout'
+method: GET
+headers:
+- key: Accept
+  value: application/json
+- key: Cookie
+  value: '{{sessionCookie}}'
+scripts:
+- type: afterResponse
+  language: text/javascript
+  code: |
+    pm.test('HTTP 200',()=>pm.response.to.have.status(200));
+    const body=pm.response.json();
+    pm.test('Предпросмотр и no-store',()=>{pm.expect(body.canSubmit).to.equal(false);pm.expect(body.cart.items).to.eql([]);pm.expect(body.issues.length).to.be.above(0);pm.expect(pm.response.headers.get('Cache-Control')).to.include('no-store');});
+    pm.collectionVariables.set('key',body.idempotencyKey);
+    pm.collectionVariables.set('revision',body.revision||'empty');

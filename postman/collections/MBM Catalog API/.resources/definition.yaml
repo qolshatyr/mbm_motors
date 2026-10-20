@@ -1,0 +1,6 @@
+$kind: collection
+name: MBM Catalog API
+description: Публичное чтение локального каталога. Корзина и оформление не входят в этот контракт.
+variables:
+  - key: baseUrl
+    value: http://localhost:8080

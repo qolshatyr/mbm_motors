@@ -4,7 +4,7 @@
 <body>
 <header th:replace="~{fragments/catalog :: header}"></header>
 <main id="main" class="container catalog-main">
-  <nav class="back-nav" aria-label="Навигация"><a th:href="@{/catalog}">Продолжить поиск</a></nav>
+  <nav class="back-nav" aria-label="Навигация"><a th:href="${cart.storeId == null} ? @{/catalog} : @{/catalog(store=${cart.storeId})}">Продолжить поиск</a></nav>
   <div class="heading-row"><h1>Корзина</h1><span th:if="${!cart.items.isEmpty()}" th:text="${cart.storeName}">Магазин</span></div>
   <p class="cart-notice" role="status" th:if="${notice}" th:text="${notice}"></p>
   <p class="cart-problem" role="alert" th:if="${problem}" th:text="${problem}"></p>

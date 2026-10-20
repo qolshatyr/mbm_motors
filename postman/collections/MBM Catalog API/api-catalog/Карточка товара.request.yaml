@@ -1,0 +1,20 @@
+$kind: http-request
+name: Карточка товара
+order: 3000
+url: '{{baseUrl}}/api/catalog/products/{{productId}}?store=64feaaa51c9799143b532fcf'
+method: GET
+headers:
+  - key: Accept
+    value: application/json
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |
+      pm.test('HTTP 200', () => pm.response.to.have.status(200));
+      const body = pm.response.json();
+      pm.test('Карточка и предложения', () => {
+        pm.expect(body.product.id).to.equal(pm.collectionVariables.get('productId'));
+        pm.expect(body.offers).to.be.an('array');
+        pm.expect(body.stale).to.be.a('boolean');
+        body.offers.forEach(o => { pm.expect(o.canAdd).to.be.a('boolean'); if(o.canAdd) pm.expect(o.unavailabilityReason).to.equal(null); else pm.expect(o.unavailabilityReason).to.be.a('string').and.not.empty; });
+      });

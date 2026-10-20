@@ -1,0 +1,17 @@
+$kind: http-request
+name: 06 — Несуществующий результат
+order: 6000
+url: '{{baseUrl}}/api/orders/by-key/{{key}}'
+method: GET
+headers:
+- key: Accept
+  value: application/json
+- key: Cookie
+  value: '{{sessionCookie}}'
+scripts:
+- type: afterResponse
+  language: text/javascript
+  code: |
+    pm.test('HTTP 404',()=>pm.response.to.have.status(404));
+    const body=pm.response.json();
+    pm.test('Нет сохранённой заявки',()=>pm.expect(body.status).to.equal(404));

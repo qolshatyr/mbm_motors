@@ -16,3 +16,18 @@ __pycache__/
 .aws/
 .idea/
 *.iml
+
+# Frontend dependencies and generated output
+frontend/node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
+
+# Isolated client prototype output and Sites checkout
+frontend/dist-demo/
+prototype/
+!frontend/.env.demo
+
+# Local Claude Code state; shared skills in .claude/skills/ stay tracked
+.claude/settings.local.json
+.claude/worktrees/
+.claude/*.local.md

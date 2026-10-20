@@ -2,22 +2,24 @@
 
 ## Project Structure & Module Organization
 
-This repository contains a working Java 21 / Spring Boot 4.0.8 application with CloudShop synchronization, catalog search, and a server-session cart. Checkout and request delivery are not implemented yet.
+This repository contains a working Java 21 / Spring Boot 4.0.8 application with CloudShop synchronization, catalog search, and a server-session cart, local checkout, a protected staff request view, and a React storefront. The delivery processor and CloudShop HTTP adapter exist but are not wired for real submissions; delivery stays disabled.
 
 - `docs/Autoparts_Technical_Specification.md`: proposed scope, architecture, acceptance criteria, and operational requirements.
 - `docs/cloudshop/CloudShop_Postman_Guide.md`: import instructions, manual verification steps, and integration caveats.
 - `postman/assets/CloudShop_ReadOnly.postman_collection.json`: six numbered GET requests with response checks.
 - `postman/assets/CloudShop_Local.postman_environment.json`: local configuration template; keep credentials empty in committed copies.
 
-- `src/main/java/kz/mbmmotors/`: application modules `catalog`, `cart`, `cloudshop`, `sync`, and `config`.
+- `src/main/java/kz/mbmmotors/`: application modules `catalog`, `cart`, `order`, `delivery`, `admin`, `cloudshop`, `sync`, and `config`.
 - `src/main/resources/`: Thymeleaf templates, static assets, configuration, and Flyway migrations.
-- `src/test/java/`: Java tests; `tests/`: Python tool tests.
+- `frontend/`: React, TypeScript, Vite, and Tailwind storefront and staff UI.
+- `src/test/java/`: Java tests; `tests/`: Python tool tests; `tests/browser/`: Playwright scenario checks.
 - `docs/`: specification and checkout design; `docs/client/`: Notion-ready client questions; `docs/cloudshop/`: verification guides.
 - `tools/cloudshop/`: Python verification tools; `scripts/`: application launch/import helpers.
-- `postman/assets/`: existing v2.1 GET-only collections and the environment template; `postman/skills/`: Postman skills.
+- `postman/assets/`: existing v2.1 GET-only collections and the environment template; `postman/collections/`: v3 collections of the application API; `postman/skills/`: Postman skills.
+- `.claude/skills/project-skills/SKILL.md`: catalog and routing table of all project and user skills.
 - `PROJECT_CONTEXT.md`: current decisions and historical evidence. Treat older statements about missing application files as history.
 
-Keep `.env`, `.cloudshop-audit/`, and `.cloudshop-test-sales/` local and in the repository root. The sale journal is required to prevent repeated submissions. PostgreSQL runs through `compose.yml`; Maven Wrapper and launch configuration stay in the root. `order` and `admin` remain planned modules.
+Keep `.env`, `.cloudshop-audit/`, and `.cloudshop-test-sales/` local and in the repository root. The sale journal is required to prevent repeated submissions. PostgreSQL runs through `compose.yml`; Maven Wrapper and launch configuration stay in the root.
 
 ## Build, Test, and Development Commands
 
@@ -28,6 +30,16 @@ Run commands from the repository root:
 python3 -m unittest discover -s tests -v
 python3 scripts/run_catalog.py
 ```
+
+Frontend and the packaged site (Node.js >= 22.12):
+
+```sh
+(cd frontend && npm ci && npm run build)
+python3 scripts/build_site.py
+python3 scripts/run_site.py
+```
+
+Browser scenario checks live in `tests/browser/` and expect a running site. Use the `project-skills` skill to pick skills for a task and the `finish-task` skill to verify, update `PROJECT_CONTEXT.md`, commit, and open a pull request.
 
 See `docs/Development_Guide.md` for PostgreSQL setup and import commands; `README.md` is the repository overview. The catalog launcher requests local credentials privately. Database tests require Docker or a separate `mbm_test` database; report skipped tests explicitly. Validate edited JSON:
 
@@ -70,6 +82,9 @@ Before responding to any non-trivial API engineering task — designing, impleme
 
 - Самостоятельно выбирай установленные skills, подходящие задаче
   и текущему режиму. Перед применением прочитай их SKILL.md.
+- Каталог навыков и таблица «задача → навыки» —
+  `.claude/skills/project-skills/SKILL.md`. Навыки из `postman/skills/`
+  и `~/.agents/skills/` агент сам не находит: читай их по путям оттуда.
 - Используй только необходимые навыки.
 - Проверяй совместимость навыка с версиями языка, фреймворка
   и архитектурой проекта.

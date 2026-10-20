@@ -1,0 +1,30 @@
+$kind: http-request
+name: 02 — Непроведённая синтетическая продажа
+order: 2000
+method: POST
+url: http://127.0.0.1:4900/api/v4/sales
+headers:
+- key: Content-Type
+  value: application/json
+- key: X-CloudShop-API-Access-Token
+  value: synthetic-local-only
+body:
+  type: json
+  content: '{"status": false, "store_id": "aaaaaaaaaaaaaaaaaaaaaaaa", "customer_id":
+    "{{customerId}}", "date": "2026-10-12 00:00:00", "discount_percent": 0, "discount_sum":
+    0, "products": [{"product_id": "dddddddddddddddddddddddd", "quantity": 2, "unit":
+    "шт", "price": 2500.01, "discount_percent": 0}], "comment": "MBM-00000000-0000-0000-0000-000000000001
+    Synthetic"}'
+settings:
+  followRedirects: false
+scripts:
+- type: beforeRequest
+  language: text/javascript
+  code: const u=pm.variables.replaceIn(pm.request.url.toString()); if (!u.startsWith('http://127.0.0.1:4900/'))
+    { pm.execution.skipRequest(); throw new Error('Synthetic localhost fixture only');
+    }
+- type: afterResponse
+  language: text/javascript
+  code: pm.test('Sale created', () => pm.response.to.have.status(200)); pm.test('Valid
+    sale confirmation', () => { pm.expect(pm.response.json().id).to.match(/^[a-f0-9]{24}$/);
+    pm.expect(pm.response.json().number).to.be.a('number').above(0); });

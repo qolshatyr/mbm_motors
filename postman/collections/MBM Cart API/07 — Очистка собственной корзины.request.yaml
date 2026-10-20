@@ -1,0 +1,29 @@
+$kind: http-request
+name: 07 — Очистка собственной корзины
+description: Только собственная серверная сессия. Требует заголовок из GET /api/csrf
+  и cookie той же сессии; продажи и резервы не создаёт.
+url: '{{baseUrl}}/api/cart/clear'
+method: POST
+headers:
+- key: Accept
+  value: application/json
+- key: Content-Type
+  value: application/x-www-form-urlencoded
+- key: X-CSRF-TOKEN
+  value: '{{csrfToken}}'
+- key: Cookie
+  value: '{{sessionCookie}}'
+  description: Cookie собственной сессии из шага 01; явный заголовок для локального
+    CLI.
+settings: {}
+order: 7000
+body:
+  type: urlencoded
+  content: []
+scripts:
+- type: afterResponse
+  language: text/javascript
+  code: |
+    pm.test('HTTP 200', () => pm.response.to.have.status(200));
+    const body = pm.response.json();
+    pm.test('Пустая сессионная корзина', () => { pm.expect(body.cart.items).to.eql([]); pm.expect(body.itemCount).to.equal(0); pm.expect(body.cart.hasIssues).to.equal(false); pm.expect(pm.response.headers.get('Cache-Control')).to.include('no-store'); });

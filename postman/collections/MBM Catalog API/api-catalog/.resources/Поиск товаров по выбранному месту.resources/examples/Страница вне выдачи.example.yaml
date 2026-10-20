@@ -1,0 +1,30 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/api/catalog/products?q=&store=string&available=false&page=0"
+  method: GET
+  headers:
+    Accept: application/problem+json
+  queryParams:
+    q: ""
+    store: string
+    available: "false"
+    page: "0"
+  body:
+    type: text
+    content: ""
+response:
+  statusCode: 404
+  statusText: Not Found
+  headers:
+    Content-Type: application/problem+json
+  body:
+    type: json
+    content: |-
+      {
+        "type": "string",
+        "title": "string",
+        "status": 4975,
+        "detail": "string",
+        "instance": "string"
+      }
+order: 3000

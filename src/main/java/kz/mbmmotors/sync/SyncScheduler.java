@@ -16,9 +16,7 @@ class SyncScheduler {
     this.synchronizer = synchronizer;
   }
 
-  @Scheduled(
-      fixedDelayString = "${catalog.sync.interval}",
-      initialDelayString = "${catalog.sync.interval}")
+  @Scheduled(fixedDelayString = "${catalog.sync.interval}", initialDelayString = "0")
   void tick() {
     try {
       synchronizer.synchronize(false);
