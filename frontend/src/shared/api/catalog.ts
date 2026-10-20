@@ -3,7 +3,7 @@ export interface Product { id: string; name: string; sku: string | null; code: s
 export interface CatalogPage { products: Product[]; query: string; storeId: string; storeName: string; stores: Store[]; page: number; totalPages: number; totalProducts: number; lastSyncText: string | null; stale: boolean }
 export interface Stores { stores: Store[]; defaultStoreId: string }
 
-export interface Detail { product: Product; offers: { storeId: string; storeName: string; priceText: string; stockText: string; canAdd: boolean }[]; selectedStore: string; lastSyncText: string | null; stale: boolean }
+export interface Detail { product: Product; offers: { storeId: string; storeName: string; priceText: string; stockText: string; canAdd: boolean; unavailabilityReason: string | null }[]; selectedStore: string; lastSyncText: string | null; stale: boolean }
 export const fetchStores = (signal: AbortSignal) => request<Stores>('/api/catalog/stores', { signal });
 export const fetchProducts = (params: URLSearchParams, signal: AbortSignal) => request<CatalogPage>(`/api/catalog/products?${params}`, { signal });
 export const fetchDetail = (id: string, store: string, signal: AbortSignal) => request<Detail>(`/api/catalog/products/${encodeURIComponent(id)}${store ? `?store=${encodeURIComponent(store)}` : ''}`, { signal });

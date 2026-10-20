@@ -51,6 +51,11 @@ class StaffRequestPersistenceTest {
           values (?,1,'bbbbbbbbbbbbbbbbbbbbbbbb','Immutable part','TEST-STAFF','шт',1,3000.25,3000.25)
           """,
           id);
+      if (i == 20) {
+        jdbc.update(
+            "insert into delivery_outbox(order_id,state,created_at) values (?,'WAITING_CONFIGURATION',now())",
+            id);
+      }
       if (i == 0) first = number;
       last = number;
     }
@@ -59,10 +64,13 @@ class StaffRequestPersistenceTest {
     assertThat(page.totalItems()).isEqualTo(before + 21);
     assertThat(page.items()).hasSize(20);
     assertThat(page.items().getFirst().number()).isEqualTo(Long.toString(last));
+    assertThat(page.items().getFirst().delivery().state()).isEqualTo("WAITING_CONFIGURATION");
+    assertThat(service.detail(first).orElseThrow().delivery().state()).isEqualTo("NOT_PREPARED");
     assertThat(service.list(1).items().getFirst().number()).isEqualTo(Long.toString(first));
     assertThat(service.list(100000).items()).isEmpty();
     var detail = service.detail(last).orElseThrow();
     assertThat(detail.customerName()).isEqualTo("Synthetic buyer");
+    assertThat(detail.delivery().state()).isEqualTo("WAITING_CONFIGURATION");
     assertThat(detail.items()).hasSize(1);
     assertThat(detail.items().getFirst().productName()).isEqualTo("Immutable part");
     assertThat(detail.items().getFirst().priceText()).isEqualTo("3\u00a0000,25 ₸");

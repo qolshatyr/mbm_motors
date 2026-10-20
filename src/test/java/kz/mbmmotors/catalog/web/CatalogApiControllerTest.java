@@ -108,7 +108,7 @@ class CatalogApiControllerTest {
             page().products().getFirst(),
             List.of(
                 new CatalogViewService.OfferView(
-                    store().id(), store().name(), "3000 ₸", "4 шт", true)),
+                    store().id(), store().name(), "3000 ₸", "4 шт", true, null)),
             store().id(),
             "06.10.2026",
             false);
@@ -118,6 +118,7 @@ class CatalogApiControllerTest {
     assertThat(result).hasStatusOk();
     var body = json.readTree(result.getResponse().getContentAsString());
     assertThat(body.path("offers").get(0).path("canAdd").asBoolean()).isTrue();
+    assertThat(body.path("offers").get(0).path("unavailabilityReason").isNull()).isTrue();
     assertThat(body.path("selectedStore").asString()).isEqualTo(store().id());
     when(service.detail("missing", null)).thenThrow(new CatalogViewService.CatalogNotFound());
     assertThat(mvc.get().uri("/api/catalog/products/missing")).hasStatus(HttpStatus.NOT_FOUND);

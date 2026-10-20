@@ -25,8 +25,9 @@ public class StaffRequestService {
     var items =
         jdbc.query(
             """
-        select number,status,created_at,store_name,item_count,total_text from local_orders
-        order by created_at desc,number desc limit 20 offset ?
+        select o.number,o.status,o.created_at,o.store_name,o.item_count,o.total_text,d.state delivery_state
+        from local_orders o left join delivery_outbox d on d.order_id=o.id
+        order by o.created_at desc,o.number desc limit 20 offset ?
         """,
             (rs, row) ->
                 new Summary(
@@ -35,7 +36,8 @@ public class StaffRequestService {
                     rs.getTimestamp("created_at").toInstant(),
                     rs.getString("store_name"),
                     rs.getInt("item_count"),
-                    rs.getString("total_text")),
+                    rs.getString("total_text"),
+                    delivery(rs.getString("delivery_state"))),
             page * 20L);
     return new Page(items, page, 20, count, (int) Math.min(Integer.MAX_VALUE, (count + 19) / 20));
   }
@@ -45,8 +47,9 @@ public class StaffRequestService {
     return jdbc
         .query(
             """
-        select number,status,created_at,store_name,item_count,total_text,customer_name,phone,comment
-        from local_orders where number = ?
+        select o.number,o.status,o.created_at,o.store_name,o.item_count,o.total_text,
+        o.customer_name,o.phone,o.comment,d.state delivery_state
+        from local_orders o left join delivery_outbox d on d.order_id=o.id where o.number = ?
         """,
             (rs, row) ->
                 new Detail(
@@ -59,7 +62,8 @@ public class StaffRequestService {
                     rs.getString("customer_name"),
                     rs.getString("phone"),
                     rs.getString("comment"),
-                    List.of()),
+                    List.of(),
+                    delivery(rs.getString("delivery_state"))),
             number)
         .stream()
         .findFirst()
@@ -91,9 +95,18 @@ public class StaffRequestService {
                   detail.customerName(),
                   detail.phone(),
                   detail.comment(),
-                  items);
+                  items,
+                  detail.delivery());
             });
   }
+
+  static Delivery delivery(String state) {
+    return state == null
+        ? new Delivery("NOT_PREPARED", "Передача ещё не подготовлена. Обратитесь к администратору.")
+        : new Delivery(state, "Передача ещё не подключена. Ожидает настройки.");
+  }
+
+  public record Delivery(String state, String message) {}
 
   static String money(BigDecimal value) {
     var format = NumberFormat.getNumberInstance(Locale.forLanguageTag("ru-RU"));
@@ -108,7 +121,8 @@ public class StaffRequestService {
       Instant createdAt,
       String storeName,
       int itemCount,
-      String totalText) {}
+      String totalText,
+      Delivery delivery) {}
 
   public record Item(
       int position,
@@ -129,7 +143,8 @@ public class StaffRequestService {
       String customerName,
       String phone,
       String comment,
-      List<Item> items) {}
+      List<Item> items,
+      Delivery delivery) {}
 
   public record Page(
       List<Summary> items, int page, int pageSize, long totalItems, int totalPages) {}

@@ -45,7 +45,7 @@ def configure_admin(env, jar, root):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--admin', action='store_true', help='Enable staff area with privately entered local credentials')
-    parser.add_argument('--sync', action='store_true', help='Enable read-only CloudShop updates every five minutes')
+    parser.add_argument('--sync', action='store_true', help='Enable an immediate read-only CloudShop update, then every five minutes')
     parser.add_argument('--port', type=int, default=8080)
     parser.add_argument('--pickup-store', action='append', default=[], help='CloudShop ID согласованной точки самовывоза; можно повторить')
     args = parser.parse_args()
@@ -68,6 +68,8 @@ def main():
             env['CLOUDSHOP_TOKEN'] = getpass.getpass('Токен CloudShop (только чтение, ввод скрыт): ').strip()
         if not env['CLOUDSHOP_TOKEN'] or any(char.isspace() for char in env['CLOUDSHOP_TOKEN']):
             raise SystemExit('Введите непустой токен без пробелов.')
+    if args.sync:
+        print('Первое обновление каталога начнётся сразу после запуска. Пока оно не завершится, устаревшие остатки блокируют добавление.', flush=True)
     if args.admin:
         configure_admin(env, jar, root)
         print(f'Служебный раздел: http://127.0.0.1:{args.port}/admin/requests', flush=True)

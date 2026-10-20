@@ -16,5 +16,5 @@ scripts:
         pm.expect(body.product.id).to.equal(pm.collectionVariables.get('productId'));
         pm.expect(body.offers).to.be.an('array');
         pm.expect(body.stale).to.be.a('boolean');
-        body.offers.forEach(o => pm.expect(o.canAdd).to.be.a('boolean'));
+        body.offers.forEach(o => { pm.expect(o.canAdd).to.be.a('boolean'); if(o.canAdd) pm.expect(o.unavailabilityReason).to.equal(null); else pm.expect(o.unavailabilityReason).to.be.a('string').and.not.empty; });
       });
