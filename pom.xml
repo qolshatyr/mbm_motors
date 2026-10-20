@@ -32,4 +32,15 @@
       <executions><execution><goals><goal>prepare-agent</goal></goals></execution><execution><id>report</id><phase>verify</phase><goals><goal>report</goal></goals></execution></executions>
     </plugin>
   </plugins></build>
+  <profiles>
+    <profile>
+      <id>release-site</id>
+      <build>
+        <resources>
+          <resource><directory>src/main/resources</directory></resource>
+          <resource><directory>frontend/dist</directory><targetPath>static/frontend</targetPath></resource>
+        </resources>
+      </build>
+    </profile>
+  </profiles>
 </project>

@@ -1,0 +1,36 @@
+$kind: http-request
+name: 03 — Проверка контактных полей
+order: 3000
+url: '{{baseUrl}}/api/orders'
+method: POST
+headers:
+- key: Accept
+  value: application/json
+- key: Cookie
+  value: '{{sessionCookie}}'
+- key: Content-Type
+  value: application/x-www-form-urlencoded
+- key: X-CSRF-TOKEN
+  value: '{{csrfToken}}'
+body:
+  type: urlencoded
+  content:
+  - key: idempotencyKey
+    value: '{{key}}'
+  - key: revision
+    value: '{{revision}}'
+  - key: customerName
+    value: ''
+  - key: phone
+    value: invalid
+  - key: comment
+    value: ''
+  - key: consent
+    value: 'false'
+scripts:
+- type: afterResponse
+  language: text/javascript
+  code: |
+    pm.test('HTTP 400',()=>pm.response.to.have.status(400));
+    const body=pm.response.json();
+    pm.test('Ошибки полей',()=>{pm.expect(body.status).to.equal(400);pm.expect(body.errors).to.have.property('customerName');pm.expect(body.errors).to.have.property('phone');pm.expect(body.errors).to.have.property('consent');});

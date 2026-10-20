@@ -22,7 +22,14 @@ public class WebSecurityConfiguration {
                         "/api/catalog/products",
                         "/api/catalog/products/{id}",
                         "/api/cart",
-                        "/api/csrf")
+                        "/api/csrf",
+                        "/frontend/**",
+                        "/basket",
+                        "/products/{id}",
+                        "/checkout",
+                        "/checkout/success",
+                        "/api/checkout",
+                        "/api/orders/by-key/{key}")
                     .permitAll()
                     .requestMatchers(
                         HttpMethod.POST,
@@ -30,7 +37,8 @@ public class WebSecurityConfiguration {
                         "/api/cart/update",
                         "/api/cart/remove",
                         "/api/cart/clear",
-                        "/api/cart/confirm-price")
+                        "/api/cart/confirm-price",
+                        "/api/orders")
                     .permitAll()
                     .requestMatchers(
                         "/",

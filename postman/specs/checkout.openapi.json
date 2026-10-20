@@ -1,0 +1,443 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "MBM Motors Local Checkout API",
+    "version": "1.0.0",
+    "description": "Локальные заявки без внешней передачи. Точки выдачи требуют явной настройки после согласования."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080"
+    }
+  ],
+  "paths": {
+    "/api/checkout": {
+      "get": {
+        "summary": "Проверка корзины и получение ключа оформления",
+        "description": "Доступность только для checkout.pickup-store-ids, по умолчанию список пуст. Ключ привязан к текущей сессии и revision; preview обновляет ключ при изменении корзины. Цены и наличие на сервере.",
+        "responses": {
+          "200": {
+            "description": "Предпросмотр, включая пустую/заблокированную корзину",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preview"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/orders": {
+      "post": {
+        "summary": "Надёжное локальное сохранение заявки",
+        "description": "Только собственная сессия и ключ preview. Создание со снимком позиций в одной PostgreSQL-транзакции. Сервер проверяет актуальные цены/остатки/свежесть/точку и revision. Сохраняет нормализованные контакты и согласие. Нет CloudShop вызовов/резерва; status RECEIVED не означает отправку магазину. Первый ответ 201, повтор того же ключа и payload 200, отличающийся payload 409. Корзина очищается после commit, не при ошибке.",
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Submit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Заявка сохранена",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receipt"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Идемпотентный повтор",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Неверные контакты/поля; поле errors содержит ошибки формы",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Корзина/цены/ключ изменились или точка недоступна",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF или доступ отклонён",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/orders/by-key/{key}": {
+      "get": {
+        "summary": "Восстановление результата после потерянного ответа",
+        "description": "Только тот же владелец-сессия. Не раскрывает контакты/комментарий, других заявок или внутренний UUID. После истечения сессии доступ отсутствует.",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Сохранённый результат",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "no-store"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receipt"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Нет результата для этой сессии/ключа",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Неверный формат ключа",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CartSnapshot": {
+        "type": "object",
+        "required": [
+          "cart",
+          "itemCount",
+          "message"
+        ],
+        "properties": {
+          "cart": {
+            "$ref": "#/components/schemas/Cart"
+          },
+          "itemCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Сумма количеств, не число строк."
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "Cart": {
+        "type": "object",
+        "required": [
+          "storeId",
+          "storeName",
+          "items",
+          "totalText",
+          "hasIssues"
+        ],
+        "properties": {
+          "storeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "storeName": {
+            "type": "string",
+            "nullable": true
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CartItem"
+            }
+          },
+          "totalText": {
+            "type": "string"
+          },
+          "hasIssues": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CartItem": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "quantity",
+          "priceText",
+          "totalText",
+          "priceChanged",
+          "currentPrice"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sku": {
+            "type": "string",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "unit": {
+            "type": "string",
+            "nullable": true
+          },
+          "priceText": {
+            "type": "string"
+          },
+          "totalText": {
+            "type": "string"
+          },
+          "problem": {
+            "type": "string",
+            "nullable": true
+          },
+          "priceChanged": {
+            "type": "boolean"
+          },
+          "currentPrice": {
+            "type": "string",
+            "nullable": true,
+            "description": "Точная десятичная строка для подтверждения цены; не преобразовывать в JS number."
+          }
+        }
+      },
+      "Problem": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status",
+          "detail"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "instance": {
+            "type": "string"
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Ошибки полей формы в HTTP400"
+          }
+        }
+      },
+      "Preview": {
+        "type": "object",
+        "required": [
+          "cart",
+          "revision",
+          "idempotencyKey",
+          "canSubmit",
+          "issues"
+        ],
+        "properties": {
+          "cart": {
+            "$ref": "#/components/schemas/Cart"
+          },
+          "revision": {
+            "type": "string",
+            "nullable": true
+          },
+          "idempotencyKey": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "canSubmit": {
+            "type": "boolean"
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "Submit": {
+        "type": "object",
+        "required": [
+          "idempotencyKey",
+          "revision",
+          "customerName",
+          "phone",
+          "consent"
+        ],
+        "properties": {
+          "idempotencyKey": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision": {
+            "type": "string"
+          },
+          "customerName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "phone": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "comment": {
+            "type": "string",
+            "maxLength": 1000,
+            "default": ""
+          },
+          "consent": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        }
+      },
+      "Receipt": {
+        "type": "object",
+        "required": [
+          "number",
+          "status",
+          "storeName",
+          "itemCount",
+          "totalText",
+          "createdAt",
+          "message"
+        ],
+        "properties": {
+          "number": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "RECEIVED"
+            ]
+          },
+          "storeName": {
+            "type": "string"
+          },
+          "itemCount": {
+            "type": "integer"
+          },
+          "totalText": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

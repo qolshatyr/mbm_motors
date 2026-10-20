@@ -5,11 +5,12 @@ Requires Python Playwright and Chromium; writes screenshots/results under /tmp.
 Uses GET and its own browser sessions, without orders or CloudShop writes.
 """
 import json
+import os
 from pathlib import Path
 from playwright.sync_api import sync_playwright,expect
 checks=[]
 def ok(s):checks.append(s);print('PASS',s,flush=True)
-base='http://127.0.0.1:5173'
+base=os.environ.get('MBM_FRONTEND_URL','http://127.0.0.1:5173')
 with sync_playwright() as p:
  b=p.chromium.launch(headless=True);ctx=b.new_context(viewport={'width':1440,'height':1000});page=ctx.new_page();errors=[]
  page.on('pageerror',lambda e:errors.append(str(e)))

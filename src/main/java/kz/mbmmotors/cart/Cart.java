@@ -22,5 +22,11 @@ public final class Cart implements Serializable {
     return entries.values().stream().mapToInt(Entry::quantity).sum();
   }
 
+  /** Clear local selection after the order transaction has committed; no database access. */
+  public synchronized void clearSelection() {
+    entries.clear();
+    storeId = null;
+  }
+
   record Entry(int quantity, BigDecimal acceptedPrice) implements Serializable {}
 }
