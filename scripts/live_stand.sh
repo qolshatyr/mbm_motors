@@ -58,7 +58,7 @@ tunnel_start() {
     : > "$STAND/tunnel.log"
     nohup cloudflared tunnel --no-autoupdate --url "http://127.0.0.1:$PORT" > "$STAND/tunnel.log" 2>&1 &
     echo $! > "$STAND/tunnel.pid"
-    for _ in $(seq 1 60); do grep -q 'trycloudflare.com' "$STAND/tunnel.log" && break; sleep 1; done
+    for _ in $(seq 1 60); do grep -q 'https://[a-z0-9-]*\.trycloudflare\.com' "$STAND/tunnel.log" && break; sleep 1; done
   fi
 }
 
