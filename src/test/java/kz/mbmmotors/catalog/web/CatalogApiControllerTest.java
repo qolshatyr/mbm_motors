@@ -39,7 +39,7 @@ class CatalogApiControllerTest {
 
   @Test
   void defaultProductsSerializeDisplayValuesFreshnessAndNullableFields() throws Exception {
-    when(service.list("", null, false, 0)).thenReturn(page());
+    when(service.list("", null, false, 0, null)).thenReturn(page());
     var result = mvc.get().uri("/api/catalog/products").exchange();
     assertThat(result).hasStatusOk();
     var body = json.readTree(result.getResponse().getContentAsString());
@@ -52,12 +52,12 @@ class CatalogApiControllerTest {
     for (String key : List.of("sku", "code", "unit", "imageUrl")) {
       assertThat(product.path(key).isNull()).as(key).isTrue();
     }
-    verify(service).list("", null, false, 0);
+    verify(service).list("", null, false, 0, null);
   }
 
   @Test
   void forwardsSearchFiltersAndPageToExistingService() {
-    when(service.list("54610-2T000", "warehouse", true, 2)).thenReturn(page());
+    when(service.list("54610-2T000", "warehouse", true, 2, null)).thenReturn(page());
     assertThat(
             mvc.get()
                 .uri("/api/catalog/products")
@@ -66,7 +66,7 @@ class CatalogApiControllerTest {
                 .param("available", "true")
                 .param("page", "2"))
         .hasStatusOk();
-    verify(service).list("54610-2T000", "warehouse", true, 2);
+    verify(service).list("54610-2T000", "warehouse", true, 2, null);
   }
 
   @Test
@@ -78,7 +78,7 @@ class CatalogApiControllerTest {
       assertThat(result.getResponse().getContentType()).startsWith("application/problem+json");
     }
     verifyNoInteractions(service);
-    when(service.list(anyString(), any(), anyBoolean(), anyInt()))
+    when(service.list(anyString(), any(), anyBoolean(), anyInt(), any()))
         .thenThrow(new CatalogViewService.BadCatalogQuery());
     var result = mvc.get().uri("/api/catalog/products").param("store", "missing").exchange();
     assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
@@ -87,7 +87,8 @@ class CatalogApiControllerTest {
 
   @Test
   void pageOutsideResultsReturnsProblemNotFound() throws Exception {
-    when(service.list("", null, false, 99)).thenThrow(new CatalogViewService.CatalogNotFound());
+    when(service.list("", null, false, 99, null))
+        .thenThrow(new CatalogViewService.CatalogNotFound());
     var result = mvc.get().uri("/api/catalog/products").param("page", "99").exchange();
     assertThat(result).hasStatus(HttpStatus.NOT_FOUND);
     assertProblem(result.getResponse().getContentAsString(), 404);
@@ -152,6 +153,9 @@ class CatalogApiControllerTest {
                 null,
                 "Цена уточняется",
                 "Наличие уточняется",
+                null,
+                false,
+                null,
                 null)),
         "",
         store().id(),

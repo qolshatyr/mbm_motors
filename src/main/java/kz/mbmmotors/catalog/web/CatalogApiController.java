@@ -27,8 +27,9 @@ public class CatalogApiController {
       @RequestParam(defaultValue = "") String q,
       @RequestParam(required = false) String store,
       @RequestParam(defaultValue = "false") boolean available,
-      @RequestParam(defaultValue = "0") int page) {
-    return catalog.list(q, store, available, page);
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(required = false) String sort) {
+    return catalog.list(q, store, available, page, sort);
   }
 
   @GetMapping("/products/{id}")

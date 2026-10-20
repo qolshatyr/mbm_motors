@@ -35,6 +35,9 @@ class CatalogControllerTest {
             null,
             "3 000 ₸",
             "В наличии: 4",
+            null,
+            false,
+            null,
             null);
     when(service.list("", null, false, 0))
         .thenReturn(

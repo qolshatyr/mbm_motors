@@ -74,6 +74,31 @@ class CatalogQueryIntegrationTest {
   }
 
   @Test
+  void exactArticleFirstSortsAndMachineReadableFields() {
+    jdbc.update(
+        "update product_offers set price=? , quantity=? where product_id=? and store_id=?",
+        100,
+        90,
+        String.format("%024x", 30),
+        CatalogViewService.DEFAULT_STORE);
+    var cheapest = service.list("", null, false, 0, "price").products().getFirst();
+    assertThat(cheapest.id()).isEqualTo(String.format("%024x", 30));
+    assertThat(cheapest.price()).isEqualByComparingTo("100");
+    assertThat(cheapest.availableQuantity()).isEqualByComparingTo("90");
+    assertThat(cheapest.canAdd()).isTrue();
+    assertThat(service.list("", null, false, 0, "stock").products().getFirst().id())
+        .isEqualTo(String.format("%024x", 30));
+    // "SKU2" also matches SKU20..SKU29 by substring; the exact article must lead.
+    assertThat(service.list("sku2", null, false, 0, "name").products().getFirst().sku())
+        .isEqualTo("SKU2");
+    var negative = service.list("", null, false, 1, "stock").products().getLast();
+    assertThat(negative.availableQuantity()).isNull();
+    assertThat(negative.canAdd()).isFalse();
+    assertThatThrownBy(() -> service.list("", null, false, 0, "drop table"))
+        .isInstanceOf(CatalogViewService.BadCatalogQuery.class);
+  }
+
+  @Test
   void cartRevalidatesDatabasePricesStockAndUnits() {
     var cart = new Cart();
     String id = "000000000000000000000002";

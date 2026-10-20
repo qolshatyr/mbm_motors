@@ -34,8 +34,24 @@ public class CatalogViewService {
 
   @Transactional(readOnly = true)
   public CatalogPage list(String query, String storeId, boolean available, int page) {
+    return list(query, storeId, available, page, null);
+  }
+
+  /**
+   * {@code sort}: {@code name} (default), {@code price} (cheapest priced first) or {@code stock}
+   * (largest stock first). With a query, exact article or code matches always come first.
+   */
+  @Transactional(readOnly = true)
+  public CatalogPage list(String query, String storeId, boolean available, int page, String sort) {
     String q = query == null ? "" : query.strip();
     if (q.length() > 120 || page < 0 || page > 1_000_000) throw new BadCatalogQuery();
+    String order =
+        switch (sort == null || sort.isEmpty() ? "name" : sort) {
+          case "name" -> "lower(p.name),p.id";
+          case "price" -> "(o.price is null or o.price<=0),o.price,lower(p.name),p.id";
+          case "stock" -> "o.quantity desc nulls last,lower(p.name),p.id";
+          default -> throw new BadCatalogQuery();
+        };
     List<StoreView> stores = stores();
     StoreView store = requireStore(stores, storeId);
     Freshness freshness = freshness();
@@ -67,11 +83,21 @@ public class CatalogViewService {
     int pages = (int) ((total + PAGE_SIZE - 1) / PAGE_SIZE);
     if (page > 0 && page >= pages) throw new CatalogNotFound();
     List<Object> queryParams = new ArrayList<>(params);
+    String compactQuery = q.replaceAll("[^\\p{L}\\p{N}]", "").toLowerCase(Locale.ROOT);
+    if (!compactQuery.isEmpty()) {
+      // Quick order relies on an exact article/code match being on the first page.
+      order =
+          "(regexp_replace(lower(coalesce(p.sku,'')), '[^[:alnum:]]', '', 'g')=?"
+              + " or regexp_replace(lower(coalesce(p.code,'')), '[^[:alnum:]]', '', 'g')=?) desc,"
+              + order;
+      queryParams.add(compactQuery);
+      queryParams.add(compactQuery);
+    }
     queryParams.add(PAGE_SIZE);
     queryParams.add((long) page * PAGE_SIZE);
     List<ProductView> products =
         jdbc.query(
-            SELECT + where + " order by lower(p.name),p.id limit ? offset ?",
+            SELECT + where + " order by " + order + " limit ? offset ?",
             (rs, row) -> product(rs, freshness.stale()),
             queryParams.toArray());
     return new CatalogPage(
@@ -173,7 +199,15 @@ public class CatalogViewService {
         rs.getString("unit"),
         priceText(rs.getBigDecimal("price")),
         stockText(rs.getBigDecimal("quantity"), rs.getString("unit"), stale),
-        safeImage(rs.getString("image")));
+        safeImage(rs.getString("image")),
+        canAdd(
+            rs.getBigDecimal("price"), rs.getBigDecimal("quantity"), rs.getString("unit"), stale),
+        positive(rs.getBigDecimal("price")),
+        stale ? null : positive(rs.getBigDecimal("quantity")));
+  }
+
+  private static BigDecimal positive(BigDecimal value) {
+    return value == null || value.signum() <= 0 ? null : value;
   }
 
   static String escapeLike(String value) {
@@ -237,7 +271,12 @@ public class CatalogViewService {
       String unit,
       String priceText,
       String stockText,
-      String imageUrl) {}
+      String imageUrl,
+      boolean canAdd,
+      // Null when the price is not set or zero.
+      BigDecimal price,
+      // Null when stock is absent or the catalog is stale.
+      BigDecimal availableQuantity) {}
 
   public record StoreView(String id, String name) {}
 
