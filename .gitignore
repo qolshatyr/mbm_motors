@@ -30,3 +30,4 @@ prototype/
 # Local Claude Code state; shared skills in .claude/skills/ stay tracked
 .claude/settings.local.json
 .claude/worktrees/
+.claude/*.local.md
