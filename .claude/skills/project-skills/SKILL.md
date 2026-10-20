@@ -131,6 +131,13 @@ Claude Code сам не находит навыки из `postman/skills/` и `~
 | java-backend-skills | 15 навыков `java-backend-skills:*` из таблицы выше. Для Java/Spring приоритет у них, `spring-boot-skill` остаётся запасным |
 | frontend-design | `frontend-design:frontend-design`, тот же навык, что в `~/.agents/skills/`. Приоритет у плагина |
 | code-simplifier | Субагент `code-simplifier`: упрощает недавно изменённый код без изменения поведения |
+| playwright | MCP-браузер для интерактивной проверки сайта; готовые сценарии остаются в `tests/browser/` |
+| context7 | Актуальная документация Spring Boot 4, React 19, Tailwind 4, Vite 8 — перед API, в котором не уверен |
+| feature-dev | `feature-dev:feature-dev` и агенты `code-explorer` / `code-architect` / `code-reviewer` для крупных фич (роли explorer/worker из `AGENTS.md`) |
+| pr-review-toolkit | `pr-review-toolkit:review-pr` и агенты по тестам, ошибкам (`silent-failure-hunter`), типам — перед PR с логикой |
+| security-guidance | Предупреждения о небезопасном коде во время правок |
+| hookify | Локальные правила `.claude/hookify.*.local.md` блокируют продажу CloudShop, удаление журнала, секреты в Git, force/main push |
+| jdtls-lsp, typescript-lsp, pyright-lsp | Инструмент LSP: определения, ссылки и ошибки без полной сборки |
 
 Плагины установлены у пользователя, а не в репозитории. На другой машине
 их может не быть, тогда используй запасные навыки из каталога.
