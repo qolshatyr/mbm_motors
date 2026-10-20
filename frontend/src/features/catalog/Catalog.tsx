@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ApiError, fetchProducts, fetchStores } from '../../shared/api/catalog';
 import { EmptyState, Notice } from '../../shared/ui/Feedback';
 import { ProductCard } from './ProductCard';
+import { Icon } from '../../shared/ui/Icon';
 
 export function Catalog() {
   const [search, setSearch] = useSearchParams();
@@ -15,6 +16,24 @@ export function Catalog() {
   const page = /^\d+$/.test(rawPage) ? Number(rawPage) : -1;
   const invalid = query.length > 120 || !Number.isSafeInteger(page) || page < 0 || page > 1000000;
   const [draft, setDraft] = useState(query);
+  const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 639px)').matches);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filterDialog = useRef<HTMLDialogElement>(null);
+  const filterTrigger = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 639px)');
+    const update = () => { setMobile(media.matches); if (!media.matches) setFiltersOpen(false); };
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+  useEffect(() => {
+    const dialog = filterDialog.current;
+    if (!filtersOpen || !dialog) return;
+    dialog.showModal();
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { dialog.close(); document.body.style.overflow = previousOverflow; (filterTrigger.current ?? document.getElementById('store'))?.focus({ preventScroll: true }); };
+  }, [filtersOpen, mobile]);
   useEffect(() => setDraft(query), [query]);
   const stores = useQuery({ queryKey: ['stores'], queryFn: ({ signal }) => fetchStores(signal), staleTime: 300000 });
   const params = new URLSearchParams({ q: query, available: String(available), page: String(page) });
@@ -39,16 +58,18 @@ export function Catalog() {
   function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); changeFilters({ q: draft.trim() }); }
   function reset() { setDraft(''); setSearch({}); }
   function pageLink(value: number) { const next = new URLSearchParams(search); next.set('page', String(value)); return `/?${next}`; }
+  const filters = <div className="filter-row"><div className="store-field"><label htmlFor="store">Магазин или склад</label><select name="store" id="store" value={effectiveStore} disabled={!stores.data} onChange={(event) => changeFilters({ store: event.target.value })}>{!stores.data && <option value="">{stores.isError ? 'Магазины недоступны' : 'Загружаем магазины…'}</option>}{stores.data?.stores.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></div>
+    <label className="available-filter"><input type="checkbox" name="available" checked={available} onChange={(event) => changeFilters({ available: event.target.checked ? 'true' : '' })} />Только в наличии</label><button className="text-button" type="button" onClick={reset}>Сбросить фильтры</button>
+  </div>;
   return <>
     <section className="search-section" aria-labelledby="catalog-title">
-      <div className="heading-row"><div><h1 id="catalog-title">Найдите нужную деталь</h1><p>По артикулу, названию или коду товара</p></div><span className="catalog-caption">Каталог запчастей</span></div>
-      <form onSubmit={submit} className="search-form">
-        <div className="search-field"><label htmlFor="query">Поиск запчастей</label><div className="search-input-row"><input id="query" name="q" type="search" autoComplete="off" spellCheck={false} placeholder="Например, 54610-2T000…" maxLength={120} value={draft} onChange={(event) => setDraft(event.target.value)} /><button className="button button-primary" type="submit">Найти</button></div></div>
-        <div className="filter-row"><div className="store-field"><label htmlFor="store">Магазин или склад</label><select name="store" id="store" value={effectiveStore} disabled={!stores.data} onChange={(event) => changeFilters({ store: event.target.value })}>{!stores.data && <option value="">Загружаем магазины…</option>}{stores.data?.stores.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></div>
-          <label className="available-filter"><input type="checkbox" name="available" checked={available} onChange={(event) => changeFilters({ available: event.target.checked ? 'true' : '' })} />Только в наличии</label><button className="text-button" type="button" onClick={reset}>Сбросить фильтры</button>
-        </div>
+      <div className="catalog-intro"><div className="catalog-heading"><h1 id="catalog-title">Найдите нужную деталь</h1><p>По артикулу, названию или коду товара</p></div><div className="catalog-caption"><Icon name="box" /><span>Запчасти в магазинах<br />и на складах MBM Motors</span></div></div>
+      <form onSubmit={submit} className="search-form" role="search">
+        <div className="search-field"><label htmlFor="query">Поиск запчастей</label><div className="search-input-row"><Icon name="search" /><input id="query" name="q" type="search" autoComplete="off" spellCheck={false} placeholder="Например, 54610-2T000…" maxLength={120} value={draft} onChange={(event) => setDraft(event.target.value)} /><button className="button button-primary" type="submit">Найти</button></div></div>
+        {mobile ? <div className="mobile-filter-bar"><button ref={filterTrigger} className="button filter-trigger" type="button" aria-haspopup="dialog" onClick={() => setFiltersOpen(true)}><Icon name="filter" />Фильтры{(store || available) && <span className="filter-count">{Number(Boolean(store)) + Number(available)}</span>}</button><span>{stores.data?.stores.find((item) => item.id === effectiveStore)?.name || 'Магазины и склады'}{available ? ' · В наличии' : ''}</span></div> : filters}
       </form>
     </section>
+    {mobile && <dialog ref={filterDialog} className="filter-dialog" aria-labelledby="filter-title" onCancel={() => setFiltersOpen(false)} onClose={() => setFiltersOpen(false)}><div className="filter-dialog-heading"><h2 id="filter-title">Фильтры каталога</h2><button type="button" className="icon-button" aria-label="Закрыть фильтры" onClick={() => setFiltersOpen(false)}><Icon name="close" /></button></div><div className="filter-dialog-body">{stores.isError && <Notice error>Не удалось загрузить магазины. <button type="button" className="text-button" onClick={() => void stores.refetch()}>Повторить</button></Notice>}{filters}</div><div className="filter-dialog-footer"><button type="button" className="button button-primary" onClick={() => setFiltersOpen(false)}>Показать товары</button></div></dialog>}
     {stores.isError && <Notice error>Не удалось загрузить магазины. <button type="button" className="text-button" onClick={() => void stores.refetch()}>Повторить</button></Notice>}
     {data && <div className={`freshness ${data.stale ? 'freshness-stale' : ''}`}><span className="status-dot" aria-hidden="true" /><span>{data.lastSyncText ? `Данные обновлены: ${data.lastSyncText}` : 'Каталог ещё не обновлялся'}</span>{data.stale && <p>Данные могут быть устаревшими. Уточните цену и наличие перед покупкой.</p>}</div>}
     <section aria-labelledby="results-title" aria-busy={products.isFetching}>
