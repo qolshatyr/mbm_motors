@@ -24,7 +24,7 @@ const rows: [string, string, string, Image, number, number][] = [
 ];
 export const money = (value: number) => `${value.toLocaleString('ru-RU')} ₸`;
 export const demoProducts: DemoProduct[] = rows.map(([name, sku, code, image, price, stock], index) => ({
-  id: (index + 1).toString(16).padStart(24, '0'), name, sku, code, unit: 'шт.', imageUrl: `/demo-images/${image}.svg`,
+  id: (index + 1).toString(16).padStart(24, '0'), name, sku, code, unit: 'шт.', imageUrl: `${import.meta.env.BASE_URL}demo-images/${image}.svg`,
   priceText: price > 0 ? money(price) : 'Цена уточняется', stockText: stock > 0 ? `В наличии: ${stock} шт.` : 'Нет в наличии', price, stock,
 }));
 export const demoPartner = { login: 'demo', company: 'СТО «Демо Сервис»', contactName: 'Ерлан', phone: '+77000000000' };

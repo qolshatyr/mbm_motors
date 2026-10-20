@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 from playwright.sync_api import sync_playwright, expect
 
 base = os.environ.get('MBM_PROTOTYPE_URL', 'http://127.0.0.1:5185').rstrip('/')
-assert urlparse(base).hostname in ('127.0.0.1', 'localhost', 'mbm-motors-preview.polite-genet-3797.chatgpt.site'), 'Use the isolated prototype only'
+assert urlparse(base).hostname in ('127.0.0.1', 'localhost'), 'Use the isolated prototype only'
 out = Path(os.environ.get('MBM_PROTOTYPE_SCREENSHOTS', '/tmp/mbm-prototype-shots'))
 out.mkdir(parents=True, exist_ok=True)
 

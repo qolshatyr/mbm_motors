@@ -24,6 +24,7 @@ frontend/*.tsbuildinfo
 
 # Isolated client prototype output and Sites checkout
 frontend/dist-demo/
+frontend/dist-artifact/
 prototype/
 !frontend/.env.demo
 
