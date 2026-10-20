@@ -219,7 +219,7 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--blue); fle
 .search-card-row { display: flex; gap: 8px; margin-top: auto; }
 .search-card-row input { flex: 1; min-width: 0; height: 48px; border: 1px solid var(--divider); border-radius: var(--r-sm); background: var(--card); padding: 0 14px; font-family: var(--mono); font-size: 15px; }
 .search-card-row .button, .search-card-submit { min-height: 48px; font-size: 15px; }
-.search-card-selects { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.search-card-selects { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; }
 .search-card-selects select, .filter-select { width: 100%; min-width: 0; height: 48px; border: 1px solid var(--divider); border-radius: var(--r-sm); background: var(--card); padding: 0 12px; font-size: 15px; color: var(--ink); }
 .search-card-submit { margin-top: auto; }
 .category-grid { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(46%, 190px), 1fr)); gap: 14px; }
@@ -522,7 +522,7 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--blue); fle
   .product-row-copy { flex-basis: calc(100% - 76px); }
   .product-row-buy { flex-basis: 100%; justify-content: space-between; gap: 12px; margin-left: 0; }
   .product-row-buy .price { text-align: left; min-width: 0; font-size: 19px; }
-  .search-card-selects { grid-template-columns: minmax(0, 1fr); }
+  .search-card-selects { grid-auto-flow: row; }
   .product-facts { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .buy-stock { text-align: left; }
   .buy-price { font-size: 32px; }

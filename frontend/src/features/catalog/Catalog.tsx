@@ -118,14 +118,14 @@ export function Catalog() {
           <label className="filter-label" htmlFor="car-select">АВТОМОБИЛЬ</label>
           <select id="car-select" className="filter-select" value={carValue} onChange={(event) => pickCar(event.target.value)}>
             <option value="">Любой</option>
-            {makes.map((make) => make.name === filter.make
+            {makes.map((make) => make.name === filter.make && models.length > 0
               ? <optgroup key={make.name} label={make.name}>
                 <option value={JSON.stringify([make.name, null])}>{make.name} — все модели ({make.count})</option>
                 {models.map((model) => <option key={model.name} value={JSON.stringify([make.name, model.name])}>{carName(make.name, model.name)} ({model.count})</option>)}
               </optgroup>
               : <option key={make.name} value={JSON.stringify([make.name, null])}>{make.name} ({make.count})</option>)}
           </select>
-          <p className="filter-note">Модели появятся после выбора марки. Применимость взята из меток CloudShop.</p>
+          <p className="filter-note">Применимость взята из меток CloudShop.</p>
         </div>}
         <div className="sidebar-facts">
           <p><strong>{store.name ?? 'Склад'}</strong><br />{pickupText}</p>

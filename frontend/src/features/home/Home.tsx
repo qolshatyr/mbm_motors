@@ -49,18 +49,20 @@ export function Home() {
         </div>
       </form>
       <form className="search-card" aria-labelledby="by-model-title" onSubmit={(event) => { event.preventDefault(); navigate(catalogHref({ make: make || null, model: make && model ? model : null })); }}>
-        <h2 id="by-model-title" className="search-card-title">По модели</h2>
+        <h2 id="by-model-title" className="search-card-title">По марке</h2>
         <div className="search-card-selects">
           <label htmlFor="home-make" className="sr-only">Марка</label>
           <select id="home-make" value={make} onChange={(event) => { setMake(event.target.value); setModel(''); }} disabled={makes.length === 0}>
             <option value="">Марка</option>
             {makes.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}
           </select>
-          <label htmlFor="home-model" className="sr-only">Модель</label>
-          <select id="home-model" value={model} onChange={(event) => setModel(event.target.value)} disabled={!make || modelOptions.length === 0}>
-            <option value="">{make ? 'Все модели' : 'Модель'}</option>
-            {modelOptions.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}
-          </select>
+          {modelOptions.length > 0 && <>
+            <label htmlFor="home-model" className="sr-only">Модель</label>
+            <select id="home-model" value={model} onChange={(event) => setModel(event.target.value)}>
+              <option value="">Все модели</option>
+              {modelOptions.map((item) => <option key={item.name} value={item.name}>{item.name}</option>)}
+            </select>
+          </>}
         </div>
         <button type="submit" className="button button-dark search-card-submit">Показать детали</button>
       </form>

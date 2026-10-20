@@ -2,11 +2,13 @@
 """Fill only the «Категория» column of a CloudShop product export with the classified category.
 
     python3 tools/catalog/fill_categories.py docs/catalog-<id>.xlsx docs/catalog/catalog-<id>-categories.xlsx
+    python3 tools/catalog/fill_categories.py --makes-only docs/catalog-<id>.xlsx docs/catalog/catalog-<id>-makes.xlsx
 
 The workbook is edited at the XML level: only the cells of the «Категория» column change (they
 point to new shared strings), every other part of the file is copied byte for byte, so the result
 can be imported back into CloudShop. The column holds CloudShop tags separated by «, »: section,
-subsection, car makes with their models and «Бренд …» for each part brand. Products where nothing
+subsection, car makes with their models and «Бренд …» for each part brand; with --makes-only the
+models are left out and only the makes remain. Products where nothing
 was recognised keep their empty value. A trial file with the header and the first five filled products is
 written next to the result.
 """
@@ -29,13 +31,15 @@ CELL = re.compile(r'<x:c r="([A-Z]+)(\d+)"([^>]*)><x:v>(\d+)</x:v></x:c>')
 ROW = re.compile(r'<x:row r="(\d+)"[^>]*>.*?</x:row>', re.S)
 
 
-def tags(name):
-    """«Ходовая часть, Амортизаторы и опоры, Hyundai, Sonata, Kia, Optima, Бренд HPT»."""
+def tags(name, models=True):
+    """«Ходовая часть, Амортизаторы и опоры, Hyundai, Sonata, Kia, Optima, Бренд HPT»; without models
+    «Ходовая часть, Амортизаторы и опоры, Hyundai, Kia, Бренд HPT»."""
     result = classify(name)
     values = [result['category'], result['subcategory']] if result['group'] else []
     for make in result['makes']:
         values.append(make)
-        values.extend(f['model'] for f in result['fitments'] if f['make'] == make and f['model'])
+        if models:
+            values.extend(f['model'] for f in result['fitments'] if f['make'] == make and f['model'])
     values.extend(f'Бренд {brand}' for brand in result['brands'])
     # A comma would split one tag into two on import.
     values = [v.replace(',', ' ').strip() for v in values if v]
@@ -57,11 +61,11 @@ def column_letter(sheet_xml, strings, title):
     raise SystemExit(f'Колонка «{title}» не найдена')
 
 
-def fill(sheet_xml, strings_xml):
+def fill(sheet_xml, strings_xml, models=True):
     strings = shared_strings(strings_xml)
     name_col, target_col = column_letter(sheet_xml, strings, 'Наименование'), column_letter(sheet_xml, strings, COLUMN)
     names = {row: strings[int(index)] for letter, row, _a, index in CELL.findall(sheet_xml) if letter == name_col}
-    values = {row: category(name) for row, name in names.items() if row != '1'}
+    values = {row: category(name, models) for row, name in names.items() if row != '1'}
     new_strings = sorted({v for v in values.values() if v})
     first = len(strings)
     index_of = {value: first + i for i, value in enumerate(new_strings)}
@@ -94,11 +98,11 @@ def trial(sheet_xml, rows):
     return re.sub(r'<x:dimension ref="[^"]*"', f'<x:dimension ref="A1:AK{len(keep)}"', sheet_xml, count=1)
 
 
-def main(source, target):
+def main(source, target, models=True):
     with zipfile.ZipFile(source) as book:
         sheet_xml = book.read(SHEET).decode('utf-8')
         strings_xml = book.read(STRINGS).decode('utf-8')
-    sheet_xml, strings_xml, filled, empty, rows = fill(sheet_xml, strings_xml)
+    sheet_xml, strings_xml, filled, empty, rows = fill(sheet_xml, strings_xml, models)
     write(source, target, {SHEET: sheet_xml, STRINGS: strings_xml})
     trial_path = Path(target).with_name(Path(target).stem + '-test5.xlsx')
     write(source, trial_path, {SHEET: trial(sheet_xml, rows), STRINGS: strings_xml})
@@ -108,6 +112,9 @@ def main(source, target):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 3:
+    arguments = sys.argv[1:]
+    makes_only = '--makes-only' in arguments
+    arguments = [a for a in arguments if a != '--makes-only']
+    if len(arguments) != 2:
         raise SystemExit(__doc__)
-    main(sys.argv[1], sys.argv[2])
+    main(arguments[0], arguments[1], models=not makes_only)
