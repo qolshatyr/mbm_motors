@@ -1,5 +1,7 @@
 import { ApiError } from '../shared/api/http';
-import type { CatalogPage, Detail, Product } from '../shared/api/catalog';
+import { readFilter } from '../shared/api/catalog';
+import type { CatalogFilter, CatalogPage, Detail, FacetValue, Product } from '../shared/api/catalog';
+import type { DemoProduct } from './data';
 import type { CartSnapshot } from '../shared/api/cart';
 import type { CheckoutPreview, OrderReceipt } from '../shared/api/checkout';
 import type { AccountOrder, AccountOrderDetail } from '../shared/api/account';
@@ -51,8 +53,30 @@ function requireStore(id: string | null) {
   if (id && id !== demoStore.id) throw new ApiError(400, 'Склад не найден.');
 }
 function publicProduct(id: string): Product {
-  const { price, stock, ...item } = productById(id);
-  return { ...item, canAdd: price > 0 && stock > 0, price: price > 0 ? price : null, availableQuantity: stock > 0 ? stock : null };
+  const { price, stock, classification, ...item } = productById(id);
+  return { ...item, brand: classification.brands.join(', ') || null, canAdd: price > 0 && stock > 0, price: price > 0 ? price : null, availableQuantity: stock > 0 ? stock : null };
+}
+/** Same rules as the server: every filter except the facet's own one narrows its counts. */
+function matches(item: DemoProduct, filter: CatalogFilter) {
+  const { section, subsection, brands, fitment } = item.classification;
+  return (!filter.section || section === filter.section) && (!filter.subsection || subsection === filter.subsection)
+    && (!filter.make || fitment.some((car) => car.make === filter.make && (!filter.model || car.models.includes(filter.model))))
+    && (!filter.brands.length || brands.some((brand) => filter.brands.includes(brand)));
+}
+function count(items: DemoProduct[], names: (item: DemoProduct) => string[]): FacetValue[] {
+  const counts = new Map<string, number>();
+  items.forEach((item) => new Set(names(item)).forEach((name) => counts.set(name, (counts.get(name) ?? 0) + 1)));
+  return [...counts].map(([name, value]) => ({ name, count: value })).sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+}
+function facets(items: DemoProduct[], filter: CatalogFilter) {
+  const without = (changes: Partial<CatalogFilter>) => items.filter((item) => matches(item, { ...filter, ...changes }));
+  return {
+    sections: count(without({ section: null, subsection: null }), (item) => [item.classification.section ?? ''].filter(Boolean)),
+    subsections: filter.section ? count(without({ subsection: null }), (item) => [item.classification.subsection ?? ''].filter(Boolean)) : [],
+    makes: count(without({ make: null, model: null }), (item) => item.classification.fitment.map((car) => car.make)),
+    models: filter.make ? count(without({ model: null }), (item) => item.classification.fitment.filter((car) => car.make === filter.make).flatMap((car) => car.models)) : [],
+    brands: count(without({ brands: [] }), (item) => item.classification.brands),
+  };
 }
 function cart(message: string | null = null): CartSnapshot {
   const items = state.items.map((line) => {
@@ -156,7 +180,10 @@ export async function demoRequest<T>(url: string, options: RequestInit = {}): Pr
     if (query.length > 120 || !/^\d+$/.test(pageValue) || !Number.isSafeInteger(Number(pageValue)) || Number(pageValue) > 1000000) throw new ApiError(400, 'Проверьте параметры поиска.');
     const lower = query.toLocaleLowerCase('ru-RU');
     const compact = lower.replace(/[^\p{L}\p{N}]/gu, '');
-    const filtered = demoProducts.filter((item) => (!lower || `${item.name} ${item.sku} ${item.code}`.toLocaleLowerCase('ru-RU').includes(lower) || (compact && `${item.sku}`.toLocaleLowerCase('ru-RU').replace(/[^\p{L}\p{N}]/gu, '').includes(compact))) && (params.get('available') !== 'true' || item.stock > 0));
+    const filter = readFilter(params);
+    if ((filter.subsection && !filter.section) || (filter.model && !filter.make)) throw new ApiError(400, 'Проверьте параметры поиска.');
+    const searched = demoProducts.filter((item) => (!lower || `${item.name} ${item.sku} ${item.code}`.toLocaleLowerCase('ru-RU').includes(lower) || (compact && `${item.sku}`.toLocaleLowerCase('ru-RU').replace(/[^\p{L}\p{N}]/gu, '').includes(compact))) && (params.get('available') !== 'true' || item.stock > 0));
+    const filtered = searched.filter((item) => matches(item, filter));
     const sort = params.get('sort');
     if (sort && !['name', 'price', 'stock'].includes(sort)) throw new ApiError(400, 'Неизвестная сортировка.');
     const sorted = [...filtered].sort(sort === 'price' ? (a, b) => (a.price || 1e12) - (b.price || 1e12) : sort === 'stock' ? (a, b) => b.stock - a.stock : (a, b) => a.name.localeCompare(b.name, 'ru'));
@@ -164,12 +191,12 @@ export async function demoRequest<T>(url: string, options: RequestInit = {}): Pr
     const size = 20;
     const totalPages = Math.ceil(sorted.length / size);
     if (page > 0 && page >= totalPages) throw new ApiError(404, 'Такой страницы каталога нет.');
-    response = { products: sorted.slice(page * size, (page + 1) * size).map((item) => publicProduct(item.id)), query, storeId: demoStore.id, storeName: demoStore.name, stores: [{ ...demoStore }], page, totalPages, totalProducts: sorted.length, lastSyncText: 'демонстрационные данные', stale: false } satisfies CatalogPage;
+    response = { products: sorted.slice(page * size, (page + 1) * size).map((item) => publicProduct(item.id)), query, storeId: demoStore.id, storeName: demoStore.name, stores: [{ ...demoStore }], page, totalPages, totalProducts: sorted.length, lastSyncText: 'демонстрационные данные', stale: false, filter, facets: facets(searched, filter) } satisfies CatalogPage;
   } else if (method === 'GET' && /^\/api\/catalog\/products\/[0-9a-f]{24}$/.test(path)) {
     const product = productById(path.split('/').at(-1)!);
     requireStore(params.get('store'));
     const canAdd = product.stock > 0 && product.price > 0;
-    response = { product: publicProduct(product.id), offers: [{ storeId: demoStore.id, storeName: demoStore.name, priceText: product.priceText, stockText: product.stockText, canAdd, unavailabilityReason: canAdd ? null : product.price <= 0 ? 'Цена уточняется.' : 'Товара нет на складе.' }], selectedStore: demoStore.id, lastSyncText: 'демонстрационные данные', stale: false } satisfies Detail;
+    response = { product: publicProduct(product.id), offers: [{ storeId: demoStore.id, storeName: demoStore.name, priceText: product.priceText, stockText: product.stockText, canAdd, unavailabilityReason: canAdd ? null : product.price <= 0 ? 'Цена уточняется.' : 'Товара нет на складе.' }], selectedStore: demoStore.id, lastSyncText: 'демонстрационные данные', stale: false, classification: structuredClone(product.classification) } satisfies Detail;
   } else if (method === 'GET' && path === '/api/cart') response = cart();
   else if (method === 'POST' && /^\/api\/cart\/(add|update|remove|clear|confirm-price)$/.test(path)) response = mutateCart(path.split('/').at(-1)!, body(options));
   else if (method === 'GET' && path === '/api/checkout') response = checkout();

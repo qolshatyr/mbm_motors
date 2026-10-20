@@ -54,6 +54,7 @@ class CatalogSynchronizerTest {
         Map.of(),
         now,
         null,
+        List.of(),
         List.of());
   }
 

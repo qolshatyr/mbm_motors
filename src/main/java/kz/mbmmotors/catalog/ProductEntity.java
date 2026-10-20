@@ -52,6 +52,11 @@ class ProductEntity {
   @Column(name = "url")
   private List<String> images = new ArrayList<>();
 
+  @ElementCollection
+  @CollectionTable(name = "product_tags", joinColumns = @JoinColumn(name = "product_id"))
+  @OrderColumn(name = "position")
+  private List<TagRow> tags = new ArrayList<>();
+
   protected ProductEntity() {}
 
   ProductEntity(String id) {
@@ -88,6 +93,9 @@ class ProductEntity {
     }
     images.clear();
     images.addAll(product.imageUrls());
+    tags.clear();
+    ProductTags.classify(product.tags())
+        .forEach(tag -> tags.add(new TagRow(tag.name(), tag.kind().name(), tag.parent())));
   }
 }
 
@@ -104,5 +112,25 @@ class Offer {
   Offer(BigDecimal quantity, BigDecimal price) {
     this.quantity = quantity;
     this.price = price;
+  }
+}
+
+@Embeddable
+class TagRow {
+  @Column(name = "name", nullable = false)
+  private String name;
+
+  @Column(name = "kind", nullable = false)
+  private String kind;
+
+  @Column(name = "parent")
+  private String parent;
+
+  protected TagRow() {}
+
+  TagRow(String name, String kind, String parent) {
+    this.name = name;
+    this.kind = kind;
+    this.parent = parent;
   }
 }

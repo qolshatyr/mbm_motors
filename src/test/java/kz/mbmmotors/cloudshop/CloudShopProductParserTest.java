@@ -79,4 +79,17 @@ class CloudShopProductParserTest {
     assertThat(CloudShopProductParser.unit(" шт. ")).isEqualTo("шт.");
     assertThat(CloudShopProductParser.unit("л")).isEqualTo("л");
   }
+
+  @Test
+  void keepsTagsInOrderAndRejectsNonTextTags() {
+    assertThat(parser.parse("[" + product + "]").getFirst().tags()).isEmpty();
+    String tagged =
+        product.replace(
+            "\"img\":[]", "\"img\":[],\"tags\":[\"Двигатель\",\" Hyundai \",\"\",\"Hyundai\"]");
+    assertThat(parser.parse("[" + tagged + "]").getFirst().tags())
+        .containsExactly("Двигатель", "Hyundai");
+    String broken = product.replace("\"img\":[]", "\"img\":[],\"tags\":[1]");
+    assertThatThrownBy(() -> parser.parse("[" + broken + "]"))
+        .isInstanceOf(CloudShopException.class);
+  }
 }

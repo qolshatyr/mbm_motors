@@ -43,7 +43,7 @@ class OrderIntegrationTest {
   @BeforeEach
   void setup() {
     jdbc.execute(
-        "delete from local_order_items; delete from local_orders; delete from partners; delete from product_images; delete from product_offers; delete from products; delete from sync_runs");
+        "delete from local_order_items; delete from local_orders; delete from partners; delete from product_tags; delete from product_images; delete from product_offers; delete from products; delete from sync_runs");
     jdbc.update(
         "insert into partners(id,login,password_hash,company,contact_name,phone,created_at) values (?,'turbo',?,'Synthetic Partner','Synthetic Buyer','+77011234567',now())",
         PARTNER,
