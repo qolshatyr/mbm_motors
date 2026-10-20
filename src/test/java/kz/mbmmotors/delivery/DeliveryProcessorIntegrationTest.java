@@ -57,7 +57,7 @@ class DeliveryProcessorIntegrationTest {
 
   @BeforeEach
   void fixture() {
-    jdbc.execute("delete from local_order_items; delete from local_orders");
+    jdbc.execute("delete from local_order_items; delete from local_orders; delete from partners");
     id = UUID.randomUUID();
     jdbc.update(
         "insert into local_orders(id,idempotency_key,owner_id,request_hash,revision,status,store_id,store_name,customer_name,phone,comment,consent_at,created_at,total,total_text,item_count) values (?,?,?,repeat('a',64),repeat('b',64),'RECEIVED','aaaaaaaaaaaaaaaaaaaaaaaa','Synthetic store','Synthetic Buyer','+77000000000','Synthetic',now(),now(),5000.02,'5000.02',2)",
@@ -124,6 +124,56 @@ class DeliveryProcessorIntegrationTest {
     assertEquals("SENT", state());
     assertEquals(1, gateway.customers.get());
     assertEquals(1, gateway.sales.get());
+  }
+
+  void partnerOrder(String customerId, boolean enabled) {
+    UUID partner = UUID.randomUUID();
+    jdbc.update(
+        "insert into partners(id,login,password_hash,company,contact_name,phone,cloudshop_customer_id,enabled,created_at) values (?,?,?,'Synthetic Partner','Synthetic Buyer','+77000000000',?,?,now())",
+        partner,
+        "p" + partner.toString().substring(0, 8),
+        "$2a$10$" + "a".repeat(53),
+        customerId,
+        enabled);
+    jdbc.update("update local_orders set partner_id=? where id=?", partner, id);
+  }
+
+  @Test
+  void partnerOrdersUseTheLinkedCardAndSkipCustomerCreation() {
+    assertEquals(java.util.List.of(), processor.deliverable(10));
+    partnerOrder(CUSTOMER, true);
+    assertEquals(java.util.List.of(id), processor.deliverable(10));
+    processor.deliverPartnerOrder(id);
+    processor.deliverPartnerOrder(id);
+    assertEquals("SENT", state());
+    assertEquals(0, gateway.customers.get());
+    assertEquals(1, gateway.sales.get());
+    assertEquals(CUSTOMER, gateway.command.customerId());
+    assertEquals(java.util.List.of(), processor.deliverable(10));
+  }
+
+  @Test
+  void partnersWithoutCardOrDisabledAreNotDelivered() {
+    partnerOrder(null, true);
+    assertEquals(java.util.List.of(), processor.deliverable(10));
+    processor.deliverPartnerOrder(id);
+    assertEquals("WAITING_CONFIGURATION", state());
+    jdbc.update("update partners set cloudshop_customer_id=?, enabled=false", CUSTOMER);
+    assertEquals(java.util.List.of(), processor.deliverable(10));
+    processor.deliverPartnerOrder(id);
+    assertEquals("WAITING_CONFIGURATION", state());
+    assertEquals(0, gateway.sales.get());
+  }
+
+  @Test
+  void lostSaleAnswerForPartnerOrderBecomesUnknownOnce() {
+    partnerOrder(CUSTOMER, true);
+    gateway.saleFailure = true;
+    processor.deliverPartnerOrder(id);
+    processor.deliverPartnerOrder(id);
+    assertEquals("UNKNOWN", state());
+    assertEquals(1, gateway.sales.get());
+    assertEquals(java.util.List.of(), processor.deliverable(10));
   }
 
   @Test

@@ -42,6 +42,15 @@ public class PartnerRepository {
     return find(partner.login()).orElseThrow();
   }
 
+  /** Links a CloudShop card once; an existing link is never overwritten silently. */
+  public boolean linkCustomer(String login, String customerId) {
+    return jdbc.update(
+            "update partners set cloudshop_customer_id=? where login=? and cloudshop_customer_id is null",
+            customerId,
+            login)
+        == 1;
+  }
+
   private static Partner map(ResultSet rs, int row) throws SQLException {
     return new Partner(
         rs.getObject("id", UUID.class),

@@ -149,7 +149,7 @@ public class OrderService {
                     rs.getInt("item_count"),
                     rs.getString("total_text"),
                     rs.getTimestamp("created_at").toInstant(),
-                    "Заявка сохранена на сайте. Передача магазину пока не подключена; наличие не зарезервировано."),
+                    "Заявка получена. Менеджер склада подтвердит наличие и время получения; товар не зарезервирован."),
             owner,
             key);
     if (values.isEmpty()) throw new OrderProblem(404, "Заявка для этой сессии не найдена.");

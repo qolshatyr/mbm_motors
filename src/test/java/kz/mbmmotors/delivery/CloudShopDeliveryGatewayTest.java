@@ -145,7 +145,15 @@ class CloudShopDeliveryGatewayTest {
     assertThat(body.get("discount_percent").intValue()).isZero();
     assertThat(body.has("payment_details")).isFalse();
     assertThat(body.get("comment").stringValue())
-        .isEqualTo("MBM-" + snapshot().orderId() + "\nПозвонить");
+        .isEqualTo(
+            "Заявка MBM-"
+                + snapshot().number()
+                + " с сайта партнёров\nКонтакт: "
+                + snapshot().customerName()
+                + ", "
+                + snapshot().phone()
+                + "\nПозвонить\nКлюч: "
+                + snapshot().orderId());
     var item = body.get("products").get(0);
     assertThat(item.get("product_id").stringValue())
         .isEqualTo(snapshot().items().getFirst().productId());
@@ -154,9 +162,9 @@ class CloudShopDeliveryGatewayTest {
     assertThat(item.get("price").isNumber()).isTrue();
     assertThat(item.get("price").decimalValue()).isEqualByComparingTo("1234.56");
     assertThat(item.get("discount_percent").intValue()).isZero();
-    assertThat(received)
-        .contains("1234.56")
-        .doesNotContain(snapshot().phone(), snapshot().customerName());
+    // The order contact travels only inside the comment, not as separate customer fields.
+    assertThat(received).contains("1234.56");
+    assertThat(body.has("phone")).isFalse();
     assertThat(auth).isEqualTo(TOKEN);
     assertThat(calls.get()).isEqualTo(1);
   }
