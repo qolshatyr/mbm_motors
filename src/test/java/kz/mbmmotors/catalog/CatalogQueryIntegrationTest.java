@@ -54,8 +54,9 @@ class CatalogQueryIntegrationTest {
           CatalogViewService.DEFAULT_STORE,
           i == 0 ? -1 : 4,
           3000);
+      // Another place's stock and price must never reach partners.
       jdbc.update(
-          "insert into product_offers(product_id,store_id,quantity,price) values (?,'6967a39f62918c7e760f3747',62,0)",
+          "insert into product_offers(product_id,store_id,quantity,price) values (?,'64feaaa51c9799143b532fcf',62,0)",
           id);
     }
   }
@@ -115,17 +116,18 @@ class CatalogQueryIntegrationTest {
   }
 
   @Test
-  void storePricesStockAvailabilityAndDetailAreLocal() {
+  void onlyWarehousePricesAndStockAreVisible() {
     assertThat(service.list("", null, true, 0).totalProducts()).isEqualTo(29);
-    var warehouse = service.list("", "6967a39f62918c7e760f3747", false, 0);
-    assertThat(warehouse.products())
-        .allSatisfy(
-            p -> {
-              assertThat(p.priceText()).isEqualTo("Цена уточняется");
-              assertThat(p.stockText()).contains("62");
-            });
-    assertThat(service.detail("000000000000000000000001", null).offers()).hasSize(2);
-    assertThatThrownBy(() -> service.list("", "untrusted-store", false, 0))
-        .isInstanceOf(CatalogViewService.BadCatalogQuery.class);
+    assertThat(service.stores())
+        .extracting(CatalogViewService.StoreView::id)
+        .containsExactly(CatalogViewService.DEFAULT_STORE);
+    assertThat(service.list("", null, false, 0).products())
+        .allSatisfy(p -> assertThat(p.stockText()).doesNotContain("62"));
+    var offers = service.detail("000000000000000000000002", null).offers();
+    assertThat(offers).hasSize(1);
+    assertThat(offers.getFirst().stockText()).contains("4").doesNotContain("62");
+    for (String store : new String[] {"64feaaa51c9799143b532fcf", "untrusted-store"})
+      assertThatThrownBy(() -> service.list("", store, false, 0))
+          .isInstanceOf(CatalogViewService.BadCatalogQuery.class);
   }
 }

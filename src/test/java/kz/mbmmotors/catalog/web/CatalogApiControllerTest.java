@@ -13,12 +13,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import tools.jackson.databind.json.JsonMapper;
 
 @WebMvcTest(CatalogApiController.class)
 @Import(WebSecurityConfiguration.class)
+// The portal is partner-only; access rules themselves are covered by PartnerSecurityTest.
+@WithMockUser(roles = "PARTNER")
 class CatalogApiControllerTest {
   @Autowired MockMvcTester mvc;
   @Autowired JsonMapper json;

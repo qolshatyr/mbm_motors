@@ -8,6 +8,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import kz.mbmmotors.catalog.CatalogViewService;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +27,8 @@ public class CartService {
   public void add(Cart cart, String productId, String storeId, int quantity) {
     synchronized (cart) {
       validateQuantity(quantity);
+      if (!CatalogViewService.DEFAULT_STORE.equals(storeId))
+        throw new CartProblem("Товары можно заказать только со склада MBM.");
       if (!cart.isEmpty() && !cart.storeId.equals(storeId))
         throw new CartProblem("В корзине товары другого магазина. Сначала очистите корзину.");
       if (!cart.entries.containsKey(productId) && cart.entries.size() >= 50)

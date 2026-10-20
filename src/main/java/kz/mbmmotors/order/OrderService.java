@@ -32,18 +32,20 @@ public class OrderService {
     this.clock = clock;
   }
 
+  /** {@code contact} prefills the form from the partner account; the partner may edit it. */
   @Transactional(readOnly = true)
-  public Preview preview(Cart cart, CheckoutSession state) {
+  public Preview preview(Cart cart, CheckoutSession state, Contact contact) {
     var view = carts.view(cart);
     String revision = revision(view);
     state.issue(revision);
     var issues = issues(view);
-    return new Preview(toView(view), revision, state.key().toString(), issues.isEmpty(), issues);
+    return new Preview(
+        toView(view), revision, state.key().toString(), issues.isEmpty(), issues, contact);
   }
 
   /** Caller holds Cart monitor until this proxy returns, including transaction commit. */
   @Transactional(isolation = Isolation.READ_COMMITTED, timeout = 15)
-  public Result submit(Cart cart, CheckoutSession state, SubmitOrder command) {
+  public Result submit(Cart cart, CheckoutSession state, SubmitOrder command, UUID partnerId) {
     // Transaction-scoped lock also protects against duplicate requests on separate connections.
     jdbc.queryForList(
         "select pg_advisory_xact_lock(?)",
@@ -91,8 +93,8 @@ public class OrderService {
     jdbc.update(
         """
       insert into local_orders(id,idempotency_key,owner_id,request_hash,revision,status,store_id,store_name,
-      customer_name,phone,comment,consent_at,created_at,total,total_text,item_count)
-      values (?,?,?,?,?,'RECEIVED',?,?,?,?,?,?,?,?,?,?)
+      customer_name,phone,comment,consent_at,created_at,total,total_text,item_count,partner_id)
+      values (?,?,?,?,?,'RECEIVED',?,?,?,?,?,?,?,?,?,?,?)
       """,
         orderId,
         command.key(),
@@ -108,7 +110,8 @@ public class OrderService {
         java.sql.Timestamp.from(now),
         total,
         view.totalText(),
-        count);
+        count,
+        partnerId);
     int position = 0;
     for (var item : view.items()) {
       jdbc.update(
@@ -231,7 +234,10 @@ public class OrderService {
       String revision,
       String idempotencyKey,
       boolean canSubmit,
-      List<String> issues) {}
+      List<String> issues,
+      Contact contact) {}
+
+  public record Contact(String customerName, String phone) {}
 
   public record Receipt(
       String number,

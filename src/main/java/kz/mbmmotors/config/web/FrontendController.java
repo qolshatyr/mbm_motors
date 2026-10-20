@@ -8,11 +8,16 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 @ConditionalOnProperty(name = "frontend.enabled", havingValue = "true")
 public class FrontendController {
+  // Keep in sync with WebSecurityConfiguration.SPA_ROUTES; "/" is served by CatalogController.
   @GetMapping({
+    "/login",
+    "/search",
     "/products/{id}",
+    "/quick-order",
     "/basket",
     "/checkout",
     "/checkout/success",
+    "/account",
     "/admin/requests",
     "/admin/requests/{number}"
   })

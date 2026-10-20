@@ -14,7 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class CatalogViewService {
-  public static final String DEFAULT_STORE = "64feaaa51c9799143b532fcf";
+  /** СКЛАД: the partner portal shows stock and wholesale prices of this place only. */
+  public static final String DEFAULT_STORE = "6967a39f62918c7e760f3747";
+
   private static final int PAGE_SIZE = 24;
   private static final String SELECT =
       """
@@ -103,8 +105,7 @@ public class CatalogViewService {
             """
             select s.id,s.name,o.price,o.quantity,p.unit from product_offers o
             join stores s on s.id=o.store_id join products p on p.id=o.product_id
-            where o.product_id=? order by case s.id when '64feaaa51c9799143b532fcf' then 0
-              when '698c479d4bb8342bd30e3c33' then 1 when '64feaa7d401f7a28d35cda23' then 2 else 3 end
+            where o.product_id=? and o.store_id=?
             """,
             (rs, row) ->
                 new OfferView(
@@ -124,7 +125,9 @@ public class CatalogViewService {
                         rs.getString("unit"),
                         1,
                         freshness.stale())),
-            id);
+            // Partners see only the warehouse; other places' stock and prices stay internal.
+            id,
+            selected.id());
     return new Detail(
         products.getFirst(), offers, selected.id(), freshness.text(), freshness.stale());
   }
@@ -132,11 +135,9 @@ public class CatalogViewService {
   @Transactional(readOnly = true)
   public List<StoreView> stores() {
     return jdbc.query(
-        """
-            select id,name from stores order by case id when '64feaaa51c9799143b532fcf' then 0
-              when '698c479d4bb8342bd30e3c33' then 1 when '64feaa7d401f7a28d35cda23' then 2 else 3 end
-            """,
-        (rs, row) -> new StoreView(rs.getString("id"), rs.getString("name")));
+        "select id,name from stores where id=?",
+        (rs, row) -> new StoreView(rs.getString("id"), rs.getString("name")),
+        DEFAULT_STORE);
   }
 
   private StoreView requireStore(List<StoreView> stores, String id) {

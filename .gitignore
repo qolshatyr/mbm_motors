@@ -31,3 +31,6 @@ prototype/
 .claude/settings.local.json
 .claude/worktrees/
 .claude/*.local.md
+
+# Playwright MCP browser artifacts
+.playwright-mcp/

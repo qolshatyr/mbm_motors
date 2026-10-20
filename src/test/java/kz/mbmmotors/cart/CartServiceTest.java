@@ -20,7 +20,7 @@ import org.springframework.jdbc.core.RowMapper;
 
 class CartServiceTest {
   private static final String PRODUCT = "6a6e12abb0b00726916dde8b";
-  private static final String STORE = "64feaaa51c9799143b532fcf";
+  private static final String STORE = "6967a39f62918c7e760f3747";
   private static final Instant NOW = Instant.parse("2026-10-05T10:00:00Z");
   private JdbcTemplate jdbc;
   private CartService service;
@@ -110,7 +110,7 @@ class CartServiceTest {
     assertThatThrownBy(() -> service.update(cart, PRODUCT, 5))
         .isInstanceOf(CartService.CartProblem.class);
     assertThatThrownBy(() -> service.add(cart, PRODUCT, "698c479d4bb8342bd30e3c33", 1))
-        .hasMessageContaining("другого магазина");
+        .hasMessageContaining("только со склада");
     assertThat(cart.itemCount()).isEqualTo(2);
     assertThat(cart.storeId()).isEqualTo(STORE);
   }
