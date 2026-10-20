@@ -1,0 +1,616 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "MBM Motors Session Cart API",
+    "version": "1.0.0",
+    "description": "Сессионная корзина. Существующие правила CartService и Thymeleaf используют ту же сессию. Оформление и CloudShop POST не входят в контракт."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Cart",
+      "description": "Состояние корзины и CSRF"
+    }
+  ],
+  "paths": {
+    "/api/csrf": {
+      "get": {
+        "operationId": "csrfToken",
+        "tags": [
+          "Cart"
+        ],
+        "summary": "CSRF-токен текущей серверной сессии, Cache-Control no-store",
+        "responses": {
+          "200": {
+            "description": "Маскированный токен и имя заголовка; не логировать и не сохранять постоянно",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "headerName",
+                    "token"
+                  ],
+                  "properties": {
+                    "headerName": {
+                      "type": "string"
+                    },
+                    "token": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cart": {
+      "get": {
+        "operationId": "getCart",
+        "tags": [
+          "Cart"
+        ],
+        "summary": "Корзина текущей сессии, Cache-Control no-store",
+        "responses": {
+          "200": {
+            "description": "Актуальное серверное состояние корзины",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CartSnapshot"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cart/add": {
+      "post": {
+        "operationId": "cartAdd",
+        "tags": [
+          "Cart"
+        ],
+        "summary": "Операция корзины: add",
+        "description": "Только собственная серверная сессия. Требует заголовок из GET /api/csrf и cookie той же сессии; продажи и резервы не создаёт.",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Маскированный token из GET /api/csrf."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Актуальное серверное состояние корзины",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CartSnapshot"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Отсутствуют параметры или числовой формат неверен",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Бизнес-ограничение корзины; POST не повторять автоматически",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF или доступ отклонён; обновить сессию перед следующей явной попыткой",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "productId",
+                  "storeId"
+                ],
+                "properties": {
+                  "productId": {
+                    "type": "string"
+                  },
+                  "storeId": {
+                    "type": "string"
+                  },
+                  "quantity": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 999,
+                    "default": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cart/update": {
+      "post": {
+        "operationId": "cartUpdate",
+        "tags": [
+          "Cart"
+        ],
+        "summary": "Операция корзины: update",
+        "description": "Только собственная серверная сессия. Требует заголовок из GET /api/csrf и cookie той же сессии; продажи и резервы не создаёт.",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Маскированный token из GET /api/csrf."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Актуальное серверное состояние корзины",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CartSnapshot"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Отсутствуют параметры или числовой формат неверен",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Бизнес-ограничение корзины; POST не повторять автоматически",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF или доступ отклонён; обновить сессию перед следующей явной попыткой",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "productId",
+                  "quantity"
+                ],
+                "properties": {
+                  "productId": {
+                    "type": "string"
+                  },
+                  "quantity": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 999
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cart/remove": {
+      "post": {
+        "operationId": "cartRemove",
+        "tags": [
+          "Cart"
+        ],
+        "summary": "Операция корзины: remove",
+        "description": "Только собственная серверная сессия. Требует заголовок из GET /api/csrf и cookie той же сессии; продажи и резервы не создаёт.",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Маскированный token из GET /api/csrf."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Актуальное серверное состояние корзины",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CartSnapshot"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Отсутствуют параметры или числовой формат неверен",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Бизнес-ограничение корзины; POST не повторять автоматически",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF или доступ отклонён; обновить сессию перед следующей явной попыткой",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "productId"
+                ],
+                "properties": {
+                  "productId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cart/confirm-price": {
+      "post": {
+        "operationId": "cartConfirmPrice",
+        "tags": [
+          "Cart"
+        ],
+        "summary": "Операция корзины: confirm-price",
+        "description": "Только собственная серверная сессия. Требует заголовок из GET /api/csrf и cookie той же сессии; продажи и резервы не создаёт.",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Маскированный token из GET /api/csrf."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Актуальное серверное состояние корзины",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CartSnapshot"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Отсутствуют параметры или числовой формат неверен",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Бизнес-ограничение корзины; POST не повторять автоматически",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF или доступ отклонён; обновить сессию перед следующей явной попыткой",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "productId",
+                  "expectedPrice"
+                ],
+                "properties": {
+                  "productId": {
+                    "type": "string"
+                  },
+                  "expectedPrice": {
+                    "type": "string",
+                    "description": "Передать currentPrice точно как получено с сервера."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cart/clear": {
+      "post": {
+        "operationId": "cartClear",
+        "tags": [
+          "Cart"
+        ],
+        "summary": "Операция корзины: clear",
+        "description": "Только собственная серверная сессия. Требует заголовок из GET /api/csrf и cookie той же сессии; продажи и резервы не создаёт.",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-CSRF-TOKEN",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Маскированный token из GET /api/csrf."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Актуальное серверное состояние корзины",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CartSnapshot"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Отсутствуют параметры или числовой формат неверен",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Бизнес-ограничение корзины; POST не повторять автоматически",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "CSRF или доступ отклонён; обновить сессию перед следующей явной попыткой",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CartSnapshot": {
+        "type": "object",
+        "required": [
+          "cart",
+          "itemCount",
+          "message"
+        ],
+        "properties": {
+          "cart": {
+            "$ref": "#/components/schemas/Cart"
+          },
+          "itemCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Сумма количеств, не число строк."
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "Cart": {
+        "type": "object",
+        "required": [
+          "storeId",
+          "storeName",
+          "items",
+          "totalText",
+          "hasIssues"
+        ],
+        "properties": {
+          "storeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "storeName": {
+            "type": "string",
+            "nullable": true
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CartItem"
+            }
+          },
+          "totalText": {
+            "type": "string"
+          },
+          "hasIssues": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CartItem": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "quantity",
+          "priceText",
+          "totalText",
+          "priceChanged",
+          "currentPrice"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sku": {
+            "type": "string",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "unit": {
+            "type": "string",
+            "nullable": true
+          },
+          "priceText": {
+            "type": "string"
+          },
+          "totalText": {
+            "type": "string"
+          },
+          "problem": {
+            "type": "string",
+            "nullable": true
+          },
+          "priceChanged": {
+            "type": "boolean"
+          },
+          "currentPrice": {
+            "type": "string",
+            "nullable": true,
+            "description": "Точная десятичная строка для подтверждения цены; не преобразовывать в JS number."
+          }
+        }
+      },
+      "Problem": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status",
+          "detail"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "instance": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+$kind: collection
+description: Сессионная корзина. Существующие правила CartService и Thymeleaf используют
+  ту же сессию. Оформление и CloudShop POST не входят в контракт.
+variables:
+- key: baseUrl
+  value: http://localhost:8080
+- key: csrfToken
+  value: ''
+- key: sessionCookie
+  value: ''

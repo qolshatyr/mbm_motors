@@ -1,6 +1,7 @@
 localResources:
   collections:
     - ../postman/collections/MBM Catalog API
+    - ../postman/collections/MBM Cart API
     - ../postman/assets/CloudShop_ReadOnly.postman_collection.json
     - ../postman/assets/CloudShop_Sync_ReadOnly.postman_collection.json
   environments:

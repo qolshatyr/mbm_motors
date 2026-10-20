@@ -102,3 +102,60 @@ input[type=search] { font-size: 17px; min-width: 0; }
 @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
 
 h1, h2, h3 { text-wrap: pretty; scroll-margin-top: 24px; }
+
+.back-nav { margin-bottom: 26px; font-size: 14px; }
+.muted, .flow-note { color: var(--muted); }
+.flow-note { font-size: 14px; max-width: 75ch; margin-top: 24px; }
+.detail-product { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 48px; align-items: center; }
+.detail-product h1, .cart-item-copy h2 { overflow-wrap: anywhere; }
+.detail-image { background: var(--color-surface); border: 1px solid var(--color-line); border-radius: var(--radius); padding: 20px; }
+.detail-image img { width: 100%; height: 280px; object-fit: contain; }
+.product-specs { margin-block: 28px; }
+.product-specs > div { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 16px; margin-top: 12px; }
+.product-specs dt { color: var(--muted); font-size: 14px; }
+.product-specs dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.offer-list { margin-top: 20px; border-top: 1px solid var(--color-line); }
+.offer-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(110px, auto) 180px; gap: 24px; align-items: center; padding: 24px 18px; border-bottom: 1px solid var(--color-line); background: var(--color-surface); }
+.offer-row h3 { font-size: 18px; font-weight: 600; }
+.offer-row p { font-size: 14px; margin-top: 4px; }
+.offer-row > strong { font-size: 20px; font-variant-numeric: tabular-nums; }
+.offer-row.selected-offer { border-left: 3px solid var(--color-primary); padding-left: 15px; }
+.offer-row > .muted { font-size: 13px; }
+.basket-layout { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 28px; align-items: start; }
+.cart-lines { display: grid; gap: 14px; }
+.cart-line { background: var(--color-surface); border: 1px solid var(--color-line); border-radius: var(--radius); padding: 24px; display: grid; gap: 24px; }
+.cart-item-copy h2 { font-size: 18px; }
+.cart-item-copy h2 a { color: var(--color-ink); text-decoration: none; }
+.cart-item-copy h2 a:hover { text-decoration: underline; }
+.cart-item-copy .sku { margin-top: 8px; }
+.unit-price { margin-top: 16px; font-size: 14px; }
+.item-problem { color: #824006; font-size: 14px; margin-block: 12px; }
+.cart-item-actions { display: flex; flex-wrap: wrap; gap: 16px; align-items: end; }
+.quantity-form label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.quantity-controls { display: flex; gap: 8px; }
+.quantity-controls input { width: 80px; min-height: 44px; padding: 8px 10px; color: var(--color-ink); border: 1px solid #aebfcd; border-radius: var(--radius); background: var(--color-surface); }
+.cart-line-total { margin-left: auto; align-self: end; min-height: 44px; display: flex; align-items: center; font-size: 20px; font-variant-numeric: tabular-nums; }
+.cart-summary { background: var(--color-surface); border: 1px solid var(--color-line); border-radius: var(--radius); padding: 24px; }
+.cart-summary > span { font-size: 14px; color: var(--muted); }
+.cart-summary > strong { display: block; font-size: 28px; margin-block: 10px 24px; font-variant-numeric: tabular-nums; }
+.cart-summary > button { width: 100%; }
+.confirmation-dialog { overscroll-behavior: contain; width: min(500px, calc(100% - 32px)); border: 1px solid var(--color-line); border-radius: var(--radius); padding: 28px; color: var(--color-ink); background: var(--color-surface); }
+.confirmation-dialog::backdrop { background: rgb(35 54 72 / 45%); }
+.confirmation-dialog h2 { overflow-wrap: anywhere; }
+.confirmation-dialog p { color: var(--muted); margin-block: 16px 24px; }
+.dialog-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: end; }
+@media (max-width: 760px) {
+  .detail-product { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .detail-image { max-width: 320px; width: 100%; }
+  .detail-image img { height: 220px; }
+  .product-specs > div { grid-template-columns: 125px minmax(0, 1fr); gap: 12px; }
+  .offer-row { grid-template-columns: minmax(0, 1fr) auto; gap: 16px; padding-inline: 14px; }
+  .offer-row.selected-offer { padding-left: 11px; }
+  .offer-row > button, .offer-row > .muted { grid-column: 1 / -1; }
+  .offer-row > strong { font-size: 18px; }
+  .basket-layout { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .cart-line { padding: 18px; }
+  .cart-item-actions { gap: 12px; }
+  .cart-item-actions > .text-button { margin-left: auto; }
+  .cart-line-total { margin-left: 0; }
+}

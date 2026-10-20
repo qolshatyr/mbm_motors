@@ -1,0 +1,33 @@
+$kind: http-request
+name: 04 — Дробное количество
+description: Только собственная серверная сессия. Требует заголовок из GET /api/csrf
+  и cookie той же сессии; продажи и резервы не создаёт.
+url: '{{baseUrl}}/api/cart/update'
+method: POST
+headers:
+- key: Accept
+  value: application/json
+- key: Content-Type
+  value: application/x-www-form-urlencoded
+- key: X-CSRF-TOKEN
+  value: '{{csrfToken}}'
+- key: Cookie
+  value: '{{sessionCookie}}'
+  description: Cookie собственной сессии из шага 01; явный заголовок для локального
+    CLI.
+body:
+  type: urlencoded
+  content:
+  - key: productId
+    value: '000000000000000000000000'
+  - key: quantity
+    value: '1.5'
+settings: {}
+order: 4000
+scripts:
+- type: afterResponse
+  language: text/javascript
+  code: |
+    pm.test('HTTP 400', () => pm.response.to.have.status(400));
+    const body = pm.response.json();
+    pm.test('ProblemDetail', () => { pm.expect(body.status).to.equal(400); pm.expect(body.detail).to.be.a('string').and.not.empty; });

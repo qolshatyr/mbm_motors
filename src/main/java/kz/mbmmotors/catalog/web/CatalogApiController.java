@@ -31,6 +31,12 @@ public class CatalogApiController {
     return catalog.list(q, store, available, page);
   }
 
+  @GetMapping("/products/{id}")
+  CatalogViewService.Detail product(
+      @PathVariable String id, @RequestParam(required = false) String store) {
+    return catalog.detail(id, store);
+  }
+
   @ExceptionHandler({
     CatalogViewService.BadCatalogQuery.class,
     MethodArgumentTypeMismatchException.class
@@ -48,7 +54,8 @@ public class CatalogApiController {
   ProblemDetail notFound() {
     var problem =
         ProblemDetail.forStatusAndDetail(
-            HttpStatus.NOT_FOUND, "Страница не найдена. Вернитесь в каталог и повторите поиск.");
+            HttpStatus.NOT_FOUND,
+            "Товар или страница не найдены. Вернитесь в каталог и повторите поиск.");
     problem.setType(URI.create("urn:mbm:catalog:page-not-found"));
     return problem;
   }

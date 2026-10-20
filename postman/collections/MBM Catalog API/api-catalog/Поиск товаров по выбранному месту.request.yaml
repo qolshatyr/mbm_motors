@@ -30,6 +30,7 @@ scripts:
     code: |
       pm.test("HTTP 200", () => pm.response.to.have.status(200));
       const body = pm.response.json();
+      if (body.products.length) pm.collectionVariables.set('productId', body.products[0].id);
       pm.test("Каталог и пагинация", () => {
         pm.expect(body.products).to.be.an('array');
         pm.expect(body.products.length).to.be.at.most(24);
