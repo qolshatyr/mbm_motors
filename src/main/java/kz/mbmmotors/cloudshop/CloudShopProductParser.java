@@ -36,7 +36,7 @@ final class CloudShopProductParser {
                 name,
                 text(node.get("sku")),
                 text(node.get("code")),
-                text(node.get("unit")),
+                unit(text(node.get("unit"))),
                 decimal(node.get("price")),
                 numbers(node.get("stock"), false),
                 numbers(node.get("store_prices"), true),
@@ -48,6 +48,11 @@ final class CloudShopProductParser {
     } catch (Exception exception) {
       throw new CloudShopException("CloudShop returned an unsupported product response");
     }
+  }
+
+  /** Owner's rule (20.10.2026): every product is sold by the piece; a blank unit means «шт». */
+  static String unit(String value) {
+    return value == null || value.isBlank() ? "шт" : value.strip();
   }
 
   private static String text(JsonNode node) {
