@@ -7,8 +7,14 @@ import { Checkout } from '../features/checkout/Checkout';
 import { Receipt } from '../features/checkout/Receipt';
 import { useCart } from '../features/cart/cartQueries';
 import { EmptyState } from '../shared/ui/Feedback';
+import { Staff } from '../features/staff/Staff';
 
 export function App() {
+  const location = useLocation();
+  return location.pathname.startsWith('/admin/') ? <Staff /> : <CustomerApp />;
+}
+
+function CustomerApp() {
   const location = useLocation();
   const previousPath = useRef(location.pathname);
   const cart = useCart();

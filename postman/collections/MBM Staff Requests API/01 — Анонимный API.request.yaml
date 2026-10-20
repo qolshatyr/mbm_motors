@@ -1,0 +1,15 @@
+$kind: http-request
+name: '01 — Анонимный API'
+order: 1000
+method: GET
+url: '{{baseUrl}}/admin/api/requests'
+settings:
+  followRedirects: false
+headers:
+  - key: Accept
+    value: application/json
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('API требует вход',()=>pm.response.to.have.status(401)); pm.test('JSON no-store',()=>{pm.expect(pm.response.headers.get('Content-Type')).to.include('application/problem+json');pm.expect(pm.response.headers.get('Cache-Control')).to.include('no-store');});

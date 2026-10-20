@@ -6,11 +6,45 @@ import os
 import re
 from pathlib import Path
 import subprocess
+import tempfile
 import zipfile
+
+
+def configure_admin(env, jar, root):
+    """Hash privately entered credentials using the packaged Spring Security library."""
+    username = env.get('MBM_ADMIN_USERNAME') or input('Логин сотрудника: ').strip()
+    if not re.fullmatch(r'[A-Za-z0-9._-]{1,64}', username):
+        raise SystemExit('Укажите логин из латинских букв, цифр, точки, дефиса или подчёркивания, не более 64 символов.')
+    password_hash = env.get('MBM_ADMIN_PASSWORD_HASH')
+    if not password_hash:
+        password = getpass.getpass('Пароль сотрудника (минимум 12 символов, ввод скрыт): ')
+        if len(password) < 12 or len(password.encode('utf-8')) > 72:
+            raise SystemExit('Пароль должен содержать минимум 12 символов и не более 72 байт UTF-8.')
+        if password != getpass.getpass('Повторите пароль сотрудника: '):
+            raise SystemExit('Пароли не совпадают.')
+        with tempfile.TemporaryDirectory(prefix='mbm-admin-hash-') as directory:
+            with zipfile.ZipFile(jar) as archive:
+                crypto = next((name for name in archive.namelist()
+                               if name.startswith('BOOT-INF/lib/spring-security-crypto-') and name.endswith('.jar')), None)
+                if not crypto:
+                    raise SystemExit('В JAR нет Spring Security. Пересоберите сайт.')
+                library = Path(directory) / 'security-crypto.jar'
+                library.write_bytes(archive.read(crypto))
+            result = subprocess.run(['java', '--class-path', str(library),
+                                     str(root / 'tools/admin/HashPassword.java')],
+                                    input=password, text=True, capture_output=True)
+            if result.returncode:
+                raise SystemExit('Не удалось подготовить пароль. Проверьте Java 21 и пересоберите сайт.')
+            password_hash = result.stdout.strip()
+        if not re.fullmatch(r'\$2[aby]\$12\$[./A-Za-z0-9]{53}', password_hash):
+            raise SystemExit('Не удалось подготовить BCrypt-пароль.')
+    env.update(MBM_ADMIN_ENABLED='true', MBM_ADMIN_USERNAME=username,
+               MBM_ADMIN_PASSWORD_HASH=password_hash)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--admin', action='store_true', help='Enable staff area with privately entered local credentials')
     parser.add_argument('--sync', action='store_true', help='Enable read-only CloudShop updates every five minutes')
     parser.add_argument('--port', type=int, default=8080)
     parser.add_argument('--pickup-store', action='append', default=[], help='CloudShop ID согласованной точки самовывоза; можно повторить')
@@ -34,6 +68,9 @@ def main():
             env['CLOUDSHOP_TOKEN'] = getpass.getpass('Токен CloudShop (только чтение, ввод скрыт): ').strip()
         if not env['CLOUDSHOP_TOKEN'] or any(char.isspace() for char in env['CLOUDSHOP_TOKEN']):
             raise SystemExit('Введите непустой токен без пробелов.')
+    if args.admin:
+        configure_admin(env, jar, root)
+        print(f'Служебный раздел: http://127.0.0.1:{args.port}/admin/requests', flush=True)
     print(f'Сайт: http://127.0.0.1:{args.port}/. Остановка: Ctrl+C.', flush=True)
     command = ['java', '-jar', str(jar), '--frontend.enabled=true',
                            f'--server.port={args.port}', '--catalog.sync.startup-mode=NONE',

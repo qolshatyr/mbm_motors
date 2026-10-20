@@ -1,0 +1,17 @@
+$kind: http-request
+name: '07 — Некорректная страница'
+order: 7000
+method: GET
+url: '{{baseUrl}}/admin/api/requests?page=-1'
+settings:
+  followRedirects: false
+headers:
+  - key: Accept
+    value: application/json
+  - key: Cookie
+    value: '{{sessionCookie}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Граница страницы проверяется',()=>pm.response.to.have.status(400));

@@ -1,0 +1,10 @@
+$kind: collection
+name: MBM Staff Requests API
+description: Только локальный защищённый просмотр. Запускать на синтетической mbm_test с отдельно настроенным сотрудником. Контакты не записываются в вывод скриптов; никакой передачи CloudShop.
+variables:
+  - key: baseUrl
+    value: 'http://127.0.0.1:8082'
+  - key: staffUsername
+    value: ''
+  - key: staffPassword
+    value: ''

@@ -201,3 +201,40 @@ h1, h2, h3 { text-wrap: pretty; scroll-margin-top: 24px; }
   .receipt-panel dl > div { grid-template-columns: minmax(0, 1fr); gap: 4px; }
   .receipt-actions .button { white-space: normal; }
 }
+
+/* Служебные заявки: собственная оболочка, сохранённый снимок вместо действий с корзиной. */
+.staff-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-block: 16px; }
+.staff-header nav { display: flex; align-items: center; flex-wrap: wrap; gap: 20px; }
+.staff-header nav > a { min-height: 44px; display: inline-flex; align-items: center; }
+.staff-content { max-width: 980px; }
+.staff-heading { align-items: center; flex-wrap: wrap; }
+.staff-heading h1 { overflow-wrap: anywhere; }
+.staff-result-count { color: var(--muted); font-size: 14px; margin-block: 24px 12px; }
+.staff-request-list, .staff-items { list-style: none; margin: 0; padding: 0; }
+.staff-request-list > li { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) auto; gap: 24px; align-items: center; background: var(--color-surface); padding: 24px; border-bottom: 1px solid var(--color-line); }
+.staff-request-main, .staff-request-store { display: grid; gap: 6px; min-width: 0; overflow-wrap: anywhere; }
+.staff-number { font-size: 18px; font-weight: 600; }
+.staff-status, .staff-request-main time, .staff-request-store .muted { font-size: 13px; }
+.staff-status { color: var(--color-primary); }
+.staff-request-total { font-size: 20px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.staff-overview, .staff-contact { margin-block: 28px; padding-bottom: 24px; border-bottom: 1px solid var(--color-line); }
+.staff-facts { margin-block: 20px 0; }
+.staff-facts > div { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 16px; margin-top: 12px; }
+.staff-facts dt { color: var(--muted); }
+.staff-facts dd { margin: 0; overflow-wrap: anywhere; }
+.staff-comment { white-space: pre-wrap; max-width: 75ch; }
+.staff-items { margin-block: 20px; }
+.staff-items li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; padding-block: 20px; border-top: 1px solid var(--color-line); }
+.staff-items h3 { font-size: 18px; font-weight: 600; overflow-wrap: anywhere; }
+.staff-items p { margin-top: 6px; }
+.staff-items strong { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+@media (max-width: 760px) {
+  .staff-header { flex-direction: column; align-items: start; gap: 8px; }
+  .staff-header nav { gap: 20px; width: 100%; }
+  .staff-header form { margin-left: auto; }
+  .staff-request-list > li { grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 20px; }
+  .staff-facts > div { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .staff-items li { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .staff-pagination { flex-wrap: wrap; }
+  .staff-content .checkout-total { flex-wrap: wrap; }
+}
