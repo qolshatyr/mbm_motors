@@ -26,3 +26,8 @@ frontend/*.tsbuildinfo
 frontend/dist-demo/
 prototype/
 !frontend/.env.demo
+
+# Local Claude Code state; shared skills in .claude/skills/ stay tracked
+.claude/settings.local.json
+.claude/worktrees/
+.claude/*.local.md
