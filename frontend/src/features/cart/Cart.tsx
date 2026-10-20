@@ -1,22 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import type { CartAction, CartItem } from '../../shared/api/cart';
-import { Icon } from '../../shared/ui/Icon';
+import type { CartAction } from '../../shared/api/cart';
 import { Button } from '../../shared/ui/Button';
-import { EmptyState, Notice } from '../../shared/ui/Feedback';
+import { Notice } from '../../shared/ui/Feedback';
+import { QtyStepper } from '../../shared/ui/QtyStepper';
+import { Checkout } from '../checkout/Checkout';
+import { readPendingKey } from '../../shared/api/checkout';
+import { PartImage, productHref } from '../catalog/AddControl';
 import { useCart, useCartAction, useCartBusy } from './cartQueries';
 
-function Quantity({ item, disabled, update }: { item: CartItem; disabled: boolean; update: (value: string) => void }) {
-  const [quantity, setQuantity] = useState(String(item.quantity));
-  return <form className="quantity-form" onSubmit={(event) => { event.preventDefault(); if (/^\d+$/.test(quantity) && Number(quantity) >= 1 && Number(quantity) <= 999) update(quantity); }}>
-    <label htmlFor={`quantity-${item.id}`}>Количество</label><div className="quantity-controls"><input id={`quantity-${item.id}`} name="quantity" type="number" inputMode="numeric" autoComplete="off" min="1" max="999" step="1" required value={quantity} disabled={disabled} onChange={(event) => { const value = event.target.value; event.target.setCustomValidity(/^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= 999 ? '' : 'Укажите целое количество от 1 до 999.'); setQuantity(value); }} /><Button type="submit" disabled={disabled || quantity === String(item.quantity)}>Обновить</Button></div>
-  </form>;
-}
-
-export function Cart() {
+export function Cart({ checkout = false }: { checkout?: boolean }) {
   const snapshot = useCart();
   const action = useCartAction();
   const busy = useCartBusy();
+  const [orderLocked, setOrderLocked] = useState(false);
   const [confirmation, setConfirmation] = useState<{ title: string; action: CartAction } | null>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const cancelButton = useRef<HTMLButtonElement>(null);
@@ -28,30 +25,45 @@ export function Cart() {
     else if (dialog.current?.open) { dialog.current.close(); if (origin.current?.isConnected) origin.current.focus(); else document.getElementById('basket-title')?.focus(); }
   }, [confirmation]);
   useEffect(() => {
-    if (!busy && origin.current && !origin.current.isConnected) {
-      document.getElementById('basket-title')?.focus();
-      origin.current = null;
-    }
+    if (!busy && origin.current && !origin.current.isConnected) { document.getElementById('basket-title')?.focus(); origin.current = null; }
   }, [cart, busy]);
-  const disabled = busy || snapshot.isFetching || snapshot.isError;
+  useEffect(() => { if (checkout) document.getElementById('checkout-title')?.scrollIntoView({ block: 'start' }); }, [checkout, Boolean(cart)]);
+  // While a submitted order awaits its result, the cart must not change under it.
+  const disabled = busy || snapshot.isFetching || snapshot.isError || orderLocked;
   function confirm() {
     if (!confirmation || disabled) return;
     action.mutate(confirmation.action);
     setConfirmation(null);
   }
+  const empty = cart && cart.items.length === 0;
   return <>
-    <nav className="back-nav" aria-label="Навигация"><Link to={cart?.storeId ? `/?store=${encodeURIComponent(cart.storeId)}` : '/'}><Icon name="arrow" />Продолжить поиск</Link></nav>
-    <nav className="purchase-steps" aria-label="Этапы покупки"><ol><li><Link to="/">Каталог</Link></li><li aria-current="step">Корзина</li><li><Link to="/checkout">Оформление</Link></li></ol></nav>
-    <div className="heading-row"><h1 id="basket-title" tabIndex={-1}>Корзина</h1>{cart?.storeName && <span className="muted">{cart.storeName}</span>}</div>
+    <h1 id="basket-title" tabIndex={-1} className="page-title">Корзина {data && data.itemCount > 0 && <span className="title-count">{data.itemCount} шт.</span>}</h1>
     {action.isError && <Notice error>{action.error.message} Проверьте текущее состояние корзины перед повторным действием.</Notice>}
-    {action.isSuccess && <Notice>{action.data.message || 'Корзина обновлена.'}</Notice>}
-    {snapshot.isPending ? <div className="loading-state" role="status">Загружаем корзину…</div> : <>
+    {snapshot.isPending ? <div className="loading-state" role="status"><span className="spinner" aria-hidden="true" />Загружаем корзину…</div> : <>
       {snapshot.isError && <Notice error><p>Не удалось обновить корзину. Изменения временно недоступны.</p><Button disabled={busy} onClick={() => void snapshot.refetch()}>Обновить данные</Button></Notice>}
-      {cart && (cart.items.length === 0 ? <EmptyState title="Корзина пока пуста"><p>Откройте карточку запчасти и добавьте товар из нужной точки.</p><Link className="button button-primary" to="/">Перейти в каталог</Link></EmptyState> : <div className="basket-layout" aria-busy={busy || snapshot.isFetching}>
-        <div className="cart-lines">{cart.items.map((item) => <article key={item.id} className="cart-line"><div className="cart-item-copy"><h2><Link to={`/products/${encodeURIComponent(item.id)}?store=${encodeURIComponent(cart.storeId || '')}`}>{item.name}</Link></h2><div className="cart-line-meta"><p className="sku">{item.sku ? `Артикул: ${item.sku}` : 'Артикул не указан'}</p><p className="unit-price">{item.priceText} за {item.unit || 'единицу'}</p></div>{item.problem && <p className="item-problem">{item.problem}</p>}{item.priceChanged && <p className="item-problem">Цена изменилась. Проверьте новую цену и подтвердите её.</p>}{item.priceChanged && !item.problem && item.currentPrice !== null && <Button disabled={disabled} onClick={() => action.mutate({ action: 'confirm-price', fields: { productId: item.id, expectedPrice: item.currentPrice! } })}>Подтвердить новую цену</Button>}</div><div className="cart-item-actions"><Quantity key={`${item.id}-${item.quantity}`} item={item} disabled={disabled} update={(quantity) => action.mutate({ action: 'update', fields: { productId: item.id, quantity } })} /><strong className="cart-line-total">{item.totalText}</strong><button className="text-button" disabled={disabled} aria-label={`Удалить ${item.name} из корзины`} onClick={() => setConfirmation({ title: `Удалить «${item.name}» из корзины?`, action: { action: 'remove', fields: { productId: item.id } } })}>Удалить</button></div></article>)}</div>
-        <aside className="cart-summary" aria-label="Итог корзины"><h2>Ваша корзина</h2><p className="cart-summary-store"><Icon name="location" />{cart.storeName}</p><p className="cart-summary-count">Товаров: {data.itemCount}</p><span>Итого по доступным позициям</span><strong>{cart.totalText}</strong>{cart.hasIssues && <p className="item-problem">Некоторые позиции требуют проверки. Обновите количество или удалите недоступные товары.</p>}<Link className="button button-primary checkout-link" to="/checkout">Оформить заявку<Icon name="arrow" /></Link><p className="summary-note">При оформлении проверим цену и наличие. Товары пока не резервируются.</p><Button disabled={disabled} onClick={() => setConfirmation({ title: 'Очистить корзину?', action: { action: 'clear', fields: {} } })}>Очистить корзину</Button></aside>
-      </div>)}
-      {cart && cart.items.length > 0 && <p className="flow-note">Корзина сохраняется на время сессии браузера и не резервирует товар. При оформлении проверим актуальную цену и наличие.</p>}
+      <div className={`basket-layout ${empty && !orderLocked && !readPendingKey() ? 'basket-empty' : ''}`}>
+        {cart && <div className="basket-lines">
+          {cart.items.length === 0 ? <div className="empty-panel"><h2>Корзина пока пуста</h2><p>Найдите деталь по артикулу или соберите корзину списком.</p><div className="actions"><Link className="button button-primary" to="/search">Перейти в каталог</Link><Link className="button" to="/quick-order">Быстрый заказ</Link></div></div> : <>
+            <ul className="cart-lines" aria-busy={busy || snapshot.isFetching}>{cart.items.map((item) => <li key={item.id} className="cart-line">
+              <PartImage src={null} className="part-image-cart" />
+              <div className="cart-line-copy">
+                <h2><Link to={productHref(item.id)}>{item.name}</Link></h2>
+                <p className="muted">{item.sku ? <span className="code">{item.sku}</span> : 'Артикул не указан'} · {item.priceText} / {item.unit || 'шт.'}</p>
+                {item.problem && <p className="item-problem">{item.problem}</p>}
+                {item.priceChanged && <p className="item-problem">Цена изменилась. Проверьте новую цену и подтвердите её.</p>}
+                {item.priceChanged && !item.problem && item.currentPrice !== null && <Button disabled={disabled} onClick={() => action.mutate({ action: 'confirm-price', fields: { productId: item.id, expectedPrice: item.currentPrice! } })}>Подтвердить новую цену</Button>}
+              </div>
+              <div className="cart-line-actions">
+                <QtyStepper size="sm" label={`Количество «${item.name}»`} value={item.quantity} disabled={disabled} onChange={(quantity) => action.mutate({ action: 'update', fields: { productId: item.id, quantity: String(quantity) } })} />
+                <div className="cart-line-total"><strong>{item.totalText}</strong><button type="button" className="text-button" disabled={disabled} aria-label={`Удалить ${item.name} из корзины`} onClick={() => setConfirmation({ title: `Удалить «${item.name}» из корзины?`, action: { action: 'remove', fields: { productId: item.id } } })}>Удалить</button></div>
+              </div>
+            </li>)}</ul>
+            {cart.hasIssues && <Notice error>Некоторые позиции требуют проверки. Обновите количество или удалите недоступные товары.</Notice>}
+            <div className="basket-foot"><p className="muted">Корзина не резервирует товар. Количество ограничено остатком на складе.</p><button type="button" className="text-button" disabled={disabled} onClick={() => setConfirmation({ title: 'Очистить корзину?', action: { action: 'clear', fields: {} } })}>Очистить корзину</button></div>
+          </>}
+        </div>}
+        {(!cart || cart.items.length > 0 || orderLocked || readPendingKey()) && <Checkout onLockChange={setOrderLocked} />}
+      </div>
     </>}
     <dialog ref={dialog} className="confirmation-dialog" aria-labelledby="confirmation-title" onCancel={(event) => { event.preventDefault(); setConfirmation(null); }}><h2 id="confirmation-title">{confirmation?.title}</h2><p>Товары можно будет добавить снова из каталога.</p><div className="dialog-actions"><button ref={cancelButton} className="button" onClick={() => setConfirmation(null)}>Отмена</button><Button primary disabled={disabled} onClick={confirm}>{confirmation?.action.action === 'clear' ? 'Очистить' : 'Удалить'}</Button></div></dialog>
   </>;

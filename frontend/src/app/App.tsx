@@ -1,56 +1,116 @@
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Home } from '../features/home/Home';
 import { Catalog } from '../features/catalog/Catalog';
 import { ProductDetail } from '../features/product/ProductDetail';
+import { QuickOrder } from '../features/quick/QuickOrder';
 import { Cart } from '../features/cart/Cart';
-import { Checkout } from '../features/checkout/Checkout';
 import { Receipt } from '../features/checkout/Receipt';
+import { Account } from '../features/account/Account';
+import { Login } from '../features/auth/Login';
+import { safeReturn, useMe } from '../features/auth/session';
 import { useCart } from '../features/cart/cartQueries';
-import { EmptyState } from '../shared/ui/Feedback';
+import { pickupText } from '../features/catalog/useStore';
+import { EmptyState, Notice } from '../shared/ui/Feedback';
 import { Staff } from '../features/staff/Staff';
 import { Icon } from '../shared/ui/Icon';
-import { DemoFooter, DemoInformation } from '../demo/Showcase';
-const demo = (import.meta.env.MODE === 'demo' && import.meta.env.VITE_DEMO === 'true');
+import type { Partner } from '../shared/api/auth';
+
+const demo = import.meta.env.MODE === 'demo' && import.meta.env.VITE_DEMO === 'true';
 
 export function App() {
   const location = useLocation();
-  return !demo && location.pathname.startsWith('/admin/') ? <Staff /> : <CustomerApp />;
+  return !demo && location.pathname.startsWith('/admin/') ? <Staff /> : <PartnerApp />;
 }
 
-function CustomerApp() {
+const titles: Record<string, string> = {
+  '/': 'Оптовый портал', '/search': 'Каталог запчастей', '/quick-order': 'Быстрый заказ', '/basket': 'Корзина',
+  '/checkout': 'Оформление заявки', '/checkout/success': 'Заявка сохранена', '/account': 'Мои заявки', '/login': 'Вход для партнёров',
+};
+
+function PartnerApp() {
   const location = useLocation();
+  const me = useMe();
   const previousPath = useRef(location.pathname);
-  const cart = useCart();
-  const navigate = useNavigate();
-  const onCatalog = location.pathname === '/';
-  const [headerQuery, setHeaderQuery] = useState('');
-  function searchCatalog(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const params = new URLSearchParams();
-    const store = new URLSearchParams(location.search).get('store');
-    if (store) params.set('store', store);
-    if (headerQuery.trim()) params.set('q', headerQuery.trim());
-    navigate(`/?${params}`);
-  }
   useEffect(() => {
-    if (!location.pathname.startsWith('/products/')) document.title = demo && ['/about', '/pickup', '/how-to-order'].includes(location.pathname) ? 'Информация — MBM Motors' : location.pathname.startsWith('/checkout') ? 'Оформление заявки — MBM Motors' : location.pathname === '/basket' ? 'Корзина — MBM Motors' : location.pathname === '/' ? 'Каталог запчастей — MBM Motors' : 'Страница не найдена — MBM Motors';
+    if (!location.pathname.startsWith('/products/')) document.title = `${titles[location.pathname] ?? 'Страница не найдена'} — MBM Automotors`;
     if (previousPath.current !== location.pathname) {
       document.getElementById('main')?.focus({ preventScroll: true });
       window.scrollTo(0, 0);
       previousPath.current = location.pathname;
     }
   }, [location.pathname]);
+  const partner = me.data;
+  const signedOut = me.isSuccess && partner === null;
+  let content;
+  if (me.isPending) content = <div className="loading-state" role="status"><span className="spinner" aria-hidden="true" />Проверяем вход…</div>;
+  else if (me.isError) content = <Notice error><p>Не удалось проверить вход. Проверьте соединение и попробуйте ещё раз.</p><button type="button" className="button" onClick={() => void me.refetch()}>Повторить</button></Notice>;
+  else if (signedOut) content = location.pathname === '/login' ? <Login /> : <Navigate replace to={`/login?from=${encodeURIComponent(location.pathname + location.search)}`} />;
+  else content = <Routes>
+    <Route path="/" element={<Home />} />
+    <Route path="/search" element={<Catalog />} />
+    <Route path="/products/:id" element={<ProductDetail />} />
+    <Route path="/quick-order" element={<QuickOrder />} />
+    <Route path="/basket" element={<Cart />} />
+    <Route path="/checkout" element={<Cart checkout />} />
+    <Route path="/checkout/success" element={<Receipt />} />
+    <Route path="/account" element={<Account partner={partner!} />} />
+    <Route path="/login" element={<SignedInRedirect />} />
+    <Route path="*" element={<EmptyState title="Страница не найдена"><p>Проверьте адрес или вернитесь в каталог.</p><Link className="button button-primary" to="/search">Перейти в каталог</Link></EmptyState>} />
+  </Routes>;
   return <>
-    <a href="#main" className="skip-link" onClick={(event) => { if (demo) { event.preventDefault(); document.getElementById('main')?.focus(); document.getElementById('main')?.scrollIntoView({ behavior: 'instant' }); } }}>Перейти к содержимому</a>
-    <header className="site-header">{demo && <div className="demo-banner"><div className="page-width"><strong>Прототип MBM Motors</strong><span>Тестовый ассортимент. Реальные заявки не отправляются.</span></div></div>}<div className="page-width header-inner">
-      <Link to="/" className="brand" aria-label="MBM Motors — каталог запчастей"><span className="brand-symbol" aria-hidden="true"><span>MBM</span><span className="brand-symbol-rule" /></span><span className="brand-name">Motors<span className="brand-subtitle">Автозапчасти</span></span></Link>
-      <nav className="header-nav" aria-label="Основная навигация"><Link to="/" className="catalog-nav-link" aria-current={onCatalog ? 'page' : undefined}>Каталог</Link>
-        {onCatalog ? <button type="button" className="header-search-trigger" aria-label="Перейти к поиску запчастей" onClick={() => { const input = document.getElementById('query'); input?.focus(); input?.scrollIntoView({ block: 'center', behavior: 'instant' }); }}><Icon name="search" /><span>Поиск запчастей</span></button> : <form className="header-search" role="search" onSubmit={searchCatalog}><label htmlFor="header-query" className="sr-only">Поиск запчастей в каталоге</label><input id="header-query" name="q" type="search" autoComplete="off" spellCheck={false} maxLength={120} placeholder="Название или артикул…" value={headerQuery} onChange={(event) => setHeaderQuery(event.target.value)} /><button type="submit" aria-label="Искать в каталоге"><Icon name="search" /></button></form>}
-        <Link to="/basket" className="cart-link" aria-current={location.pathname === '/basket' ? 'page' : undefined}><Icon name="cart" /><span>Корзина</span>{cart.data && !cart.isError && <span className="cart-count">{cart.data.itemCount}</span>}</Link>
-      </nav>
-    </div>{demo && <div className="demo-navigation"><nav className="page-width" aria-label="Информация для покупателя"><Link to="/how-to-order">Как заказать</Link><Link to="/pickup">Самовывоз</Link><Link to="/about">О магазине</Link><span>Демонстрация магазина автозапчастей</span></nav></div>}</header>
-    <main id="main" tabIndex={-1} className="page-width main-content"><Routes><Route path="/" element={<Catalog />} /><Route path="/products/:id" element={<ProductDetail />} /><Route path="/basket" element={<Cart />} /><Route path="/checkout" element={<Checkout />} /><Route path="/checkout/success" element={<Receipt />} />{demo && <><Route path="/how-to-order" element={<DemoInformation page="purchase" />} /><Route path="/pickup" element={<DemoInformation page="pickup" />} /><Route path="/about" element={<DemoInformation page="about" />} /></>}<Route path="*" element={<EmptyState title="Страница не найдена"><p>Вернитесь в каталог, чтобы продолжить поиск.</p><Link className="button" to="/">Перейти в каталог</Link></EmptyState>} /></Routes></main>
-    <footer className={demo ? "demo-site-footer" : "page-width footer"}>{demo ? <div className="page-width"><DemoFooter /></div> : <><Link to="/" className="footer-brand">MBM Motors</Link><span>Цены в тенге. Наличие по данным магазинов.</span></>}</footer>
+    <a href="#main" className="skip-link" onClick={(event) => { event.preventDefault(); const main = document.getElementById('main'); main?.focus(); main?.scrollIntoView({ behavior: 'instant' }); }}>Перейти к содержимому</a>
+    {demo && <div className="demo-banner"><div className="page-width"><strong>Прототип MBM Automotors</strong><span>Тестовый ассортимент. Подходит любой логин. Заявки никуда не отправляются.</span></div></div>}
+    <div className="top-strip"><div className="page-width top-strip-inner"><span><Icon name="location" />{pickupText}</span>{partner && <Link to="/quick-order">Быстрый заказ</Link>}</div></div>
+    <Header partner={partner ?? null} />
+    <main id="main" tabIndex={-1} className="page-width main-content">{content}</main>
+    <footer className="site-footer"><div className="page-width footer-grid">
+      <div><p className="footer-brand">MBM Automotors</p><p>Оптовый портал для СТО и оптовых покупателей. {pickupText}.</p></div>
+      {partner && <nav aria-label="Разделы портала"><Link to="/search">Каталог</Link><Link to="/quick-order">Быстрый заказ</Link><Link to="/basket">Корзина</Link><Link to="/account">Мои заявки</Link></nav>}
+      <p>Цены оптовые, в тенге. Наличие — по данным склада, товар не резервируется до подтверждения заявки.</p>
+    </div></footer>
   </>;
+}
+
+function SignedInRedirect() {
+  const [params] = useSearchParams();
+  return <Navigate replace to={safeReturn(params.get('from'))} />;
+}
+
+function Brand() {
+  return <Link to="/" className="portal-brand" aria-label="MBM Automotors — главная"><span className="portal-brand-mark" aria-hidden="true">M</span><span className="portal-brand-name"><span>MBM</span><span>AUTOMOTORS</span></span></Link>;
+}
+
+function Header({ partner }: { partner: Partner | null }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const urlQuery = location.pathname === '/search' ? params.get('q') ?? '' : '';
+  const [query, setQuery] = useState(urlQuery);
+  useEffect(() => setQuery(urlQuery), [urlQuery]);
+  const cart = useCart(Boolean(partner));
+  if (!partner) return <header className="portal-header"><div className="page-width portal-header-inner"><Brand /></div></header>;
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const next = new URLSearchParams();
+    if (query.trim()) next.set('q', query.trim());
+    navigate(`/search${next.size ? `?${next}` : ''}`);
+  }
+  const count = cart.data && !cart.isError ? cart.data.itemCount : null;
+  const initial = (partner.company.replace(/[^\p{L}\p{N}]/gu, ' ').trim().split(/\s+/).find((word) => !/^(сто|тоо|ип|ооо)$/i.test(word)) ?? partner.login).slice(0, 1).toLocaleUpperCase('ru-RU');
+  return <header className="portal-header"><div className="page-width portal-header-inner">
+    <Brand />
+    <Link to="/search" className="header-catalog" aria-current={location.pathname === '/search' ? 'page' : undefined}>Каталог</Link>
+    <form className="header-search" role="search" onSubmit={submit}>
+      <label htmlFor="header-query" className="sr-only">Поиск по названию, артикулу или коду</label>
+      <Icon name="search" />
+      <input id="header-query" name="q" type="search" autoComplete="off" spellCheck={false} maxLength={120} placeholder="Название, артикул или код…" value={query} onChange={(event) => setQuery(event.target.value)} />
+      <button type="submit" className="header-search-submit">Найти</button>
+    </form>
+    <Link to="/account" className="account-badge" aria-current={location.pathname === '/account' ? 'page' : undefined} aria-label={`Кабинет: ${partner.company}`} title={partner.company}><span aria-hidden="true">{initial}</span></Link>
+    <Link to="/basket" className="header-cart" aria-current={location.pathname === '/basket' ? 'page' : undefined} aria-label={count === null ? 'Корзина' : `Корзина: ${count} шт., ${cart.data!.cart.totalText}`}>
+      <span className="header-cart-count" aria-hidden="true">{count ?? '–'}</span><span className="header-cart-total" aria-hidden="true">{cart.data && !cart.isError ? cart.data.cart.totalText : 'Корзина'}</span>
+    </Link>
+  </div></header>;
 }

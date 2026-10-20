@@ -10,7 +10,8 @@ export async function request<T>(url: string, options: RequestInit = {}): Promis
   const response = await fetch(url, { ...options, credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json', ...options.headers } });
   if (!response.ok) {
     const problem = await response.json().catch(() => null);
-    throw new ApiError(response.status, problem?.detail ?? 'Не удалось выполнить запрос. Проверьте соединение и обновите данные.', problem?.errors ?? {});
+    throw new ApiError(response.status, problem?.detail ?? (response.status === 401 ? 'Войдите в кабинет, чтобы продолжить.' : 'Не удалось выполнить запрос. Проверьте соединение и обновите данные.'), problem?.errors ?? {});
   }
+  if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
