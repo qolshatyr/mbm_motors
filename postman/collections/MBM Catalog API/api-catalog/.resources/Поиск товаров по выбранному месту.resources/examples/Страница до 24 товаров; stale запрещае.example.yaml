@@ -1,0 +1,66 @@
+$kind: http-example
+name: Страница до 24 товаров; stale запрещает считать сохранённые остатки текущими.
+request:
+  url: "{{baseUrl}}/api/catalog/products?q=&store=string&available=false&page=0"
+  method: GET
+  headers:
+    Accept: application/json
+  queryParams:
+    q: ""
+    store: string
+    available: "false"
+    page: "0"
+  body:
+    type: text
+    content: ""
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "products": [
+          {
+            "id": "string",
+            "name": "string",
+            "priceText": "string",
+            "stockText": "string",
+            "sku": "string",
+            "code": "string",
+            "unit": "string",
+            "imageUrl": "https://jMCSDVF.vdv4,zyE,saBwDTIf4ZDsF516"
+          },
+          {
+            "id": "string",
+            "name": "string",
+            "priceText": "string",
+            "stockText": "string",
+            "sku": "string",
+            "code": "string",
+            "unit": "string",
+            "imageUrl": "http://tgSfDLYqlzuSlMrBiVDUCPQFcIQlQ.kwbke2Ivx8TQcE2g+ZhPG077HotaUmKn713Dc22pGQis8kuDWnrtGE-4hqy+brnBu2"
+          }
+        ],
+        "query": "string",
+        "storeId": "string",
+        "storeName": "string",
+        "stores": [
+          {
+            "id": "string",
+            "name": "string"
+          },
+          {
+            "id": "string",
+            "name": "string"
+          }
+        ],
+        "page": 6671,
+        "totalPages": 1176,
+        "totalProducts": 3139,
+        "stale": true,
+        "lastSyncText": "string"
+      }
+order: 1000

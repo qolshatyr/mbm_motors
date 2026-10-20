@@ -1,0 +1,4 @@
+workflows:
+  syncSpecToCollection:
+    - spec: ../postman/specs/catalog.openapi.yaml
+      collection: ../postman/collections/MBM Catalog API

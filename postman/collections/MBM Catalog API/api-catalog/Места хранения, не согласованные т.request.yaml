@@ -1,0 +1,25 @@
+$kind: http-request
+name: Места хранения, не согласованные точки самовывоза
+description: ""
+url: "{{baseUrl}}/api/catalog/stores"
+method: GET
+headers:
+  - key: Accept
+    value: application/json
+settings: {}
+examples: ./.resources/Места хранения, не согласованные т.resources/examples
+order: 1000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |
+      pm.test("HTTP 200", () => pm.response.to.have.status(200));
+      const body = pm.response.json();
+      pm.test("Список мест хранения", () => {
+        pm.expect(body.stores).to.be.an('array');
+        pm.expect(body.stores.some(s => s.id === body.defaultStoreId)).to.equal(true);
+        body.stores.forEach(s => {
+          pm.expect(s.id).to.be.a('string');
+          pm.expect(s.name).to.be.a('string');
+        });
+      });

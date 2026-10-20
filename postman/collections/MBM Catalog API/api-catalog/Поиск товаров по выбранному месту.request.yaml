@@ -1,0 +1,49 @@
+$kind: http-request
+name: Поиск товаров по выбранному месту хранения
+description: ""
+url: "{{baseUrl}}/api/catalog/products?q=&store=64feaaa51c9799143b532fcf&available=false&page=0"
+method: GET
+headers:
+  - key: Accept
+    value: application/json
+queryParams:
+  - key: q
+    value: ""
+    disabled: false
+  - key: store
+    value: 64feaaa51c9799143b532fcf
+    disabled: false
+    description: При отсутствии используется Car City.
+  - key: available
+    value: "false"
+    disabled: false
+    description: Положительный сохранённый остаток, включая устаревшие данные.
+  - key: page
+    value: "0"
+    disabled: false
+settings: {}
+examples: ./.resources/Поиск товаров по выбранному месту.resources/examples
+order: 2000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |
+      pm.test("HTTP 200", () => pm.response.to.have.status(200));
+      const body = pm.response.json();
+      pm.test("Каталог и пагинация", () => {
+        pm.expect(body.products).to.be.an('array');
+        pm.expect(body.products.length).to.be.at.most(24);
+        pm.expect(body.page).to.equal(0);
+        pm.expect(body.totalProducts).to.be.a('number');
+        pm.expect(body.storeId).to.equal('64feaaa51c9799143b532fcf');
+      });
+      pm.test("Свежесть и серверное отображение", () => {
+        pm.expect(body.stale).to.be.a('boolean');
+        body.products.forEach(p => {
+          pm.expect(p.id).to.be.a('string');
+          pm.expect(p.name).to.be.a('string');
+          pm.expect(p.priceText).to.be.a('string');
+          pm.expect(p.stockText).to.be.a('string');
+          if (body.stale) pm.expect(p.stockText).to.equal('Наличие уточняется');
+        });
+      });
