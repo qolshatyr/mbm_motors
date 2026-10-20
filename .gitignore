@@ -40,3 +40,5 @@ prototype/
 docs/catalog-*.xlsx
 docs/catalog/*.xlsx
 .venv-catalog/
+docs/category format.xlsx
+.~lock.*#
