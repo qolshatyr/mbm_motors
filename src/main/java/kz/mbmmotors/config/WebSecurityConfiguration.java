@@ -3,7 +3,10 @@ package kz.mbmmotors.config;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.time.Clock;
+import java.time.Duration;
 import kz.mbmmotors.admin.AdminProperties;
+import kz.mbmmotors.partner.LoginThrottle;
 import kz.mbmmotors.partner.Partner;
 import kz.mbmmotors.partner.PartnerRepository;
 import org.springframework.beans.factory.ObjectProvider;
@@ -22,6 +25,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import tools.jackson.databind.json.JsonMapper;
 
 /** Partner portal: everything except the sign-in surface requires a partner account. */
@@ -29,6 +33,7 @@ import tools.jackson.databind.json.JsonMapper;
 @EnableConfigurationProperties(AdminProperties.class)
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class WebSecurityConfiguration {
+  private static final String LOGIN = "/api/auth/login";
   static final String CSP =
       "default-src 'self'; img-src 'self' https:; style-src 'self'; script-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'";
 
@@ -62,7 +67,23 @@ public class WebSecurityConfiguration {
                 .orElseThrow(() -> new UsernameNotFoundException("Unknown partner"));
     var provider = new DaoAuthenticationProvider(details);
     provider.setPasswordEncoder(encoder);
+    var throttle = new LoginThrottle(10, Duration.ofMinutes(15), Clock.systemUTC());
+    jakarta.servlet.Filter guard =
+        (request, response, chain) -> {
+          var login = (HttpServletRequest) request;
+          if ("POST".equals(login.getMethod())
+              && LOGIN.equals(login.getRequestURI().substring(login.getContextPath().length()))
+              && throttle.blocked(login.getRemoteAddr(), login.getParameter("username"))) {
+            problem(
+                (HttpServletResponse) response,
+                429,
+                "Слишком много попыток входа. Повторите через 15 минут.");
+            return;
+          }
+          chain.doFilter(request, response);
+        };
     return http.authenticationManager(new ProviderManager(provider))
+        .addFilterBefore(guard, UsernamePasswordAuthenticationFilter.class)
         .authorizeHttpRequests(
             auth ->
                 auth.requestMatchers(HttpMethod.GET, SPA_ROUTES)
@@ -107,9 +128,10 @@ public class WebSecurityConfiguration {
             login ->
                 login
                     .loginPage("/login")
-                    .loginProcessingUrl("/api/auth/login")
+                    .loginProcessingUrl(LOGIN)
                     .successHandler(
                         (request, response, authentication) -> {
+                          throttle.success(request.getRemoteAddr(), authentication.getName());
                           var partner = partners.getObject().find(authentication.getName());
                           response.setStatus(200);
                           response.setHeader("Cache-Control", "no-store");
@@ -118,8 +140,11 @@ public class WebSecurityConfiguration {
                               response.getOutputStream(), partner.orElseThrow().profile());
                         })
                     .failureHandler(
-                        (request, response, error) ->
-                            problem(response, 401, "Неверный логин или пароль.")))
+                        (request, response, error) -> {
+                          throttle.failure(
+                              request.getRemoteAddr(), request.getParameter("username"));
+                          problem(response, 401, "Неверный логин или пароль.");
+                        }))
         .logout(
             logout ->
                 logout
@@ -188,9 +213,11 @@ public class WebSecurityConfiguration {
         .getWriter()
         .write(
             "{\"type\":\"urn:mbm:security:"
-                + (status == 401 ? "unauthorized" : "forbidden")
+                + (status == 401 ? "unauthorized" : status == 429 ? "throttled" : "forbidden")
                 + "\",\"title\":\""
-                + (status == 401 ? "Unauthorized" : "Forbidden")
+                + (status == 401
+                    ? "Unauthorized"
+                    : status == 429 ? "Too Many Requests" : "Forbidden")
                 + "\",\"status\":"
                 + status
                 + ",\"detail\":\""

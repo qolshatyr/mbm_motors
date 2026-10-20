@@ -119,6 +119,46 @@ class PartnerSecurityTest {
     }
   }
 
+  @Test
+  void repeatedFailuresFromOneAddressAreThrottledForThatLoginOnly() throws Exception {
+    for (int i = 0; i < 10; i++)
+      mvc.perform(
+              post("/api/auth/login")
+                  .with(csrf())
+                  .with(
+                      r -> {
+                        r.setRemoteAddr("198.51.100.7");
+                        return r;
+                      })
+                  .param("username", "turbo")
+                  .param("password", "wrong-password"))
+          .andExpect(status().isUnauthorized());
+    mvc.perform(
+            post("/api/auth/login")
+                .with(csrf())
+                .with(
+                    r -> {
+                      r.setRemoteAddr("198.51.100.7");
+                      return r;
+                    })
+                .param("username", "turbo")
+                .param("password", PASSWORD))
+        .andExpect(status().isTooManyRequests())
+        .andExpect(jsonPath("$.status").value(429));
+    // Another address still signs in: guessing elsewhere cannot lock the partner out.
+    mvc.perform(
+            post("/api/auth/login")
+                .with(csrf())
+                .with(
+                    r -> {
+                      r.setRemoteAddr("203.0.113.9");
+                      return r;
+                    })
+                .param("username", "turbo")
+                .param("password", PASSWORD))
+        .andExpect(status().isOk());
+  }
+
   private static Partner partner(String login, boolean enabled) {
     return new Partner(
         UUID.randomUUID(), login, HASH, "СТО «Turbo»", "Ерлан", "+77015551234", null, enabled);
