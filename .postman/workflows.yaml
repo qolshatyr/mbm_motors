@@ -6,3 +6,5 @@ workflows:
       collection: ../postman/collections/MBM Cart API
     - spec: ../postman/specs/checkout.openapi.json
       collection: ../postman/collections/MBM Checkout API
+    - spec: ../postman/specs/cloudshop-delivery.openapi.json
+      collection: ../postman/collections/CloudShop-Delivery-Local
