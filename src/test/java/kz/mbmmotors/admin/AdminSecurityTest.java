@@ -80,7 +80,7 @@ class AdminSecurityTest {
                     .param("username", "staff")
                     .param("password", "synthetic-test-only"))
             .andExpect(status().is3xxRedirection())
-            .andExpect(redirectedUrl("/admin/requests"))
+            .andExpect(redirectedUrl("/admin/clients"))
             .andReturn();
     assertThat(result.getRequest().getSession().getId()).isNotEqualTo(oldId);
     when(service.list(0)).thenReturn(new StaffRequestService.Page(List.of(), 0, 20, 0, 0));
@@ -104,7 +104,7 @@ class AdminSecurityTest {
                 .param("username", "staff")
                 .param("password", "synthetic-test-only")
                 .param("continue", "https://evil.invalid"))
-        .andExpect(redirectedUrl("/admin/requests"));
+        .andExpect(redirectedUrl("/admin/clients"));
   }
 
   @Test

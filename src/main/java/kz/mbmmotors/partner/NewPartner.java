@@ -2,10 +2,16 @@ package kz.mbmmotors.partner;
 
 import java.util.Locale;
 
-/** Validated partner details entered by staff. */
-public record NewPartner(String login, String company, String contactName, String phone) {
+/** Validated partner details entered by staff; {@code bin} (БИН) is optional. */
+public record NewPartner(
+    String login, String company, String contactName, String phone, String bin) {
   public static NewPartner validate(
       String login, String company, String contactName, String phone) {
+    return validate(login, company, contactName, phone, null);
+  }
+
+  public static NewPartner validate(
+      String login, String company, String contactName, String phone, String bin) {
     login = login == null ? "" : login.strip().toLowerCase(Locale.ROOT);
     company = company == null ? "" : company.strip();
     contactName = contactName == null ? "" : contactName.strip();
@@ -18,7 +24,10 @@ public record NewPartner(String login, String company, String contactName, Strin
     String normalized = normalizePhone(phone);
     if (normalized == null)
       throw new IllegalArgumentException("Телефон: укажите номер с кодом страны.");
-    return new NewPartner(login, company, contactName, normalized);
+    bin = bin == null ? "" : bin.replaceAll("\\s", "");
+    if (!bin.isEmpty() && !bin.matches("[0-9]{12}"))
+      throw new IllegalArgumentException("БИН: 12 цифр.");
+    return new NewPartner(login, company, contactName, normalized, bin.isEmpty() ? null : bin);
   }
 
   /** Same rules as the checkout form, so a partner's phone always passes order validation. */

@@ -19,7 +19,8 @@ public class FrontendController {
     "/checkout/success",
     "/account",
     "/admin/requests",
-    "/admin/requests/{number}"
+    "/admin/requests/{number}",
+    "/admin/clients"
   })
   String page() {
     return "forward:/frontend/index.html";

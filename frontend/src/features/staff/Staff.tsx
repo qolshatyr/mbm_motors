@@ -5,6 +5,7 @@ import { fetchStaffDetail, fetchStaffPage } from '../../shared/api/staff';
 import { ApiError, request } from '../../shared/api/http';
 import { Button } from '../../shared/ui/Button';
 import { EmptyState, Notice } from '../../shared/ui/Feedback';
+import { Clients } from './Clients';
 
 const StaffAccess = createContext({ blocked: false, deny: () => {} });
 const staffOptions = { gcTime: 0, staleTime: 0, retry: false, refetchOnWindowFocus: false, refetchOnReconnect: false } as const;
@@ -16,7 +17,7 @@ function ScopeNote() {
   return <Notice>Заявки сохранены на сайте. Они ещё не переданы в CloudShop и не подтверждены магазином. Товары не резервируются.</Notice>;
 }
 function AccessDenied() {
-  return <Notice error><p>Войдите в служебный раздел, чтобы просматривать заявки. Если вход не помогает, обратитесь к администратору: доступ может быть отключён.</p><a className="button button-primary" href="/admin/login">Войти в служебный раздел</a></Notice>;
+  return <Notice error><p>Войдите в служебный раздел, чтобы управлять клиентами и просматривать заявки. Если вход не помогает, обратитесь к администратору: доступ может быть отключён.</p><a className="button button-primary" href="/admin/login">Войти в служебный раздел</a></Notice>;
 }
 function useAuthError(error: Error | null) {
   const access = useContext(StaffAccess);
@@ -45,7 +46,7 @@ export function Staff() {
     if (blocked || loggingOut) document.getElementById('main')?.focus({ preventScroll: true });
   }, [blocked, loggingOut]);
   useEffect(() => {
-    document.title = location.pathname === '/admin/requests' ? 'Заявки — MBM Motors' : 'Заявка — MBM Motors';
+    document.title = location.pathname === '/admin/clients' ? 'Клиенты — MBM Motors' : location.pathname === '/admin/requests' ? 'Заявки — MBM Motors' : 'Заявка — MBM Motors';
     const nextPath = location.pathname + location.search;
     if (previousPath.current !== nextPath) {
       document.getElementById('main')?.focus({ preventScroll: true });
@@ -105,13 +106,13 @@ export function Staff() {
     <a href="#main" className="skip-link">Перейти к содержимому</a>
     <header className="site-header"><div className="page-width staff-header">
       <Link to="/admin/requests" className="brand" aria-label="MBM Motors — служебные заявки"><span className="brand-mark" aria-hidden="true">M</span><span>MBM <span className="brand-light">Motors</span></span></Link>
-      <nav aria-label="Служебная навигация"><Link to="/admin/requests">Заявки</Link><a href="/">Каталог</a><form ref={form} action="/admin/logout" method="post"><input type="hidden" name="_csrf" value={logoutToken} /><Button type="button" disabled={loggingOut} onClick={() => void logout()}>{loggingOut ? 'Выходим…' : 'Выйти'}</Button></form></nav>
+      <span className="staff-tag">Администрирование</span><nav aria-label="Служебная навигация"><Link to="/admin/clients" aria-current={location.pathname === '/admin/clients' ? 'page' : undefined}>Клиенты</Link><Link to="/admin/requests" aria-current={location.pathname.startsWith('/admin/requests') ? 'page' : undefined}>Заявки</Link><a href="/">Каталог</a><form ref={form} action="/admin/logout" method="post"><input type="hidden" name="_csrf" value={logoutToken} /><Button type="button" disabled={loggingOut} onClick={() => void logout()}>{loggingOut ? 'Выходим…' : 'Выйти'}</Button></form></nav>
     </div></header>
     <main id="main" tabIndex={-1} className="page-width main-content staff-content">
       {logoutError && <Notice error>{logoutError}</Notice>}
-      {loggingOut ? <><h1>Служебные заявки</h1><div className="loading-state" role="status">Завершаем служебную сессию…</div></> : blocked ? <><h1>Служебные заявки</h1><AccessDenied /></> : !visible ? <><h1>Служебные заявки</h1><div className="loading-state" role="status">При возвращении проверим доступ к заявкам…</div></> : <Routes key={accessCheck}><Route path="/admin/requests" element={<RequestList />} /><Route path="/admin/requests/:number" element={<RequestDetail />} /><Route path="*" element={<EmptyState title="Страница не найдена"><Link className="button" to="/admin/requests">К заявкам</Link></EmptyState>} /></Routes>}
+      {loggingOut ? <><h1>Служебный раздел</h1><div className="loading-state" role="status">Завершаем служебную сессию…</div></> : blocked ? <><h1>Служебный раздел</h1><AccessDenied /></> : !visible ? <><h1>Служебный раздел</h1><div className="loading-state" role="status">При возвращении проверим доступ…</div></> : <Routes key={accessCheck}><Route path="/admin/clients" element={<Clients onDenied={deny} />} /><Route path="/admin/requests" element={<RequestList />} /><Route path="/admin/requests/:number" element={<RequestDetail />} /><Route path="*" element={<EmptyState title="Страница не найдена"><Link className="button" to="/admin/requests">К заявкам</Link></EmptyState>} /></Routes>}
     </main>
-    <footer className="page-width footer"><span>MBM Motors · Служебный раздел</span><span>Только просмотр заявок</span></footer>
+    <footer className="page-width footer"><span>MBM Motors · Служебный раздел</span><span>Клиенты и заявки</span></footer>
   </StaffAccess.Provider>;
 }
 

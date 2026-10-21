@@ -1,0 +1,17 @@
+$kind: http-request
+name: '09a — Список клиентов'
+order: 9100
+method: GET
+url: '{{baseUrl}}/admin/api/clients?q='
+settings:
+  followRedirects: false
+headers:
+  - key: Accept
+    value: application/json
+  - key: Cookie
+    value: '{{sessionCookie}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Список клиентов доступен',()=>pm.response.to.have.status(200));const b=pm.response.json();pm.test('Контракт без секретов',()=>{pm.expect(b.customerCreation).to.be.a('boolean');pm.expect(b.clients).to.be.an('array');for(const c of b.clients){pm.expect(c.login).to.be.a('string');pm.expect(c.enabled).to.be.a('boolean');pm.expect(c.customer.state).to.be.oneOf(['NONE','PENDING','UNKNOWN','LINKED']);for(const key of ['password','passwordHash','credentialsVersion'])pm.expect(c).not.to.have.property(key);}});pm.test('Данные не кешируются',()=>pm.expect(pm.response.headers.get('Cache-Control')).to.include('no-store'));

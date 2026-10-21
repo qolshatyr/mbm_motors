@@ -1,0 +1,23 @@
+$kind: http-request
+name: '09b — Создание клиента без CSRF'
+description: Без заголовка CSRF клиент не создаётся; запрос не меняет данные и не обращается к CloudShop.
+order: 9200
+method: POST
+url: '{{baseUrl}}/admin/api/clients'
+settings:
+  followRedirects: false
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Accept
+    value: application/json
+  - key: Cookie
+    value: '{{sessionCookie}}'
+body:
+  type: json
+  content: '{"login":"postman-check","company":"Проверка","contactName":"Проверка","phone":"+77000000000","password":"synthetic-only-1"}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Без CSRF запрещено',()=>pm.response.to.have.status(403));

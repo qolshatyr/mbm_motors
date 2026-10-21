@@ -26,7 +26,7 @@ export function App() {
 
 const titles: Record<string, string> = {
   '/': 'Оптовый портал', '/search': 'Каталог запчастей', '/quick-order': 'Быстрый заказ', '/basket': 'Корзина',
-  '/checkout': 'Оформление заявки', '/checkout/success': 'Заявка сохранена', '/account': 'Мои заявки', '/login': 'Вход для партнёров',
+  '/checkout': 'Оформление заявки', '/checkout/success': 'Заявка сохранена', '/account': 'Мои заявки', '/login': 'Вход для оптовых клиентов',
 };
 
 function PartnerApp() {

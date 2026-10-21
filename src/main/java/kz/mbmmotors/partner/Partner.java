@@ -12,7 +12,8 @@ public record Partner(
     String contactName,
     String phone,
     String cloudshopCustomerId,
-    boolean enabled) {
+    boolean enabled,
+    int credentialsVersion) {
   public static final String ROLE = "PARTNER";
 
   public UserDetails userDetails() {

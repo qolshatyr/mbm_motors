@@ -16,3 +16,14 @@ export async function postForm<T>(url: string, fields: Record<string, string>): 
     throw error;
   }
 }
+
+export async function postJson<T>(url: string, body: unknown): Promise<T> {
+  const token = csrf ?? await request<Token>('/api/csrf');
+  csrf = token;
+  try {
+    return await request<T>(url, { method: 'POST', headers: { 'Content-Type': 'application/json', [token.headerName]: token.token }, body: JSON.stringify(body) });
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 403) csrf = null;
+    throw error;
+  }
+}
