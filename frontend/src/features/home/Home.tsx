@@ -7,10 +7,11 @@ import { ProductTile } from '../catalog/ProductRow';
 import { useDefaultStore } from '../catalog/useStore';
 
 const photos = `${import.meta.env.BASE_URL}photos/`;
-// Section photos from the v4 design; other sections keep the striped placeholder.
+// Section photos: six from the v4 design, the rest from Unsplash; unknown sections keep the striped placeholder.
 const sectionPhotos: Record<string, string> = {
   'Ходовая часть': 'suspension', 'Тормозная система': 'brakes', 'Фильтры и обслуживание': 'filters',
   'Двигатель': 'engine', 'Масла и технические жидкости': 'oils', 'Электрика и освещение': 'electrics',
+  'Кузовные детали': 'body', 'Охлаждение и климат': 'cooling', 'Рулевое управление': 'steering', 'Трансмиссия': 'transmission',
 };
 
 function catalogParams(storeId: string | null, extra: Record<string, string> = {}) {
