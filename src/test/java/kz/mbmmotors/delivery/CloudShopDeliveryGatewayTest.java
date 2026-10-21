@@ -115,8 +115,10 @@ class CloudShopDeliveryGatewayTest {
     return new SaleCommand(snapshot(), ID, Instant.parse("2026-10-12T01:02:03Z"));
   }
 
-  @Test
-  void customerPayloadUsesSeparatePersonCardAndStrict201() {
+  @ParameterizedTest
+  @ValueSource(ints = {200, 201})
+  void customerPayloadUsesSeparatePersonCardAndAcceptsCreatedOrOk(int success) {
+    status = success;
     assertThat(gateway(Duration.ofSeconds(2)).createCustomer(snapshot()).id()).isEqualTo(ID);
     JsonNode body = mapper.readTree(received);
     assertThat(body.size()).isEqualTo(3);
@@ -170,7 +172,7 @@ class CloudShopDeliveryGatewayTest {
   }
 
   @ParameterizedTest
-  @ValueSource(ints = {200, 202, 301, 302, 307, 308, 400, 401, 403, 429, 500})
+  @ValueSource(ints = {202, 204, 301, 302, 307, 308, 400, 401, 403, 429, 500})
   void customerRejectsOtherStatusesWithoutFollowingOrRetrying(int responseStatus) {
     status = responseStatus;
     reply = TOKEN + snapshot().phone() + "x".repeat(100_000);

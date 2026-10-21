@@ -79,8 +79,7 @@ public final class CloudShopDeliveryGateway implements DeliveryGateway {
                 "name",
                 snapshot.customerName(),
                 "phones",
-                List.of(snapshot.phone())),
-            false);
+                List.of(snapshot.phone())));
     return new CustomerResult(id(result));
   }
 
@@ -93,8 +92,7 @@ public final class CloudShopDeliveryGateway implements DeliveryGateway {
         || !phone.matches("\\+[1-9][0-9]{9,14}"))
       throw new IllegalArgumentException("Invalid partner customer details");
     JsonNode result =
-        post(
-            "/customers", Map.of("type", "company", "name", name, "phones", List.of(phone)), false);
+        post("/customers", Map.of("type", "company", "name", name, "phones", List.of(phone)));
     return new CustomerResult(id(result));
   }
 
@@ -148,8 +146,7 @@ public final class CloudShopDeliveryGateway implements DeliveryGateway {
                 "products",
                 products,
                 "comment",
-                comment),
-            true);
+                comment));
     String id = id(result);
     JsonNode number = result.get("number");
     if (number == null
@@ -160,7 +157,7 @@ public final class CloudShopDeliveryGateway implements DeliveryGateway {
     return new SaleResult(id, number.longValue());
   }
 
-  private JsonNode post(String path, Object body, boolean sale) {
+  private JsonNode post(String path, Object body) {
     try {
       return client
           .post()
@@ -172,7 +169,9 @@ public final class CloudShopDeliveryGateway implements DeliveryGateway {
           .exchange(
               (request, response) -> {
                 int status = response.getStatusCode().value();
-                if (status != 201 && !(sale && status == 200))
+                // Documented as 201; the live API answered 200 to a sale and, in the control
+                // test of 21.10.2026, a created customer card was not accepted with strict 201.
+                if (status != 201 && status != 200)
                   throw new CloudShopException("CloudShop delivery failed with HTTP " + status);
                 byte[] bytes = response.getBody().readNBytes(MAX_RESPONSE_BYTES + 1);
                 if (bytes.length > MAX_RESPONSE_BYTES)
