@@ -6,6 +6,13 @@ import { useCartQuantities } from '../cart/cartQueries';
 import { ProductTile } from '../catalog/ProductRow';
 import { useDefaultStore } from '../catalog/useStore';
 
+const photos = `${import.meta.env.BASE_URL}photos/`;
+// Section photos from the v4 design; other sections keep the striped placeholder.
+const sectionPhotos: Record<string, string> = {
+  'Ходовая часть': 'suspension', 'Тормозная система': 'brakes', 'Фильтры и обслуживание': 'filters',
+  'Двигатель': 'engine', 'Масла и технические жидкости': 'oils', 'Электрика и освещение': 'electrics',
+};
+
 function catalogParams(storeId: string | null, extra: Record<string, string> = {}) {
   const params = new URLSearchParams({ q: '', available: 'false', page: '0', ...extra });
   if (storeId) params.set('store', storeId);
@@ -32,6 +39,7 @@ export function Home() {
         <h1 id="home-title">Нужная деталь со склада в Алматы</h1>
         <p className="hero-sub">Ищите по артикулу, коду или марке автомобиля. Оптовые цены и наличие склада — сразу в каталоге.</p>
       </div>
+      <div className="home-hero-media"><img src={`${photos}hero.jpg`} alt="" /></div>
     </section>
     <div className="search-cards">
       <form className="search-card" role="search" aria-labelledby="by-sku-title" onSubmit={(event) => { event.preventDefault(); const q = query.trim(); navigate(q ? `/search?q=${encodeURIComponent(q)}` : '/search'); }}>
@@ -53,7 +61,7 @@ export function Home() {
     {sections.length > 0 && <section className="home-section" aria-labelledby="home-categories-title">
       <div className="section-heading"><h2 id="home-categories-title">Категории</h2></div>
       <ul className="category-grid">{sections.map((item) => <li key={item.name}><Link to={catalogHref({ section: item.name })} className="category-tile">
-        <span className="category-media" aria-hidden="true" />
+        <span className="category-media" aria-hidden="true">{sectionPhotos[item.name] && <img src={`${photos}categories/${sectionPhotos[item.name]}.jpg`} alt="" loading="lazy" />}</span>
         <span className="category-name">{item.name}</span>
         <span className="category-count">{item.count.toLocaleString('ru-RU')} позиций</span>
       </Link></li>)}</ul>
