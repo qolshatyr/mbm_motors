@@ -7,7 +7,7 @@ import { ProductTile } from '../catalog/ProductRow';
 import { useDefaultStore } from '../catalog/useStore';
 
 const photos = `${import.meta.env.BASE_URL}photos/`;
-// Section photos: six from the v4 design, the rest from Unsplash; unknown sections keep the striped placeholder.
+// Section photos: six from the v4 design, the rest from Unsplash and Pexels; unknown sections keep the striped placeholder.
 const sectionPhotos: Record<string, string> = {
   'Ходовая часть': 'suspension', 'Тормозная система': 'brakes', 'Фильтры и обслуживание': 'filters',
   'Двигатель': 'engine', 'Масла и технические жидкости': 'oils', 'Электрика и освещение': 'electrics',
