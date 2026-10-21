@@ -5,6 +5,7 @@ import { fetchStaffDetail, fetchStaffPage } from '../../shared/api/staff';
 import { ApiError, request } from '../../shared/api/http';
 import { Button } from '../../shared/ui/Button';
 import { EmptyState, Notice } from '../../shared/ui/Feedback';
+import { Logo } from '../../shared/ui/Logo';
 import { Clients } from './Clients';
 
 const StaffAccess = createContext({ blocked: false, deny: () => {} });
@@ -105,7 +106,7 @@ export function Staff() {
   return <StaffAccess.Provider value={{ blocked, deny }}>
     <a href="#main" className="skip-link">Перейти к содержимому</a>
     <header className="site-header"><div className="page-width staff-header">
-      <Link to="/admin/requests" className="brand" aria-label="MBM Motors — служебные заявки"><span className="brand-mark" aria-hidden="true">M</span><span>MBM <span className="brand-light">Motors</span></span></Link>
+      <Link to="/admin/requests" className="brand" aria-label="MBM Motors — служебные заявки"><Logo tagline={false} /></Link>
       <span className="staff-tag">Администрирование</span><nav aria-label="Служебная навигация"><Link to="/admin/clients" aria-current={location.pathname === '/admin/clients' ? 'page' : undefined}>Клиенты</Link><Link to="/admin/requests" aria-current={location.pathname.startsWith('/admin/requests') ? 'page' : undefined}>Заявки</Link><a href="/">Каталог</a><form ref={form} action="/admin/logout" method="post"><input type="hidden" name="_csrf" value={logoutToken} /><Button type="button" disabled={loggingOut} onClick={() => void logout()}>{loggingOut ? 'Выходим…' : 'Выйти'}</Button></form></nav>
     </div></header>
     <main id="main" tabIndex={-1} className="page-width main-content staff-content">

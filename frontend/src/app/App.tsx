@@ -15,6 +15,7 @@ import { pickupText } from '../features/catalog/useStore';
 import { EmptyState, Notice } from '../shared/ui/Feedback';
 import { Staff } from '../features/staff/Staff';
 import { Icon } from '../shared/ui/Icon';
+import { Logo } from '../shared/ui/Logo';
 import type { Partner } from '../shared/api/auth';
 
 const demo = import.meta.env.MODE === 'demo' && import.meta.env.VITE_DEMO === 'true';
@@ -79,7 +80,7 @@ function SignedInRedirect() {
 }
 
 function Brand() {
-  return <Link to="/" className="portal-brand" aria-label="MBM Automotors — главная"><span className="portal-brand-mark" aria-hidden="true">M</span><span className="portal-brand-name"><span>MBM</span><span>AUTOMOTORS</span></span></Link>;
+  return <Link to="/" className="portal-brand" aria-label="MBM Automotors — главная"><Logo /></Link>;
 }
 
 function Header({ partner }: { partner: Partner | null }) {

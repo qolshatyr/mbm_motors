@@ -122,10 +122,14 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--blue); fle
 .portal-header-inner { display: flex; align-items: center; gap: 14px; padding-block: 14px; }
 .portal-brand { display: inline-flex; align-items: center; gap: 10px; flex-shrink: 0; color: var(--ink); text-decoration: none; border-radius: var(--r-sm); }
 .portal-brand:hover { color: var(--ink); }
-.portal-brand-mark { width: 40px; height: 40px; border-radius: 50%; background: var(--blue); color: var(--bg); display: grid; place-items: center; font-family: var(--font-heading); font-weight: 700; font-size: 20px; }
-.portal-brand-name { display: flex; flex-direction: column; line-height: 1; }
-.portal-brand-name > span:first-child { font-family: var(--font-heading); font-weight: 700; font-size: 20px; }
-.portal-brand-name > span:last-child { font-size: 11px; font-weight: 700; letter-spacing: .14em; color: var(--n700); margin-top: 2px; }
+.logo { --logo-blue: #0a4fa6; --logo-ink: #0b0b0c; display: inline-flex; align-items: center; gap: 12px; color: var(--logo-ink); }
+.logo-word { display: inline-flex; align-items: center; gap: 2px; font-family: 'Archivo Variable', var(--font-heading); font-stretch: 125%; font-weight: 800; font-size: 34px; line-height: 1; }
+.logo-nut { width: 27px; height: 27px; color: var(--logo-blue); }
+.logo-nut-hole { fill: var(--bg); }
+.logo-rule { width: 2px; height: 32px; background: var(--logo-blue); }
+.logo-text { display: flex; flex-direction: column; gap: 4px; line-height: 1; }
+.logo-text > span:first-child { font-family: 'Archivo Variable', var(--font-heading); font-stretch: 110%; font-weight: 700; font-size: 14px; letter-spacing: .14em; }
+.logo-text > span:last-child:not(:first-child) { font-weight: 500; font-size: 10px; letter-spacing: .2em; color: var(--logo-blue); }
 .header-catalog { flex-shrink: 0; display: inline-flex; align-items: center; height: 46px; padding: 0 20px; border-radius: var(--r-sm); background: var(--ink); color: var(--bg); font-family: var(--font-heading); font-weight: 700; font-size: 15px; text-decoration: none; }
 .header-catalog:hover, .header-catalog[aria-current] { background: var(--n800); color: var(--bg); }
 .header-search { flex: 1 1 300px; min-width: 0; display: flex; align-items: center; gap: 4px; height: 46px; padding: 4px; border: 1px solid var(--divider); border-radius: var(--r-sm); background: var(--card); }
@@ -440,9 +444,8 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--blue); fle
 
 /* Staff app: shared shell pieces */
 .site-header { background: var(--card); border-bottom: 1px solid var(--divider); }
-.brand { display: inline-flex; align-items: center; gap: 12px; color: var(--ink); text-decoration: none; font-family: var(--font-heading); font-weight: 700; font-size: 20px; }
-.brand-mark { width: 40px; height: 40px; display: grid; place-items: center; background: var(--blue); color: #fff; border-radius: 50%; font-size: 20px; }
-.brand-light { font-weight: 400; }
+.brand { display: inline-flex; align-items: center; text-decoration: none; border-radius: var(--r-sm); }
+.site-header .logo-nut-hole { fill: var(--card); }
 .footer { display: flex; justify-content: space-between; align-items: center; gap: 24px; flex-wrap: wrap; border-top: 1px solid var(--divider); padding-block: 28px; font-size: var(--text-caption); color: var(--muted); }
 .back-nav { margin-bottom: 24px; font-size: var(--text-small); }
 .back-nav a { color: var(--muted); }
@@ -504,8 +507,9 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--blue); fle
   .page-width, .main-content { width: calc(100% - 32px); }
   .main-content { padding-block: 24px 64px; }
   .portal-header-inner { gap: 8px; padding-block: 10px; }
-  .portal-brand-name > span:last-child { display: none; }
-  .portal-brand-mark { width: 36px; height: 36px; font-size: 18px; }
+  .portal-brand .logo-rule, .portal-brand .logo-text { display: none; }
+  .logo-word { font-size: 28px; }
+  .logo-nut { width: 22px; height: 22px; }
   .header-catalog { height: 42px; padding: 0 14px; font-size: 14px; }
   .account-badge { width: 42px; height: 42px; }
   .header-cart { height: 42px; padding: 0 12px 0 6px; gap: 8px; font-size: 13px; }
