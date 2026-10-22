@@ -11,13 +11,13 @@ export function StaffLogin() {
   const [tokenError, setTokenError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   useEffect(() => {
-    document.title = 'Вход сотрудника — MBM Motors';
+    document.title = 'Вход сотрудника — MBM AutoMotors';
     request<{ headerName: string; token: string }>('/api/csrf').then((value) => setToken(value.token), () => setTokenError(true));
   }, []);
   const failed = params.has('error');
   return <>
     <header className="site-header"><div className="page-width staff-header">
-      <Link to="/" className="brand" aria-label="MBM Automotors — главная"><Logo tagline={false} /></Link>
+      <Link to="/" className="brand" aria-label="MBM AutoMotors — главная"><Logo tagline={false} /></Link>
       <span className="staff-tag">Служебный раздел</span>
     </div></header>
     <main id="main" tabIndex={-1} className="page-width main-content staff-login">

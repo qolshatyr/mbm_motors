@@ -24,7 +24,7 @@ export function Clients({ onDenied }: { onDenied: () => void }) {
   const result = useQuery({ queryKey: [...clientsKey, search], queryFn: ({ signal }) => fetchClients(search, signal), ...staffOptions });
   const denied = result.error instanceof ApiError && (result.error.status === 401 || result.error.status === 403);
   useEffect(() => { if (denied) onDenied(); }, [denied, onDenied]);
-  useEffect(() => { document.title = 'Клиенты — MBM Motors'; }, []);
+  useEffect(() => { document.title = 'Клиенты — MBM AutoMotors'; }, []);
   const count = result.data?.clients.length ?? 0;
   return <>
     <div className="clients-heading">

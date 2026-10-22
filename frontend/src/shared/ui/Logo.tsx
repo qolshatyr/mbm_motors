@@ -4,7 +4,7 @@ export function NutMark({ className }: { className?: string }) {
 }
 
 export function Logo({ tagline = true, dark = false }: { tagline?: boolean; dark?: boolean }) {
-  return <span className={dark ? 'logo logo-dark' : 'logo'} role="img" aria-label="MBM Automotors">
+  return <span className={dark ? 'logo logo-dark' : 'logo'} role="img" aria-label="MBM AutoMotors">
     <span className="logo-word" aria-hidden="true"><span>M</span><NutMark className="logo-nut" /><span>M</span></span>
     <span className="logo-rule" aria-hidden="true" />
     <span className="logo-text" aria-hidden="true"><span>AUTOMOTORS</span>{tagline && <span>АВТОЗАПЧАСТИ</span>}</span>

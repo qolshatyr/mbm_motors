@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <parent><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-parent</artifactId><version>4.0.8</version><relativePath/></parent>
   <groupId>kz.mbmmotors</groupId><artifactId>mbm-motors</artifactId><version>0.0.1-SNAPSHOT</version>
-  <name>MBM Motors</name>
+  <name>MBM AutoMotors</name>
   <properties><java.version>21</java.version></properties>
   <dependencies>
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-webmvc</artifactId></dependency>

@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "MBM Motors Session Cart API",
+    "title": "MBM AutoMotors Session Cart API",
     "version": "1.0.0",
     "description": "Сессионная корзина. Существующие правила CartService и Thymeleaf используют ту же сессию. Оформление и CloudShop POST не входят в контракт."
   },

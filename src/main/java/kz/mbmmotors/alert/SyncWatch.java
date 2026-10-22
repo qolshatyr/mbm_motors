@@ -57,7 +57,7 @@ class SyncWatch {
     Instant reference = last == null || last.isBefore(started) ? started : last;
     boolean stale = reference.plus(staleAfter).isBefore(clock.instant());
     if (stale == reported) return;
-    String text = stale ? staleMessage(last) : "MBM Motors: каталог снова обновляется.";
+    String text = stale ? staleMessage(last) : "MBM AutoMotors: каталог снова обновляется.";
     try {
       notifier.send(text);
     } catch (AlertException failure) {
@@ -69,7 +69,7 @@ class SyncWatch {
   }
 
   static String staleMessage(Instant last) {
-    return "MBM Motors: каталог не обновляется"
+    return "MBM AutoMotors: каталог не обновляется"
         + (last == null
             ? " — успешной синхронизации ещё не было."
             : " с " + LOCAL.format(last) + " (Алматы).")

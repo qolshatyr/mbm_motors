@@ -72,12 +72,12 @@ class SyncWatchTest {
     watch.tick();
     watch.tick();
     verify(notifier, times(1))
-        .send(startsWith("MBM Motors: каталог не обновляется с 23.10.2026 10:59"));
+        .send(startsWith("MBM AutoMotors: каталог не обновляется с 23.10.2026 10:59"));
     lastSuccess(START.plus(Duration.ofMinutes(32)));
     now.set(START.plus(Duration.ofMinutes(33)));
     watch.tick();
     watch.tick();
-    verify(notifier, times(1)).send("MBM Motors: каталог снова обновляется.");
+    verify(notifier, times(1)).send("MBM AutoMotors: каталог снова обновляется.");
   }
 
   @Test
@@ -91,7 +91,8 @@ class SyncWatchTest {
     watch.tick();
     verify(notifier)
         .send(
-            startsWith("MBM Motors: каталог не обновляется — успешной синхронизации ещё не было."));
+            startsWith(
+                "MBM AutoMotors: каталог не обновляется — успешной синхронизации ещё не было."));
   }
 
   @Test
@@ -112,7 +113,7 @@ class SyncWatchTest {
     watch.tick();
     reset(notifier);
     watch.tick();
-    verify(notifier).send(startsWith("MBM Motors: каталог не обновляется"));
+    verify(notifier).send(startsWith("MBM AutoMotors: каталог не обновляется"));
   }
 
   @Test

@@ -1,4 +1,4 @@
-"""Dictionaries for classifying MBM Motors product names (Hyundai/Kia parts warehouse).
+"""Dictionaries for classifying MBM AutoMotors product names (Hyundai/Kia parts warehouse).
 
 Rules are ordered: the first matching part rule wins, so specific phrases come before generic
 words. Group codes extend docs/cloudshop/templates/catalog_groups.csv; groups marked "new" were

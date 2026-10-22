@@ -20,7 +20,7 @@ export function ProductDetail() {
   const toast = useToast();
   const inCart = useCartQuantities().get(id) ?? 0;
   const [quantity, setQuantity] = useState(1);
-  useEffect(() => { document.title = detail.data ? `${detail.data.product.name} — MBM Automotors` : 'Запчасть — MBM Automotors'; }, [detail.data]);
+  useEffect(() => { document.title = detail.data ? `${detail.data.product.name} — MBM AutoMotors` : 'Запчасть — MBM AutoMotors'; }, [detail.data]);
   useEffect(() => { setQuantity(1); }, [id]);
   const data = detail.data;
   const offer = data?.offers.find((item) => item.storeId === (data.selectedStore || store.id)) ?? data?.offers[0];

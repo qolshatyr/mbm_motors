@@ -1,4 +1,4 @@
-# MBM Motors
+# MBM AutoMotors
 
 ### Каталог автозапчастей с интеграцией CloudShop
 

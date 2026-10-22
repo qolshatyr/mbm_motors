@@ -37,7 +37,7 @@ function PartnerApp() {
   const me = useMe();
   const previousPath = useRef(location.pathname);
   useEffect(() => {
-    if (!location.pathname.startsWith('/products/')) document.title = `${titles[location.pathname] ?? 'Страница не найдена'} — MBM Automotors`;
+    if (!location.pathname.startsWith('/products/')) document.title = `${titles[location.pathname] ?? 'Страница не найдена'} — MBM AutoMotors`;
     if (previousPath.current !== location.pathname) {
       document.getElementById('main')?.focus({ preventScroll: true });
       window.scrollTo(0, 0);
@@ -64,7 +64,7 @@ function PartnerApp() {
   </Routes>;
   return <>
     <a href="#main" className="skip-link" onClick={(event) => { event.preventDefault(); const main = document.getElementById('main'); main?.focus(); main?.scrollIntoView({ behavior: 'instant' }); }}>Перейти к содержимому</a>
-    {demo && <div className="demo-banner"><div className="page-width"><strong>Прототип MBM Automotors</strong><span>Тестовый ассортимент. Подходит любой логин. Заявки никуда не отправляются.</span></div></div>}
+    {demo && <div className="demo-banner"><div className="page-width"><strong>Прототип MBM AutoMotors</strong><span>Тестовый ассортимент. Подходит любой логин. Заявки никуда не отправляются.</span></div></div>}
     <div className="top-strip"><div className="page-width top-strip-inner"><span><Icon name="location" />{pickupText}</span>{partner && <Link to="/quick-order">Быстрый заказ</Link>}</div></div>
     <Header partner={partner ?? null} />
     <main id="main" tabIndex={-1} className="page-width main-content">{content}</main>
@@ -82,7 +82,7 @@ function SignedInRedirect() {
 }
 
 function Brand() {
-  return <Link to="/" className="portal-brand" aria-label="MBM Automotors — главная"><Logo /></Link>;
+  return <Link to="/" className="portal-brand" aria-label="MBM AutoMotors — главная"><Logo /></Link>;
 }
 
 function Header({ partner }: { partner: Partner | null }) {
