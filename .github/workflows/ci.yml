@@ -94,8 +94,12 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
+      # Same version as `apt install rclone` on the Ubuntu 24.04 server; apt-get update here takes minutes.
       - name: Install rclone
-        run: sudo apt-get update -q && sudo apt-get install -y -q rclone
+        run: |
+          curl -fsSL -o rclone.zip https://downloads.rclone.org/v1.60.1/rclone-v1.60.1-linux-amd64.zip
+          unzip -q -j rclone.zip '*/rclone' -d "$RUNNER_TEMP/bin"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
       - name: Production compose database, encrypted remote, restore check
         env:
           MBM_BACKUP_E2E: '1'
