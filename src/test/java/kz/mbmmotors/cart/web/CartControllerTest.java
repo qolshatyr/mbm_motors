@@ -16,11 +16,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(CartController.class)
 @Import(WebSecurityConfiguration.class)
+// The portal is partner-only; access rules themselves are covered by PartnerSecurityTest.
+@WithMockUser(roles = "PARTNER")
 class CartControllerTest {
   @Autowired MockMvc mvc;
   @MockitoBean CartService service;

@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="styles.css">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700&family=Golos+Text:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--font-heading:"Manrope",system-ui,sans-serif;--font-body:"Golos Text",system-ui,sans-serif;
+--color-bg:#f4f5f7;--color-surface:#e8ebef;--color-text:#14181f;--color-accent:#2552c8;--color-accent-2:#536276;--color-divider:rgba(20,24,31,.14);
+--color-neutral-100:#fcfcfd;--color-neutral-200:#eef0f3;--color-neutral-300:#dde1e7;--color-neutral-400:#c0c6cf;--color-neutral-500:#9aa2ae;--color-neutral-600:#727a86;--color-neutral-700:#555d68;--color-neutral-800:#3d434c;--color-neutral-900:#1b1f25;
+--color-accent-100:#eef3ff;--color-accent-200:#dbe5ff;--color-accent-300:#b9cbfb;--color-accent-400:#85a3f0;--color-accent-500:#4f78dc;--color-accent-600:#1f47b0;--color-accent-700:#1c3f95;--color-accent-800:#173274;--color-accent-900:#10224d;
+--color-accent-2-100:#e9f5ee;--color-accent-2-200:#d3eadc;--color-accent-2-300:#a9d3b8;--color-accent-2-400:#97a5b6;--color-accent-2-500:#2f8a57;--color-accent-2-600:#2a6e48;--color-accent-2-700:#1f2a38;--color-accent-2-800:#161e29;--color-accent-2-900:#0f141b}
+body{font-family:var(--font-body)}
+body{margin:0;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body)}
+a{color:var(--color-accent-700);text-decoration:none}a:hover{color:var(--color-accent-600)}
+input,select,textarea,button{font-family:inherit}
+</style>
+</helmet>
+
+<div style="min-height:100vh;display:flex;flex-direction:column">
+
+<div style="background:var(--color-accent-2-800);color:var(--color-neutral-100);font-size:13px">
+  <div style="max-width:1320px;margin:0 auto;padding:8px 32px;display:flex;gap:20px;align-items:center;flex-wrap:wrap">
+    <span>{{ t.pickupStrip }}</span>
+    <span style="display:flex;align-items:center;gap:6px;color:var(--color-accent-2-200)"><span style="width:7px;height:7px;border-radius:50%;background:var(--color-accent-2-300)"></span>{{ t.synced }} 13:05</span>
+    <span style="flex:1"></span>
+    <span onClick="{{ goQuick }}" style="cursor:pointer;font-weight:700;color:var(--color-neutral-100)">{{ t.quick }} →</span>
+    <span>{{ t.hours }}</span>
+    <div style="display:flex;gap:2px;background:var(--color-accent-2-900);border-radius:8px;padding:3px">
+      <sc-for list="{{ langOpts }}" as="l" hint-placeholder-count="2">
+        <button onClick="{{ l.onPick }}" style="border:0;border-radius:8px;padding:3px 10px;font-size:12px;font-weight:700;cursor:pointer;background:{{ l.bg }};color:{{ l.color }}">{{ l.label }}</button>
+      </sc-for>
+    </div>
+  </div>
+</div>
+
+<header style="background:var(--color-bg);position:sticky;top:0;z-index:30;box-shadow:0 1px 0 var(--color-divider)">
+  <div style="max-width:1320px;margin:0 auto;padding:14px 32px;display:flex;gap:14px;align-items:center">
+    <div onClick="{{ goHome }}" style="display:flex;align-items:center;gap:10px;cursor:pointer;flex-shrink:0">
+      <div style="width:40px;height:40px;border-radius:50%;background:var(--color-accent);color:var(--color-bg);display:grid;place-items:center;font-family:var(--font-heading);font-size:20px">M</div>
+      <div style="display:flex;flex-direction:column;line-height:1">
+        <span style="font-family:var(--font-heading);font-size:20px">MBM</span>
+        <span style="font-size:11px;font-weight:700;letter-spacing:0.14em;color:var(--color-neutral-700)">AUTOMOTORS</span>
+      </div>
+    </div>
+    <button onClick="{{ goCatalog }}" style="flex-shrink:0;height:46px;padding:0 20px;border:0;border-radius:8px;background:var(--color-text);color:var(--color-bg);font-family:var(--font-heading);font-size:15px;cursor:pointer" style-hover="background:var(--color-neutral-800)">{{ t.catalog }}</button>
+    <div style="flex:1 1 300px;min-width:280px;display:flex;align-items:center;height:46px;background:var(--color-neutral-100);border:1px solid var(--color-divider);border-radius:8px;padding:4px;gap:4px">
+      <select value="{{ mode }}" onChange="{{ onMode }}" style="flex-shrink:0;height:36px;border:0;border-radius:8px;background:var(--color-neutral-200);padding:0 8px;max-width:96px;font-size:13px;font-weight:700;color:var(--color-text);cursor:pointer;outline:0">
+        <sc-for list="{{ modes }}" as="m" hint-placeholder-count="3"><option value="{{ m }}">{{ m }}</option></sc-for>
+      </select>
+      <input value="{{ query }}" onChange="{{ onQuery }}" onKeyDown="{{ onSearchKey }}" placeholder="{{ placeholder }}" style="flex:1;min-width:0;border:0;outline:0;background:transparent;padding:0 10px;font-size:15px;color:var(--color-text)">
+      <button onClick="{{ doSearch }}" style="flex-shrink:0;white-space:nowrap;height:36px;padding:0 18px;border:0;border-radius:8px;background:var(--color-accent);color:var(--color-bg);font-family:var(--font-heading);font-size:14px;cursor:pointer" style-hover="background:var(--color-accent-600)">{{ t.find }}</button>
+    </div>
+    <button onClick="{{ goAccount }}" title="{{ accountLabel }}" style="flex-shrink:0;width:46px;height:46px;padding:0;border:1px solid var(--color-divider);border-radius:50%;background:transparent;cursor:pointer;display:grid;place-items:center" style-hover="background:var(--color-neutral-200)">
+      <span style="width:32px;height:32px;border-radius:50%;background:{{ accBadgeBg }};color:var(--color-bg);display:grid;place-items:center;font-size:13px;font-weight:700">{{ accInitial }}</span>
+    </button>
+    <button onClick="{{ goCart }}" style="flex-shrink:0;white-space:nowrap;height:46px;padding:0 18px 0 8px;border:0;border-radius:8px;background:var(--color-accent-200);color:var(--color-accent-900);font-weight:700;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:10px" style-hover="background:var(--color-accent-300)">
+      <span style="min-width:30px;height:30px;padding:0 8px;border-radius:8px;background:var(--color-accent);color:var(--color-bg);display:grid;place-items:center;font-size:13px">{{ cartCount }}</span>{{ cartTotalFmt }}
+    </button>
+  </div>
+</header>
+
+<main style="flex:1">
+
+<sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+  <section data-screen-label="01 Главная" style="max-width:1320px;margin:0 auto;padding:48px 32px 0">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:40px;align-items:end">
+      <div>
+        <span style="display:inline-flex;font-size:12px;font-weight:700;letter-spacing:0.06em;padding:5px 12px;border-radius:8px;background:var(--color-accent-2-100);color:var(--color-accent-2-800)">{{ t.heroKicker }}</span>
+        <h1 style="font-family:var(--font-heading);font-weight:400;font-size:clamp(40px,5vw,62px);line-height:1.04;letter-spacing:-0.02em;margin:18px 0 18px;text-wrap:balance">{{ t.heroTitle }}</h1>
+        <p style="font-size:18px;line-height:1.5;color:var(--color-neutral-800);max-width:520px;margin:0;text-wrap:pretty">{{ t.heroSub }}</p>
+      </div>
+      <div style="aspect-ratio:16/10;border-radius:14px;background:repeating-linear-gradient(135deg,var(--color-neutral-300) 0 10px,var(--color-neutral-200) 10px 20px);display:grid;place-items:center;font-family:ui-monospace,monospace;font-size:12px;color:var(--color-neutral-700)">фото склада / стеллажей с запчастями</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px;margin-top:36px">
+      <div style="background:var(--color-surface);border-radius:14px;padding:26px;display:flex;flex-direction:column;gap:14px">
+        <div style="font-family:var(--font-heading);font-size:22px">{{ t.bySku }}</div>
+        <div style="font-size:14px;color:var(--color-neutral-700);line-height:1.45">Дефисы и пробелы не важны: 546102t000 найдёт 54610-2T000</div>
+        <div style="display:flex;gap:8px;margin-top:auto">
+          <input value="{{ query }}" onChange="{{ onQuery }}" onKeyDown="{{ onSearchKey }}" placeholder="Артикул или код" style="flex:1;min-width:0;height:48px;border:1px solid var(--color-divider);border-radius:8px;background:var(--color-neutral-100);padding:0 18px;font-size:15px;outline:0;font-family:ui-monospace,monospace">
+          <button onClick="{{ doSearchSku }}" style="flex-shrink:0;height:48px;padding:0 20px;border:0;border-radius:8px;background:var(--color-accent);color:var(--color-bg);font-family:var(--font-heading);font-size:15px;cursor:pointer" style-hover="background:var(--color-accent-600)">{{ t.find }}</button>
+        </div>
+      </div>
+      <div style="background:var(--color-surface);border-radius:14px;padding:26px;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span style="font-family:var(--font-heading);font-size:22px">{{ t.byVin }}</span><span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:8px;background:var(--color-accent-100);color:var(--color-accent-800)">концепт</span></div>
+        <div style="font-size:14px;color:var(--color-neutral-700);line-height:1.45">17 символов из техпаспорта. Определим модель и двигатель.</div>
+        <div style="display:flex;gap:8px;margin-top:auto">
+          <div style="flex:1;min-width:0;position:relative">
+            <input value="{{ vin }}" onChange="{{ onVin }}" placeholder="KMHJ381ABJU000000" style="width:100%;height:48px;border:1px solid var(--color-divider);border-radius:8px;background:var(--color-neutral-100);padding:0 56px 0 18px;font-size:15px;outline:0;font-family:ui-monospace,monospace;letter-spacing:0.04em;text-transform:uppercase">
+            <span style="position:absolute;right:16px;top:15px;font-size:12px;color:{{ vinCountColor }};font-weight:700">{{ vinCount }}</span>
+          </div>
+          <button onClick="{{ doVin }}" disabled="{{ vinInvalid }}" style="flex-shrink:0;height:48px;padding:0 20px;border:0;border-radius:8px;background:var(--color-text);color:var(--color-bg);font-family:var(--font-heading);font-size:15px;cursor:pointer;opacity:{{ vinBtnOpacity }}">{{ t.find }}</button>
+        </div>
+      </div>
+      <div style="background:var(--color-surface);border-radius:14px;padding:26px;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span style="font-family:var(--font-heading);font-size:22px">{{ t.byModel }}</span><span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:8px;background:var(--color-accent-100);color:var(--color-accent-800)">концепт</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:8px">
+          <select value="{{ pickMake }}" onChange="{{ onPickMake }}" style="height:48px;border:1px solid var(--color-divider);border-radius:8px;background:var(--color-neutral-100);padding:0 14px;font-size:15px;color:var(--color-text);outline:0">
+            <sc-for list="{{ makes }}" as="m" hint-placeholder-count="2"><option value="{{ m }}">{{ m }}</option></sc-for>
+          </select>
+          <select value="{{ pickModel }}" onChange="{{ onPickModel }}" style="height:48px;border:1px solid var(--color-divider);border-radius:8px;background:var(--color-neutral-100);padding:0 14px;font-size:15px;color:var(--color-text);outline:0;min-width:0">
+            <sc-for list="{{ models }}" as="m" hint-placeholder-count="4"><option value="{{ m }}">{{ m }}</option></sc-for>
+          </select>
+        </div>
+        <button onClick="{{ doPickCar }}" style="margin-top:auto;height:48px;border:0;border-radius:8px;background:var(--color-text);color:var(--color-bg);font-family:var(--font-heading);font-size:15px;cursor:pointer" style-hover="background:var(--color-neutral-800)">{{ t.showParts }}</button>
+      </div>
+    </div>
+  </section>
+
+  <section style="max-width:1320px;margin:0 auto;padding:64px 32px 0">
+    <h2 style="font-family:var(--font-heading);font-weight:400;font-size:32px;margin:0">{{ t.categories }}</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px;margin-top:22px">
+      <sc-for list="{{ categories }}" as="c" hint-placeholder-count="6">
+        <div onClick="{{ c.onPick }}" style="cursor:pointer;display:flex;flex-direction:column;gap:12px">
+          <div style="aspect-ratio:4/3;border-radius:12px;background:repeating-linear-gradient(135deg,var(--color-neutral-200) 0 8px,var(--color-neutral-100) 8px 16px);display:grid;place-items:center;font-family:ui-monospace,monospace;font-size:11px;color:var(--color-neutral-600);border:2px solid transparent;transition:border-color .15s" style-hover="border-color:var(--color-accent)">{{ c.ph }}</div>
+          <div style="padding-left:6px"><div style="font-weight:700;font-size:16px">{{ c.name }}</div><div style="font-size:13px;color:var(--color-neutral-600)">{{ c.count }}</div></div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section style="max-width:1320px;margin:0 auto;padding:64px 32px 0">
+    <div style="background:var(--color-accent-2-700);color:var(--color-accent-2-100);border-radius:14px;padding:40px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:32px;align-items:center">
+      <div>
+        <h2 style="font-family:var(--font-heading);font-weight:400;font-size:34px;margin:0;color:var(--color-neutral-100);text-wrap:balance">{{ t.b2bTitle }}</h2>
+        <p style="font-size:16px;line-height:1.5;margin:14px 0 0;max-width:460px">{{ t.b2bSub }}</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;gap:14px;align-items:center;background:var(--color-accent-2-800);border-radius:10px;padding:16px 18px">
+          <span style="width:36px;height:36px;border-radius:50%;background:var(--color-accent-2-300);color:var(--color-accent-2-900);display:grid;place-items:center;font-weight:700;flex-shrink:0">%</span>
+          <div><div style="font-weight:700;color:var(--color-neutral-100)">Персональные цены</div><div style="font-size:14px">Ваш уровень скидки виден в каталоге сразу после входа</div></div>
+        </div>
+        <div style="display:flex;gap:14px;align-items:center;background:var(--color-accent-2-800);border-radius:10px;padding:16px 18px">
+          <span style="width:36px;height:36px;border-radius:50%;background:var(--color-accent-2-300);color:var(--color-accent-2-900);display:grid;place-items:center;font-weight:700;flex-shrink:0">≡</span>
+          <div><div style="font-weight:700;color:var(--color-neutral-100)">Заказ списком</div><div style="font-size:14px">Вставьте артикулы с количеством — корзина соберётся сама</div></div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:6px;flex-wrap:wrap">
+          <button onClick="{{ goQuick }}" style="height:48px;padding:0 22px;border:0;border-radius:8px;background:var(--color-neutral-100);color:var(--color-text);font-family:var(--font-heading);font-size:15px;cursor:pointer">{{ t.quick }}</button>
+          <sc-if value="{{ notLoggedIn }}" hint-placeholder-val="{{ true }}"><button onClick="{{ goAccount }}" style="height:48px;padding:0 22px;border:1px solid var(--color-accent-2-300);border-radius:8px;background:transparent;color:var(--color-neutral-100);font-family:var(--font-heading);font-size:15px;cursor:pointer">{{ t.login }}</button></sc-if>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="max-width:1320px;margin:0 auto;padding:64px 32px 0">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap">
+      <h2 style="font-family:var(--font-heading);font-weight:400;font-size:32px;margin:0">{{ t.popular }}</h2>
+      <a href="#" onClick="{{ goCatalog }}" style="font-weight:700">Весь каталог →</a>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-top:22px">
+      <sc-for list="{{ popular }}" as="p" hint-placeholder-count="4">
+        <div style="background:var(--color-neutral-100);border-radius:14px;padding:14px 14px 18px;display:flex;flex-direction:column;gap:8px">
+          <div onClick="{{ p.onOpen }}" style="cursor:pointer;aspect-ratio:4/3;border-radius:10px;background:repeating-linear-gradient(135deg,var(--color-neutral-200) 0 8px,var(--color-neutral-100) 8px 16px);display:grid;place-items:center;font-family:ui-monospace,monospace;font-size:11px;color:var(--color-neutral-600)">фото детали</div>
+          <div style="padding:4px 6px 0;display:flex;flex-direction:column;gap:6px;flex:1">
+            <div style="font-family:ui-monospace,monospace;font-size:12px;color:var(--color-neutral-700)">{{ p.sku }}</div>
+            <div onClick="{{ p.onOpen }}" style="cursor:pointer;font-weight:700;font-size:16px;line-height:1.3">{{ p.name }}</div>
+            <div style="font-size:13px;color:{{ p.stockColor }};font-weight:600">{{ p.stockText }}</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:auto;padding-top:8px">
+              <div><div style="font-size:19px;font-weight:700;white-space:nowrap">{{ p.priceFmt }}</div><sc-if value="{{ p.showRetail }}"><div style="font-size:12px;color:var(--color-neutral-600);text-decoration:line-through">{{ p.retailFmt }}</div></sc-if></div>
+              <sc-if value="{{ p.inCart }}" hint-placeholder-val="{{ false }}"><button onClick="{{ goCart }}" style="height:40px;padding:0 14px;border:0;border-radius:8px;background:var(--color-accent-2-200);color:var(--color-accent-2-900);font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap">✓ {{ p.qty }} шт.</button></sc-if>
+              <sc-if value="{{ p.addable }}" hint-placeholder-val="{{ true }}"><button onClick="{{ p.onAdd }}" style="height:40px;padding:0 16px;border:0;border-radius:8px;background:var(--color-accent);color:var(--color-bg);font-family:var(--font-heading);font-size:14px;cursor:pointer;white-space:nowrap" style-hover="background:var(--color-accent-600)">{{ t.toCart }}</button></sc-if>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+</sc-if>
+
+<sc-if value="{{ isCatalog }}" hint-placeholder-val="{{ false }}">
+  <section data-screen-label="02 Каталог" style="max-width:1320px;margin:0 auto;padding:32px 32px 0">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+      <div>
+        <div style="font-size:13px;color:var(--color-neutral-700);display:flex;gap:8px"><a href="#" onClick="{{ goHome }}">Главная</a><span>/</span><span>Каталог</span></div>
+        <h1 style="font-family:var(--font-heading);font-weight:400;font-size:40px;margin:10px 0 0">{{ catalogTitle }}</h1>
+      </div>
+      <sc-if value="{{ carActive }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 8px 8px 16px;border-radius:8px;background:var(--color-accent-2-100);color:var(--color-accent-2-900);font-size:14px">
+          Детали для <b>{{ car }}</b>
+          <button onClick="{{ clearCar }}" style="border:0;border-radius:8px;background:var(--color-accent-2-200);color:var(--color-accent-2-900);height:30px;padding:0 12px;font-weight:700;font-size:13px;cursor:pointer">Сбросить</button>
+        </div>
+      </sc-if>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:22px;flex-wrap:wrap">
+      <sc-for list="{{ catChips }}" as="c" hint-placeholder-count="7">
+        <button onClick="{{ c.onPick }}" style="height:40px;padding:0 18px;border-radius:8px;border:1px solid {{ c.border }};background:{{ c.bg }};color:{{ c.color }};font-weight:700;font-size:14px;cursor:pointer">{{ c.name }}</button>
+      </sc-for>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:24px;margin-top:26px;align-items:flex-start">
+      <aside style="flex:1 1 220px;max-width:250px;background:var(--color-surface);border-radius:14px;padding:22px;position:sticky;top:96px;display:flex;flex-direction:column;gap:24px">
+        <div onClick="{{ toggleStock }}" style="display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer;font-size:15px;font-weight:700">
+          Только в наличии
+          <span style="flex-shrink:0;width:44px;height:26px;border-radius:8px;background:{{ stockTrack }};position:relative;transition:background .15s"><span style="position:absolute;top:3px;left:{{ stockKnob }};width:20px;height:20px;border-radius:50%;background:var(--color-neutral-100);transition:left .15s"></span></span>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;letter-spacing:0.08em;color:var(--color-neutral-700);margin-bottom:12px">ПРОИЗВОДИТЕЛЬ</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <sc-for list="{{ brandFilters }}" as="b" hint-placeholder-count="5">
+              <div onClick="{{ b.onToggle }}" style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer">
+                <span style="width:20px;height:20px;border-radius:4px;border:1.5px solid {{ b.border }};background:{{ b.bg }};display:grid;place-items:center;color:var(--color-bg);font-size:12px;font-weight:700;flex-shrink:0">{{ b.mark }}</span>
+                <span style="flex:1">{{ b.name }}</span><span style="color:var(--color-neutral-600);font-size:13px">{{ b.count }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:700;letter-spacing:0.08em;color:var(--color-neutral-700);margin-bottom:12px">АВТОМОБИЛЬ</div>
+          <select value="{{ carSelect }}" onChange="{{ onCarSelect }}" style="width:100%;height:42px;border:1px solid var(--color-divider);border-radius:8px;background:var(--color-neutral-100);padding:0 12px;font-size:14px;color:var(--color-text);outline:0">
+            <sc-for list="{{ carOptions }}" as="o" hint-placeholder-count="5"><option value="{{ o }}">{{ o }}</option></sc-for>
+          </select>
+          <div style="font-size:12px;color:var(--color-neutral-600);margin-top:8px;line-height:1.4">Применимость показана для примера: данные о совместимости подключим позже</div>
+        </div>
+        <sc-if value="{{ hasFilters }}"><button onClick="{{ resetFilters }}" style="height:42px;border:1px solid var(--color-divider);border-radius:8px;background:transparent;font-weight:700;cursor:pointer;color:var(--color-text)">Сбросить фильтры</button></sc-if>
+      </aside>
+
+      <div style="flex:999 1 520px;min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+          <div style="font-size:15px;color:var(--color-neutral-700)">Найдено: <b style="color:var(--color-text)">{{ resultCount }}</b><sc-if value="{{ hasQuery }}"> по запросу «{{ query }}»</sc-if></div>
+          <div style="display:flex;gap:2px;border:1px solid var(--color-divider);padding:3px;border-radius:8px">
+            <sc-for list="{{ sorts }}" as="s" hint-placeholder-count="3">
+              <button onClick="{{ s.onPick }}" style="height:32px;padding:0 14px;border:0;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;background:{{ s.bg }};color:{{ s.color }}">{{ s.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <sc-for list="{{ results }}" as="p" hint-placeholder-count="6">
+            <div style="background:var(--color-neutral-100);border-radius:14px;padding:14px 18px 14px 14px;display:flex;flex-wrap:wrap;gap:14px 20px;align-items:center">
+              <div onClick="{{ p.onOpen }}" style="flex:0 0 92px;cursor:pointer;aspect-ratio:1;border-radius:10px;background:repeating-linear-gradient(135deg,var(--color-neutral-200) 0 7px,var(--color-neutral-100) 7px 14px);display:grid;place-items:center;font-family:ui-monospace,monospace;font-size:10px;color:var(--color-neutral-600)">фото</div>
+              <div style="flex:1 1 240px;min-width:0;display:flex;flex-direction:column;gap:6px">
+                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--color-neutral-700)">
+                  <span style="font-family:ui-monospace,monospace;font-weight:600;color:var(--color-text)">{{ p.sku }}</span><span>Код {{ p.code }}</span><span>{{ p.brand }}</span>
+                </div>
+                <div onClick="{{ p.onOpen }}" style="cursor:pointer;font-weight:700;font-size:17px;line-height:1.3" style-hover="color:var(--color-accent-700)">{{ p.name }}</div>
+                <div style="font-size:13px;color:{{ p.stockColor }};font-weight:600">{{ p.stockText }}</div>
+              </div>
+              <div style="flex:0 0 auto;margin-left:auto;display:flex;align-items:center;gap:18px">
+                <div style="text-align:right;min-width:120px">
+                  <div style="font-size:21px;font-weight:700;white-space:nowrap;color:{{ p.priceColor }}">{{ p.priceFmt }}</div>
+                  <sc-if value="{{ p.showRetail }}"><div style="font-size:12px;color:var(--color-neutral-600)">розница <span style="text-decoration:line-through">{{ p.retailFmt }}</span></div></sc-if>
+                </div>
+                <sc-if value="{{ p.inCart }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;align-items:center;height:46px;border-radius:8px;background:var(--color-accent-2-200);color:var(--color-accent-2-900);font-weight:700">
+                    <button onClick="{{ p.onDec }}" style="width:42px;height:46px;border:0;background:transparent;font-size:20px;color:inherit;cursor:pointer">−</button>
+                    <span style="min-width:24px;text-align:center">{{ p.qty }}</span>
+                    <button onClick="{{ p.onAdd }}" disabled="{{ p.atMax }}" style="width:42px;height:46px;border:0;background:transparent;font-size:20px;color:inherit;cursor:pointer;opacity:{{ p.plusOpacity }}">+</button>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ p.addable }}" hint-placeholder-val="{{ true }}">
+                  <button onClick="{{ p.onAdd }}" style="height:46px;width:126px;border:0;border-radius:8px;background:var(--color-accent);color:var(--color-bg);font-family:var(--font-heading);font-size:15px;cursor:pointer" style-hover="background:var(--color-accent-600)">{{ t.toCart }}</button>
+                </sc-if>
+                <sc-if value="{{ p.blocked }}" hint-placeholder-val="{{ false }}">
+                  <button onClick="{{ p.onOpen }}" style="height:46px;width:126px;border:1px solid var(--color-divider);border-radius:8px;background:transparent;color:var(--color-text);font-weight:700;font-size:13px;cursor:pointer">{{ p.blockedLabel }}</button>
+                </sc-if>
+              </div>
+            </div>
+          </sc-for>
+          <sc-if value="{{ noResults }}">
+            <div style="background:var(--color-surface);border-radius:14px;padding:48px;display:flex;flex-direction:column;align-items:flex-start;gap:10px">
+              <h3 style="font-family:var(--font-heading);font-weight:400;font-size:25px;margin:0">Товары не найдены</h3>
+              <p style="margin:0;color:var(--color-neutral-800);max-width:520px">Проверьте артикул или попробуйте более короткое название. Можно снять фильтр наличия или отправить список артикулов через быстрый заказ.</p>
+              <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+                <button onClick="{{ resetFilters }}" style="height:44px;padding:0 20px;border:0;border-radius:8px;background:var(--color-text);color:var(--color-bg);font-family:var(--font-heading);font-size:14px;cursor:pointer">Показать весь каталог</button>
+                <button onClick="{{ goQuick }}" style="height:44px;padding:0 20px;border:1px solid var(--color-divider);border-radius:8px;background:transparent;font-weight:700;cursor:pointer;color:var(--color-text)">{{ t.quick }}</button>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+  </section>
+</sc-if>
+
+<sc-if value="{{ isProduct }}" hint-placeholder-val="{{ false }}">
+  <section data-screen-label="03 Товар" style="max-width:1320px;margin:0 auto;padding:32px 32px 0">
+    <div style="font-size:13px;color:var(--color-neutral-700);display:flex;gap:8px;flex-wrap:wrap"><a href="#" onClick="{{ goHome }}">Главная</a><span>/</span><a href="#" onClick="{{ goCatalog }}">Каталог</a><span>/</span><span>{{ cur.cat }}</span></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:36px;margin-top:20px;align-items:start">
+      <div style="display:flex;flex-direction:column;gap:12px;max-width:500px;width:100%">
+        <div style="aspect-ratio:1;border-radius:14px;background:repeating-linear-gradient(135deg,var(--color-neutral-200) 0 10px,var(--color-neutral-100) 10px 20px);display:grid;place-items:center;font-family:ui-monospace,monospace;font-size:12px;color:var(--color-neutral-600)">фото детали</div>
+        <div style="display:flex;gap:10px">
+          <div style="width:72px;height:72px;border-radius:50%;border:2px solid var(--color-accent);background:repeating-linear-gradient(135deg,var(--color-neutral-200) 0 6px,var(--color-neutral-100) 6px 12px)"></div>
+          <div style="width:72px;height:72px;border-radius:50%;background:repeating-linear-gradient(135deg,var(--color-neutral-200) 0 6px,var(--color-neutral-100) 6px 12px)"></div>
+          <div style="width:72px;height:72px;border-radius:50%;background:repeating-linear-gradient(135deg,var(--color-neutral-200) 0 6px,var(--color-neutral-100) 6px 12px)"></div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:20px;min-width:0">
+        <div>
+          <div style="font-size:14px;color:var(--color-neutral-700)">{{ cur.brand }}</div>
+          <h1 style="font-family:var(--font-heading);font-weight:400;font-size:38px;line-height:1.1;margin:8px 0 0;text-wrap:balance">{{ cur.name }}</h1>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+          <div style="background:var(--color-neutral-100);border-radius:10px;padding:12px 16px"><div style="font-size:12px;color:var(--color-neutral-700)">Артикул</div><div style="font-family:ui-monospace,monospace;font-weight:600;margin-top:3px">{{ cur.sku }}</div></div>
+          <div style="background:var(--color-neutral-100);border-radius:10px;padding:12px 16px"><div style="font-size:12px;color:var(--color-neutral-700)">Код товара</div><div style="font-family:ui-monospace,monospace;font-weight:600;margin-top:3px">{{ cur.code }}</div></div>
+          <div style="background:var(--color-neutral-100);border-radius:10px;padding:12px 16px"><div style="font-size:12px;color:var(--color-neutral-700)">Единица</div><div style="font-weight:600;margin-top:3px">{{ cur.unit }}</div></div>
+        </div>
+
+        <div style="background:var(--color-surface);border-radius:14px;padding:24px;display:flex;flex-direction:column;gap:16px">
+          <div style="display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:flex-start">
+            <div>
+              <div style="font-size:13px;color:var(--color-neutral-700)">{{ cur.priceLabel }}</div>
+              <div style="font-size:38px;font-weight:700;letter-spacing:-0.02em;color:{{ cur.priceColor }}">{{ cur.priceFmt }}</div>
+              <sc-if value="{{ cur.showRetail }}"><div style="font-size:14px;color:var(--color-neutral-600)">Розничная цена <span style="text-decoration:line-through">{{ cur.retailFmt }}</span></div></sc-if>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:15px;font-weight:700;color:{{ cur.stockColor }}">{{ cur.stockText }}</div>
+              <div style="font-size:13px;color:var(--color-neutral-700);margin-top:4px">Склад MBM, Алматы · самовывоз</div>
+            </div>
+          </div>
+          <sc-if value="{{ cur.canAdd }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <div style="display:flex;align-items:center;height:54px;border-radius:8px;background:var(--color-neutral-100);border:1px solid var(--color-divider)">
+                <button onClick="{{ pDec }}" style="width:48px;height:52px;border:0;background:transparent;font-size:22px;cursor:pointer;color:var(--color-text)">−</button>
+                <span style="min-width:28px;text-align:center;font-weight:700;font-size:17px">{{ pqty }}</span>
+                <button onClick="{{ pInc }}" style="width:48px;height:52px;border:0;background:transparent;font-size:22px;cursor:pointer;color:var(--color-text)">+</button>
+              </div>
+              <button onClick="{{ addCur }}" style="flex:1;min-width:200px;height:54px;border:0;border-radius:8px;background:var(--color-accent);color:var(--color-bg);font-family:var(--font-heading);font-size:17px;cursor:pointer" style-hover="background:var(--color-accent-600)">{{ addCurLabel }}</button>
+            </div>
+          </sc-if>
+          <sc-if value="{{ cur.cantAdd }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:var(--color-accent-100);border-radius:10px;padding:14px 16px;color:var(--color-accent-900);font-size:14px">
+              <span style="flex:1;min-width:200px">{{ cur.blockedNote }}</span>
+              <button style="height:42px;padding:0 18px;border:0;border-radius:8px;background:var(--color-text);color:var(--color-bg);font-weight:700;font-size:13px;cursor:pointer">Запросить у менеджера</button>
+            </div>
+          </sc-if>
+          <div style="font-size:13px;color:var(--color-neutral-700);line-height:1.45">Наличие обновлено в 13:05 по Алматы и не является резервом. Менеджер подтвердит заявку по телефону.</div>
+        </div>
+
+        <sc-if value="{{ showFitment }}" hint-placeholder-val="{{ true }}">
+          <div>
+            <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px"><span style="font-weight:700">Применимость</span><span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:8px;background:var(--color-accent-100);color:var(--color-accent-800)">концепт</span></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <sc-for list="{{ cur.fit }}" as="f" hint-placeholder-count="2">
+                <span style="padding:8px 14px;border-radius:8px;background:var(--color-accent-2-100);color:var(--color-accent-2-900);font-size:14px;font-weight:600">{{ f }}</span>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+
+    <sc-if value="{{ hasAnalogs }}">
+      <div style="margin-top:56px">
+        <h2 style="font-family:var(--font-heading);font-weight:400;font-size:28px;margin:0">Ещё в категории «{{ cur.cat }}»</h2>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-top:20px">
+          <sc-for list="{{ analogs }}" as="p" hint-placeholder-count="3">
+            <div onClick="{{ p.onOpen }}" style="cursor:pointer;background:var(--color-neutral-100);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:6px;border:2px solid transparent" style-hover="border-color:var(--color-accent-300)">
+              <div style="font-family:ui-monospace,monospace;font-size:12px;color:var(--color-neutral-700)">{{ p.sku }}</div>
+              <div style="font-weight:700;font-size:16px;line-height:1.3">{{ p.name }}</div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:8px"><span style="font-size:18px;font-weight:700">{{ p.priceFmt }}</span><span style="font-size:12px;color:{{ p.stockColor }};font-weight:600">{{ p.stockShort }}</span></div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+  </section>
+</sc-if>
+
+<sc-if value="{{ isQuick }}" hint-placeholder-val="{{ false }}">
+  <section data-screen-label="04 Быстрый заказ" style="max-width:1320px;margin:0 auto;padding:32px 32px 0">
+    <h1 style="font-family:var(--font-heading);font-weight:400;font-size:40px;margin:0">{{ t.quick }}</h1>
+    <p style="font-size:16px;color:var(--color-neutral-800);margin:10px 0 0;max-width:620px">Вставьте список из Excel или мессенджера: артикул или код и количество, по одной позиции в строке.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:20px;margin-top:26px;align-items:start">
+      <div style="background:var(--color-surface);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:12px">
+        <textarea value="{{ qoText }}" onChange="{{ onQoText }}" rows="10" style="width:100%;border:1px solid var(--color-divider);border-radius:10px;background:var(--color-neutral-100);padding:16px 18px;font-family:ui-monospace,monospace;font-size:14px;line-height:1.7;color:var(--color-text);outline:0;resize:vertical"></textarea>
+        <div style="font-size:13px;color:var(--color-neutral-700)">Формат строки: <span style="font-family:ui-monospace,monospace">54651-2T000 2</span> · разделители — пробел, табуляция или точка с запятой</div>
+      </div>
+      <div style="background:var(--color-neutral-100);border-radius:14px;padding:10px;display:flex;flex-direction:column">
+        <sc-for list="{{ qoRows }}" as="r" hint-placeholder-count="4">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 14px;border-radius:10px">
+            <div style="min-width:0">
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="font-family:ui-monospace,monospace;font-weight:600">{{ r.input }}</span><span style="font-size:12px;font-weight:700;padding:2px 10px;border-radius:8px;background:{{ r.tagBg }};color:{{ r.tagColor }}">{{ r.status }}</span></div>
+              <div style="font-size:14px;color:var(--color-neutral-800);margin-top:4px">{{ r.name }}</div>
+            </div>
+            <div style="text-align:right;white-space:nowrap"><div style="font-weight:700">{{ r.sumFmt }}</div><div style="font-size:12px;color:var(--color-neutral-700)">{{ r.qtyText }}</div></div>
+          </div>
+        </sc-for>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:14px;margin-top:4px;border-top:1px solid var(--color-divider)">
+          <div style="font-size:14px;color:var(--color-neutral-800)">Готово к добавлению: <b>{{ qoReady }}</b> из {{ qoTotal }}</div>
+          <button onClick="{{ qoAddAll }}" disabled="{{ qoNone }}" style="height:48px;padding:0 22px;border:0;border-radius:8px;background:var(--color-accent);color:var(--color-bg);font-family:var(--font-heading);font-size:15px;cursor:pointer;opacity:{{ qoBtnOpacity }}">Добавить в корзину · {{ qoSumFmt }}</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</sc-if>
+
+<sc-if value="{{ isCart }}" hint-placeholder-val="{{ false }}">
+  <section data-screen-label="05 Корзина" style="max-width:1320px;margin:0 auto;padding:32px 32px 0">
+    <sc-if value="{{ submitted }}" hint-placeholder-val="{{ false }}">
+      <div style="max-width:720px;background:var(--color-surface);border-radius:14px;padding:44px;display:flex;flex-direction:column;gap:16px">
+        <div style="width:64px;height:64px;border-radius:50%;background:var(--color-accent-2-500);color:var(--color-neutral-100);display:grid;place-items:center;font-size:30px;font-weight:700">✓</div>
+        <h1 style="font-family:var(--font-heading);font-weight:400;font-size:38px;margin:0">Заявка {{ orderNo }} принята</h1>
+        <p style="font-size:16px;line-height:1.55;margin:0;color:var(--color-neutral-800)">Менеджер позвонит на {{ phone }} в рабочее время, подтвердит наличие и итоговую цену. После подтверждения заберите заказ на складе.</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:6px">
+          <div style="background:var(--color-neutral-100);border-radius:10px;padding:14px 18px"><div style="font-size:12px;color:var(--color-neutral-700)">Сумма</div><div style="font-weight:700;font-size:18px;margin-top:2px">{{ lastSumFmt }}</div></div>
+          <div style="background:var(--color-neutral-100);border-radius:10px;padding:14px 18px"><div style="font-size:12px;color:var(--color-neutral-700)">Получение</div><div style="font-weight:700;font-size:18px;margin-top:2px">Склад MBM, Алматы</div></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+          <button onClick="{{ goCatalog }}" style="height:48px;padding:0 22px;border:0;border-radius:8px;background:var(--color-accent);color:var(--color-bg);font-family:var(--font-heading);font-size:15px;cursor:pointer">Продолжить покупки</button>
+          <sc-if value="{{ loggedIn }}"><button onClick="{{ goAccount }}" style="height:48px;padding:0 22px;border:1px solid var(--color-divider);border-radius:8px;background:transparent;font-weight:700;cursor:pointer;color:var(--color-text)">Мои заявки</button></sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ notSubmitted }}" hint-placeholder-val="{{ true }}">
+      <h1 style="font-family:var(--font-heading);font-weight:400;font-size:40px;margin:0">{{ t.cart }} <span style="color:var(--color-neutral-600)">{{ cartCount }}</span></h1>
+      <sc-if value="{{ cartEmpty }}">
+        <div style="background:var(--color-surface);border-radius:14px;padding:48px;margin-top:24px;display:flex;flex-direction:column;align-items:flex-start;gap:10px">
+          <h2 style="font-family:var(--font-heading);font-weight:400;font-size:26px;margin:0">Корзина пока пуста</h2>
+          <p style="margin:0;color:var(--color-neutral-800)">Найдите деталь по артикулу или соберите корзину списком.</p>
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+            <button onClick="{{ goCatalog }}" style="height:46px;padding:0 22px;border:0;border-radius:8px;background:var(--color-accent);color:var(--color-bg);font-family:var(--font-heading);font-size:15px;cursor:pointer">Перейти в каталог</button>
+            <button onClick="{{ goQuick }}" style="height:46px;padding:0 22px;border:1px solid var(--color-divider);border-radius:8px;background:transparent;font-weight:700;cursor:pointer;color:var(--color-text)">{{ t.quick }}</button>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ hasCart }}" hint-placeholder-val="{{ true }}">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:22px;margin-top:24px;align-items:start">
+          <div style="display:flex;flex-direction:column;gap:10px;grid-column:span 1;min-width:0">
+            <sc-for list="{{ cartRows }}" as="r" hint-placeholder-count="3">
+              <div style="background:var(--color-neutral-100);border-radius:14px;padding:14px 18px 14px 14px;display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center">
+                <div style="flex:0 0 68px;aspect-ratio:1;border-radius:50%;background:repeating-linear-gradient(135deg,var(--color-neutral-200) 0 6px,var(--color-neutral-100) 6px 12px)"></div>
+                <div style="flex:1 1 200px;min-width:0">
+                  <div style="font-weight:700;font-size:15px;line-height:1.3">{{ r.name }}</div>
+                  <div style="font-size:13px;color:var(--color-neutral-700);margin-top:3px"><span style="font-family:ui-monospace,monospace">{{ r.sku }}</span> · {{ r.priceFmt }} / шт.</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:14px;margin-left:auto">
+                  <div style="display:flex;align-items:center;height:40px;border:1px solid var(--color-divider);border-radius:8px">
+                    <button onClick="{{ r.onDec }}" style="width:36px;height:38px;border:0;background:transparent;font-size:18px;cursor:pointer;color:var(--color-text)">−</button>
+                    <span style="min-width:22px;text-align:center;font-weight:700">{{ r.qty }}</span>
+                    <button onClick="{{ r.onAdd }}" disabled="{{ r.atMax }}" style="width:36px;height:38px;border:0;background:transparent;font-size:18px;cursor:pointer;color:var(--color-text);opacity:{{ r.plusOpacity }}">+</button>
+                  </div>
+                  <div style="text-align:right;min-width:92px"><div style="font-weight:700;white-space:nowrap">{{ r.sumFmt }}</div><div onClick="{{ r.onRemove }}" style="font-size:12px;color:var(--color-neutral-700);cursor:pointer;margin-top:2px" style-hover="color:var(--color-accent-700)">Удалить</div></div>
+                </div>
+              </div>
+            </sc-for>
+            <div style="font-size:13px;color:var(--color-neutral-700);padding:4px 8px;line-height:1.45">Корзина не резервирует товар. Количество ограничено остатком на складе.</div>
+          </div>
+
+          <aside style="background:var(--color-surface);border-radius:14px;padding:26px;position:sticky;top:96px;display:flex;flex-direction:column;gap:16px">
+            <h2 style="font-family:var(--font-heading);font-weight:400;font-size:24px;margin:0">Оформление заявки</h2>
+            <div style="display:flex;gap:12px;align-items:center;background:var(--color-neutral-100);border-radius:10px;padding:14px 16px">
+              <span style="width:12px;height:12px;border-radius:50%;background:var(--color-accent-2-500);flex-shrink:0"></span>
+              <div><div style="font-weight:700">Самовывоз со склада MBM</div><div style="font-size:13px;color:var(--color-neutral-700)">Алматы · после звонка менеджера</div></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <sc-if value="{{ loggedIn }}"><div style="font-size:13px;color:var(--color-accent-2-800);font-weight:600">Данные заполнены из кабинета {{ company }}</div></sc-if>
+              <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Имя
+                <input value="{{ name }}" onChange="{{ onName }}" placeholder="Как к вам обращаться" style="height:46px;border:1px solid var(--color-divider);border-radius:8px;background:var(--color-neutral-100);padding:0 16px;font-size:15px;outline:0;color:var(--color-text)">
+              </label>
+              <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Телефон
+                <input value="{{ phone }}" onChange="{{ onPhone }}" placeholder="+7 7__ ___ __ __" style="height:46px;border:1px solid var(--color-divider);border-radius:8px;background:var(--color-neutral-100);padding:0 16px;font-size:15px;outline:0;color:var(--color-text)">
+              </label>
+              <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Комментарий, необязательно
+                <textarea value="{{ comment }}" onChange="{{ onComment }}" rows="2" placeholder="Например, VIN или удобное время звонка" style="border:1px solid var(--color-divider);border-radius:10px;background:var(--color-neutral-100);padding:12px 16px;font-size:15px;outline:0;resize:vertical;color:var(--color-text)"></textarea>
+              </label>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;font-size:15px;padding-top:4px">
+              <div style="display:flex;justify-content:space-between"><span style="color:var(--color-neutral-800)">Товары, {{ cartCount }} шт.</span><span>{{ cartRetailFmt }}</span></div>
+              <sc-if value="{{ hasDiscount }}"><div style="display:flex;justify-content:space-between"><span style="color:var(--color-neutral-800)">Оптовая скидка</span><span style="color:var(--color-accent-2-800);font-weight:700">−{{ discountFmt }}</span></div></sc-if>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:6px"><span style="font-weight:700">Итого</span><span style="font-size:30px;font-weight:700;letter-spacing:-0.02em">{{ cartTotalFmt }}</span></div>
+            </div>
+            <button onClick="{{ submit }}" disabled="{{ cantSubmit }}" style="height:56px;border:0;border-radius:8px;background:var(--color-accent);color:var(--color-bg);font-family:var(--font-heading);font-size:17px;cursor:pointer;opacity:{{ submitOpacity }}" style-hover="background:var(--color-accent-600)">Отправить заявку</button>
+            <sc-if value="{{ notLoggedIn }}"><div style="font-size:13px;color:var(--color-neutral-700);line-height:1.45">Регистрация не нужна. Для оптовых цен <a href="#" onClick="{{ goAccount }}">войдите в кабинет</a>.</div></sc-if>
+          </aside>
+        </div>
+      </sc-if>
+    </sc-if>
+  </section>
+</sc-if>
+
+<sc-if value="{{ isAccount }}" hint-placeholder-val="{{ false }}">
+  <section data-screen-label="06 Кабинет" style="max-width:1320px;margin:0 auto;padding:32px 32px 0">
+    <sc-if value="{{ notLoggedIn }}" hint-placeholder-val="{{ true }}">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:24px;align-items:stretch">
+        <div style="background:var(--color-surface);border-radius:14px;padding:36px;display:flex;flex-direction:column;gap:14px;max-width:520px">
+          <h1 style="font-family:var(--font-heading);font-weight:400;font-size:36px;margin:0">{{ t.login }}</h1>
+          <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Логин
+            <input value="{{ lgUser }}" onChange="{{ onLgUser }}" placeholder="Логин от менеджера" style="height:50px;border:1px solid var(--color-divider);border-radius:8px;background:var(--color-neutral-100);padding:0 18px;font-size:15px;outline:0;color:var(--color-text)">
+          </label>
+          <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Пароль
+            <input type="password" value="{{ lgPass }}" onChange="{{ onLgPass }}" placeholder="••••••••" style="height:50px;border:1px solid var(--color-divider);border-radius:8px;background:var(--color-neutral-100);padding:0 18px;font-size:15px;outline:0;color:var(--color-text)">
+          </label>
+          <button onClick="{{ doLogin }}" style="height:54px;margin-top:6px;border:0;border-radius:8px;background:var(--color-accent);color:var(--color-bg);font-family:var(--font-heading);font-size:17px;cursor:pointer" style-hover="background:var(--color-accent-600)">{{ t.login }}</button>
+          <div style="font-size:13px;color:var(--color-neutral-700)">В прототипе подходит любой логин и пароль</div>
+        </div>
+        <div style="background:var(--color-accent-2-700);color:var(--color-accent-2-100);border-radius:14px;padding:36px;display:flex;flex-direction:column;gap:14px">
+          <h2 style="font-family:var(--font-heading);font-weight:400;font-size:28px;margin:0;color:var(--color-neutral-100)">Кабинет для СТО и оптовиков</h2>
+          <p style="margin:0;font-size:16px;line-height:1.5">Доступ выдаёт менеджер после заключения договора. В кабинете:</p>
+          <div style="display:flex;flex-direction:column;gap:8px;font-size:15px">
+            <div>— персональная цена на каждую позицию каталога</div>
+            <div>— история заявок и повтор заказа в один клик</div>
+            <div>— автомобили клиентов для подбора деталей</div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ loggedIn }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:14px;color:var(--color-neutral-700)">Личный кабинет</div>
+          <h1 style="font-family:var(--font-heading);font-weight:400;font-size:40px;margin:6px 0 0">{{ company }}</h1>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <span style="padding:10px 16px;border-radius:8px;background:var(--color-accent-2-100);color:var(--color-accent-2-900);font-weight:700;font-size:14px">Оптовая цена · −12%</span>
+          <button onClick="{{ logout }}" style="height:42px;padding:0 18px;border:1px solid var(--color-divider);border-radius:8px;background:transparent;font-weight:700;cursor:pointer;color:var(--color-text)">Выйти</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:4px;margin-top:24px;border:1px solid var(--color-divider);padding:4px;border-radius:8px;width:fit-content">
+        <sc-for list="{{ accTabs }}" as="tb" hint-placeholder-count="2">
+          <button onClick="{{ tb.onPick }}" style="height:40px;padding:0 20px;border:0;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;background:{{ tb.bg }};color:{{ tb.color }}">{{ tb.label }}</button>
+        </sc-for>
+      </div>
+
+      <sc-if value="{{ isOrders }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:20px">
+          <sc-for list="{{ orders }}" as="o" hint-placeholder-count="4">
+            <div style="background:var(--color-neutral-100);border-radius:14px;padding:18px 22px;display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center">
+              <div style="flex:1 1 200px;min-width:0">
+                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="font-weight:700;font-size:16px">{{ o.no }}</span><span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:8px;background:{{ o.tagBg }};color:{{ o.tagColor }}">{{ o.status }}</span></div>
+                <div style="font-size:13px;color:var(--color-neutral-700);margin-top:4px">{{ o.date }} · {{ o.itemsText }}</div>
+              </div>
+              <div style="font-weight:700;font-size:17px;white-space:nowrap">{{ o.sumFmt }}</div>
+              <button onClick="{{ o.onRepeat }}" style="height:42px;padding:0 18px;border:1px solid var(--color-divider);border-radius:8px;background:transparent;font-weight:700;font-size:13px;cursor:pointer;color:var(--color-text)" style-hover="background:var(--color-neutral-200)">Повторить заказ</button>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+      <sc-if value="{{ isCars }}" hint-placeholder-val="{{ false }}">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-top:20px">
+          <sc-for list="{{ cars }}" as="c" hint-placeholder-count="3">
+            <div style="background:var(--color-neutral-100);border-radius:14px;padding:22px;display:flex;flex-direction:column;gap:8px">
+              <div style="font-family:var(--font-heading);font-size:20px">{{ c.model }}</div>
+              <div style="font-size:14px;color:var(--color-neutral-800)">{{ c.owner }} · {{ c.plate }}</div>
+              <div style="font-family:ui-monospace,monospace;font-size:13px;color:var(--color-neutral-700)">{{ c.vin }}</div>
+              <button onClick="{{ c.onPick }}" style="margin-top:8px;height:42px;border:0;border-radius:8px;background:var(--color-text);color:var(--color-bg);font-weight:700;font-size:14px;cursor:pointer">Подобрать запчасти</button>
+            </div>
+          </sc-for>
+          <div style="border:2px dashed var(--color-neutral-400);border-radius:14px;padding:22px;display:grid;place-items:center;font-weight:700;color:var(--color-neutral-700);min-height:180px;cursor:pointer">+ Добавить автомобиль</div>
+        </div>
+      </sc-if>
+    </sc-if>
+  </section>
+</sc-if>
+
+</main>
+
+<sc-if value="{{ toastOn }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:50;background:var(--color-text);color:var(--color-bg);border-radius:8px;padding:12px 12px 12px 22px;display:flex;gap:14px;align-items:center;box-shadow:var(--shadow-lg);font-size:15px">
+    {{ toast }}
+    <button onClick="{{ goCart }}" style="height:36px;padding:0 16px;border:0;border-radius:8px;background:var(--color-accent);color:var(--color-bg);font-weight:700;cursor:pointer">В корзину</button>
+  </div>
+</sc-if>
+
+<footer style="margin-top:88px;background:var(--color-neutral-900);color:var(--color-neutral-400);font-size:14px">
+  <div style="max-width:1320px;margin:0 auto;padding:44px 32px;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:32px">
+    <div><div style="font-family:var(--font-heading);font-size:22px;color:var(--color-neutral-100)">MBM Automotors</div><div style="margin-top:10px;line-height:1.5">Запчасти со склада в Алматы для частных клиентов, СТО и оптовиков</div></div>
+    <div style="display:flex;flex-direction:column;gap:8px"><span style="color:var(--color-neutral-100);font-weight:700">Покупателям</span><span>Как оформить заявку</span><span>Самовывоз со склада</span><span>Возврат и гарантия</span></div>
+    <div style="display:flex;flex-direction:column;gap:8px"><span style="color:var(--color-neutral-100);font-weight:700">Бизнесу</span><span>Оптовые цены</span><span>{{ t.quick }}</span><span>Получить доступ к кабинету</span></div>
+    <div style="display:flex;flex-direction:column;gap:8px"><span style="color:var(--color-neutral-100);font-weight:700">Склад</span><span>Алматы</span><span>{{ t.hours }}</span></div>
+  </div>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;startScreen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;home&quot;,&quot;catalog&quot;,&quot;product&quot;,&quot;quick&quot;,&quot;cart&quot;,&quot;account&quot;],&quot;default&quot;:&quot;home&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;loggedIn&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;showFitment&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+const P = [
+  {id:1,name:'Амортизатор передний левый',sku:'54651-2T000',code:'0004812',brand:'Mobis',cat:'Подвеска',price:42800,stock:6,fit:['Kia Optima III','Hyundai Sonata VI'],pop:1},
+  {id:2,name:'Амортизатор передний правый',sku:'54661-2T000',code:'0004813',brand:'Mobis',cat:'Подвеска',price:42800,stock:4,fit:['Kia Optima III','Hyundai Sonata VI']},
+  {id:3,name:'Стойка амортизатора в сборе',sku:'54610-2T000',code:'0004790',brand:'Mando',cat:'Подвеска',price:61500,stock:2,fit:['Kia Optima III']},
+  {id:4,name:'Колодки тормозные передние',sku:'58101-D7A00',code:'0002204',brand:'Hyundai/Kia',cat:'Тормоза',price:18900,stock:14,fit:['Hyundai Tucson III','Kia Sportage IV'],pop:1},
+  {id:5,name:'Фильтр масляный',sku:'26300-35505',code:'0000117',brand:'Hyundai/Kia',cat:'Фильтры',price:2900,stock:86,fit:['Hyundai Tucson III','Kia Sportage IV','Kia Rio IV','Hyundai Accent'],pop:1},
+  {id:6,name:'Фильтр воздушный',sku:'28113-D3300',code:'0000342',brand:'Parts-Mall',cat:'Фильтры',price:6400,stock:23,fit:['Hyundai Tucson III','Kia Sportage IV']},
+  {id:7,name:'Фильтр салонный',sku:'97133-D1000',code:'0000389',brand:'Sangsin',cat:'Фильтры',price:5200,stock:31,fit:['Hyundai Tucson III','Kia Sportage IV']},
+  {id:8,name:'Свеча зажигания',sku:'18849-11051',code:'0001055',brand:'Hyundai/Kia',cat:'Двигатель',price:3100,stock:120,fit:['Kia Rio IV','Hyundai Accent'],pop:1},
+  {id:9,name:'Ремень приводной поликлиновой',sku:'25212-2G710',code:'0001630',brand:'Mobis',cat:'Двигатель',price:9800,stock:7,fit:['Kia Optima III','Hyundai Sonata VI']},
+  {id:10,name:'Стойка стабилизатора передняя',sku:'54830-D3000',code:'0004911',brand:'Sangsin',cat:'Подвеска',price:7600,stock:12,fit:['Hyundai Tucson III','Kia Sportage IV']},
+  {id:11,name:'Масло моторное 5W-30, 4 л',sku:'05100-00451',code:'0003001',brand:'Hyundai/Kia',cat:'Масла',price:24500,stock:40,fit:['Hyundai Tucson III','Kia Sportage IV','Kia Rio IV','Hyundai Accent','Kia Optima III']},
+  {id:12,name:'Рычаг передний нижний левый',sku:'54500-D3000',code:'0004950',brand:'Mobis',cat:'Подвеска',price:38200,stock:0,fit:['Hyundai Tucson III','Kia Sportage IV']},
+  {id:13,name:'Датчик ABS передний правый',sku:'95670-D3000',code:'0005402',brand:'Mobis',cat:'Электрика',price:null,stock:3,fit:['Hyundai Tucson III']},
+  {id:14,name:'Диск тормозной передний',sku:'51712-D7000',code:'0002250',brand:'Mando',cat:'Тормоза',price:27400,stock:8,fit:['Hyundai Tucson III','Kia Sportage IV']},
+];
+const MAKES = {Hyundai:['Tucson III','Sonata VI','Accent'],Kia:['Sportage IV','Optima III','Rio IV']};
+const CATS = [['Подвеска','2 140 позиций','амортизатор'],['Тормоза','1 380 позиций','колодки'],['Фильтры','960 позиций','фильтр'],['Двигатель','2 710 позиций','ремень ГРМ'],['Масла','310 позиций','канистра'],['Электрика','1 150 позиций','датчик']];
+const T = {
+  ru:{pickupStrip:'Самовывоз со склада MBM в Алматы',synced:'Наличие обновлено в',hours:'Пн–Сб 9:00–19:00',catalog:'Каталог',find:'Найти',quick:'Быстрый заказ',login:'Войти',cart:'Корзина',toCart:'В корзину',
+    heroKicker:'ЗАПЧАСТИ ДЛЯ КОРЕЙСКИХ АВТО',heroTitle:'Нужная деталь со склада в Алматы',heroSub:'Ищите по артикулу, коду, VIN или модели. Цены и остатки обновляются каждые 5 минут, заявку подтверждает менеджер.',
+    bySku:'По артикулу',byVin:'По VIN',byModel:'По модели',showParts:'Показать детали',categories:'Категории',popular:'Часто заказывают',
+    b2bTitle:'Для СТО и оптовых покупателей',b2bSub:'Войдите в кабинет, чтобы видеть свои цены и оформлять заявки списком артикулов.'},
+  kz:{pickupStrip:'Алматыдағы MBM қоймасынан алып кету',synced:'Қалдық жаңартылды',hours:'Дс–Сб 9:00–19:00',catalog:'Каталог',find:'Іздеу',quick:'Жылдам тапсырыс',login:'Кіру',cart:'Себет',toCart:'Себетке',
+    heroKicker:'КОРЕЙ КӨЛІКТЕРІНЕ АРНАЛҒАН БӨЛШЕКТЕР',heroTitle:'Алматыдағы қоймадан қажетті бөлшек',heroSub:'Артикул, код, VIN немесе модель бойынша іздеңіз. Бағалар мен қалдықтар әр 5 минут сайын жаңартылады, өтінімді менеджер растайды.',
+    bySku:'Артикул бойынша',byVin:'VIN бойынша',byModel:'Модель бойынша',showParts:'Бөлшектерді көрсету',categories:'Санаттар',popular:'Жиі тапсырыс беріледі',
+    b2bTitle:'СТО және көтерме сатып алушыларға',b2bSub:'Өз бағаларыңызды көру және артикулдар тізімімен өтінім беру үшін кабинетке кіріңіз.'},
+};
+const fmt = n => n.toLocaleString('ru-RU').replace(/[\u00a0,]/g,' ') + ' ₸';
+const norm = s => (s||'').toLowerCase().replace(/[^a-z0-9а-я]/g,'');
+const DEFAULT_QO = '54651-2T000 2\n26300 35505 4\n58101d7a00 1\n54500-D3000 1\n99999-XX000 2';
+
+class Component extends DCLogic {
+  state = { screen: this.props.startScreen ?? 'home', lang:'ru', mode:'Артикул', query:'', cart:{5:2,4:1}, cat:'Все', stock:false, brands:[], sort:'name', car:null,
+    pid:4, pqty:1, vin:'', pickMake:'Hyundai', pickModel:'Tucson III', qoText:DEFAULT_QO, name:'', phone:'', comment:'', submitted:false, orderNo:'', lastSum:0,
+    loggedIn: this.props.loggedIn ?? false, lgUser:'', lgPass:'', accTab:'orders', toast:'' };
+  componentDidUpdate(pp){ if(pp.loggedIn!==this.props.loggedIn && this.props.loggedIn!=null) this.setState({loggedIn:this.props.loggedIn}); if(pp.startScreen!==this.props.startScreen && this.props.startScreen) this.setState({screen:this.props.startScreen}); }
+  go = s => { this.setState({screen:s, submitted: s==='cart'?this.state.submitted:false}); window.scrollTo(0,0); };
+  price = p => p.price==null ? null : (this.state.loggedIn ? Math.round(p.price*0.88/10)*10 : p.price);
+  flash = msg => { clearTimeout(this._t); this.setState({toast:msg}); this._t=setTimeout(()=>this.setState({toast:''}),2400); };
+  add = (id,n=1) => { const p=P.find(x=>x.id===id); this.setState(s=>({cart:{...s.cart,[id]:Math.min(p.stock,(s.cart[id]||0)+n)}})); if(!this.state.cart[id]) this.flash(`Добавлено: ${p.name}`); };
+  dec = id => this.setState(s=>{const c={...s.cart}; c[id]=(c[id]||0)-1; if(c[id]<=0) delete c[id]; return {cart:c};});
+  rm = id => this.setState(s=>{const c={...s.cart}; delete c[id]; return {cart:c};});
+  open = id => { this.setState({pid:id,pqty:1}); this.go('product'); };
+  dec_(p){
+    const pr=this.price(p), q=this.state.cart[p.id]||0, canAdd=pr!=null&&p.stock>0;
+    return {...p, priceFmt: pr==null?'Цена уточняется':fmt(pr), priceColor: pr==null?'var(--color-neutral-700)':'var(--color-text)',
+      retailFmt: p.price?fmt(p.price):'', showRetail: this.state.loggedIn&&pr!=null,
+      stockText: p.stock>0?`В наличии: ${p.stock} шт.`:'Нет на складе', stockShort: p.stock>0?'В наличии':'Нет',
+      stockColor: p.stock>0?'var(--color-accent-2-700)':'var(--color-accent-700)',
+      qty:q, inCart:q>0, addable:canAdd&&q===0, blocked:!canAdd&&q===0, blockedLabel: pr==null?'Уточнить цену':'Под заказ',
+      atMax:q>=p.stock, plusOpacity:q>=p.stock?0.35:1,
+      onAdd:()=>this.add(p.id), onDec:()=>this.dec(p.id), onRemove:()=>this.rm(p.id), onOpen:()=>this.open(p.id)};
+  }
+  renderVals(){
+    const s=this.state, t=T[s.lang];
+    const q=norm(s.query);
+    let list=P.filter(p=>(s.cat==='Все'||p.cat===s.cat)&&(!s.stock||p.stock>0)&&(!s.brands.length||s.brands.includes(p.brand))&&(!s.car||p.fit.includes(s.car))&&(!q||norm(p.name+p.sku+p.code).includes(q)||norm(p.sku).includes(q)));
+    if(s.sort==='price') list=[...list].sort((a,b)=>(a.price??1e9)-(b.price??1e9));
+    else if(s.sort==='stock') list=[...list].sort((a,b)=>b.stock-a.stock);
+    else list=[...list].sort((a,b)=>a.name.localeCompare(b.name,'ru'));
+    const cur=P.find(p=>p.id===s.pid), cd=this.dec_(cur);
+    const rows=Object.entries(s.cart).map(([id,qq])=>{const p=this.dec_(P.find(x=>x.id==id)); return {...p,sumFmt:fmt(this.price(p)*qq)};});
+    const count=Object.values(s.cart).reduce((a,b)=>a+b,0);
+    const retail=rows.reduce((a,r)=>a+r.price*r.qty,0), total=rows.reduce((a,r)=>a+this.price(r)*r.qty,0);
+    // quick order
+    const qoRows=s.qoText.split('\n').map(l=>l.trim()).filter(Boolean).map(line=>{
+      const tk=line.split(/[\s;\t,]+/); let qty=1;
+      if(tk.length>1&&/^\d{1,3}$/.test(tk[tk.length-1])){qty=+tk.pop();}
+      const key=norm(tk.join('')), p=P.find(x=>norm(x.sku)===key||norm(x.code)===key);
+      if(!p) return {input:tk.join(' '),name:'Артикул не найден в каталоге',status:'Не найдено',tagBg:'var(--color-neutral-200)',tagColor:'var(--color-neutral-800)',qtyText:`${qty} шт.`,sumFmt:'—',ok:false};
+      const pr=this.price(p);
+      if(pr==null) return {input:p.sku,name:p.name,status:'Цена уточняется',tagBg:'var(--color-accent-100)',tagColor:'var(--color-accent-800)',qtyText:`${qty} шт.`,sumFmt:'—',ok:false};
+      if(p.stock===0) return {input:p.sku,name:p.name,status:'Нет на складе',tagBg:'var(--color-accent-100)',tagColor:'var(--color-accent-800)',qtyText:`${qty} шт.`,sumFmt:'—',ok:false};
+      const n=Math.min(qty,p.stock);
+      return {input:p.sku,name:p.name,status:n<qty?`Есть ${n} из ${qty}`:'Найдено',tagBg:'var(--color-accent-2-100)',tagColor:'var(--color-accent-2-800)',qtyText:`${n} шт. × ${fmt(pr)}`,sumFmt:fmt(n*pr),ok:true,id:p.id,n,sum:n*pr};
+    });
+    const qoOk=qoRows.filter(r=>r.ok);
+    const ORD=[
+      {no:'MBM-24088',date:'14 октября',status:'Новая',tagBg:'var(--color-accent-100)',tagColor:'var(--color-accent-800)',items:{5:4,7:2}},
+      {no:'MBM-23951',date:'9 октября',status:'Подтверждена',tagBg:'var(--color-accent-2-100)',tagColor:'var(--color-accent-2-800)',items:{4:2,14:2}},
+      {no:'MBM-23702',date:'28 сентября',status:'Выдана',tagBg:'var(--color-neutral-200)',tagColor:'var(--color-neutral-800)',items:{1:1,2:1,10:2}},
+    ];
+    const canSubmit=s.name.trim().length>1&&s.phone.replace(/\D/g,'').length>=10&&count>0;
+    const pr=this.price(cur);
+    return {
+      t, isHome:s.screen==='home', isCatalog:s.screen==='catalog', isProduct:s.screen==='product', isQuick:s.screen==='quick', isCart:s.screen==='cart', isAccount:s.screen==='account',
+      goHome:e=>{e?.preventDefault?.();this.go('home');}, goCatalog:e=>{e?.preventDefault?.();this.go('catalog');}, goCart:()=>this.go('cart'), goQuick:()=>this.go('quick'), goAccount:e=>{e?.preventDefault?.();this.go('account');},
+      langOpts:[['ru','РУС'],['kz','ҚАЗ']].map(([k,l])=>({label:l,bg:s.lang===k?'var(--color-accent-2-300)':'transparent',color:s.lang===k?'var(--color-accent-2-900)':'var(--color-accent-2-200)',onPick:()=>this.setState({lang:k})})),
+      modes:['Артикул','Название','VIN'], mode:s.mode, onMode:e=>this.setState({mode:e.target.value}),
+      placeholder:{'Артикул':'Артикул или код, например 54610-2T000','Название':'Например, колодки передние','VIN':'17 символов VIN'}[s.mode],
+      query:s.query, onQuery:e=>this.setState({query:e.target.value}), hasQuery:!!q,
+      doSearch:()=>{ if(s.mode==='VIN'){this.setState({car:'Hyundai Tucson III',query:''});} this.go('catalog'); },
+      doSearchSku:()=>this.go('catalog'),
+      onSearchKey:e=>{ if(e.key==='Enter') this.go('catalog'); },
+      cartCount:count, hasCart:count>0, cartEmpty:count===0, cartTotalFmt:fmt(total), cartRetailFmt:fmt(retail),
+      hasDiscount:s.loggedIn&&retail>total, discountFmt:fmt(retail-total),
+      loggedIn:s.loggedIn, notLoggedIn:!s.loggedIn, company:'СТО «Turbo Service»',
+      accountLabel:s.loggedIn?'Turbo Service':t.login, accInitial:s.loggedIn?'T':'→', accBadgeBg:s.loggedIn?'var(--color-accent-2-600)':'var(--color-neutral-500)',
+      vin:s.vin, onVin:e=>this.setState({vin:e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,17)}),
+      vinCount:`${s.vin.length}/17`, vinCountColor:s.vin.length===17?'var(--color-accent-2-700)':'var(--color-neutral-600)',
+      vinInvalid:s.vin.length!==17, vinBtnOpacity:s.vin.length===17?1:0.45, doVin:()=>{this.setState({car:'Hyundai Tucson III',query:''});this.go('catalog');},
+      makes:Object.keys(MAKES), pickMake:s.pickMake, onPickMake:e=>this.setState({pickMake:e.target.value,pickModel:MAKES[e.target.value][0]}),
+      models:MAKES[s.pickMake], pickModel:s.pickModel, onPickModel:e=>this.setState({pickModel:e.target.value}),
+      doPickCar:()=>{this.setState({car:`${s.pickMake} ${s.pickModel}`,query:''});this.go('catalog');},
+      categories:CATS.map(([name,count,ph])=>({name,count,ph,onPick:()=>{this.setState({cat:name,query:''});this.go('catalog');}})),
+      popular:P.filter(p=>p.pop).map(p=>this.dec_(p)),
+      catalogTitle:s.cat==='Все'?'Каталог запчастей':s.cat, carActive:!!s.car, car:s.car, clearCar:()=>this.setState({car:null}),
+      catChips:['Все',...CATS.map(c=>c[0])].map(c=>({name:c,bg:c===s.cat?'var(--color-text)':'transparent',color:c===s.cat?'var(--color-bg)':'var(--color-text)',border:c===s.cat?'var(--color-text)':'var(--color-divider)',onPick:()=>this.setState({cat:c})})),
+      stockTrack:s.stock?'var(--color-accent)':'var(--color-neutral-400)', stockKnob:s.stock?'21px':'3px', toggleStock:()=>this.setState(x=>({stock:!x.stock})),
+      brandFilters:[...new Set(P.map(p=>p.brand))].map(b=>{const on=s.brands.includes(b);return {name:b,count:P.filter(p=>p.brand===b).length,mark:on?'✓':'',bg:on?'var(--color-accent)':'var(--color-neutral-100)',border:on?'var(--color-accent)':'var(--color-neutral-500)',onToggle:()=>this.setState(x=>({brands:on?x.brands.filter(y=>y!==b):[...x.brands,b]}))};}),
+      carOptions:['Любой',...Object.entries(MAKES).flatMap(([m,ms])=>ms.map(x=>`${m} ${x}`))], carSelect:s.car||'Любой', onCarSelect:e=>this.setState({car:e.target.value==='Любой'?null:e.target.value}),
+      hasFilters:s.stock||s.brands.length>0||!!s.car||s.cat!=='Все'||!!q, resetFilters:()=>this.setState({stock:false,brands:[],car:null,cat:'Все',query:''}),
+      sorts:[['name','По названию'],['price','Дешевле'],['stock','Больше на складе']].map(([k,l])=>({label:l,bg:s.sort===k?'var(--color-text)':'transparent',color:s.sort===k?'var(--color-bg)':'var(--color-text)',onPick:()=>this.setState({sort:k})})),
+      results:list.map(p=>this.dec_(p)), resultCount:list.length, noResults:list.length===0,
+      cur:{...cd, unit:'шт.', canAdd:pr!=null&&cur.stock>0, cantAdd:!(pr!=null&&cur.stock>0), priceLabel:s.loggedIn?'Ваша оптовая цена':'Цена за 1 шт.',
+        blockedNote: pr==null?'Цена этой позиции уточняется. Менеджер сообщит цену и срок.':'Сейчас нет на складе. Можем заказать у поставщика — срок назовёт менеджер.'},
+      pqty:s.pqty, pDec:()=>this.setState(x=>({pqty:Math.max(1,x.pqty-1)})), pInc:()=>this.setState(x=>({pqty:Math.min(cur.stock,x.pqty+1)})),
+      addCur:()=>this.add(cur.id,s.pqty), addCurLabel: cd.qty?`Добавить ещё · в корзине ${cd.qty}`:`${t.toCart} · ${pr!=null?fmt(pr*s.pqty):''}`,
+      showFitment:this.props.showFitment ?? true,
+      analogs:P.filter(p=>p.cat===cur.cat&&p.id!==cur.id).slice(0,4).map(p=>this.dec_(p)), hasAnalogs:P.some(p=>p.cat===cur.cat&&p.id!==cur.id),
+      qoText:s.qoText, onQoText:e=>this.setState({qoText:e.target.value}), qoRows, qoReady:qoOk.length, qoTotal:qoRows.length,
+      qoNone:qoOk.length===0, qoBtnOpacity:qoOk.length?1:0.45, qoSumFmt:fmt(qoOk.reduce((a,r)=>a+r.sum,0)),
+      qoAddAll:()=>{ this.setState(x=>{const c={...x.cart}; qoOk.forEach(r=>{c[r.id]=Math.min(P.find(p=>p.id===r.id).stock,(c[r.id]||0)+r.n);}); return {cart:c};}); this.go('cart'); },
+      cartRows:rows,
+      name:s.name, phone:s.phone, comment:s.comment, onName:e=>this.setState({name:e.target.value}), onPhone:e=>this.setState({phone:e.target.value}), onComment:e=>this.setState({comment:e.target.value}),
+      cantSubmit:!canSubmit, submitOpacity:canSubmit?1:0.45,
+      submit:()=>{ if(!canSubmit) return; this.setState({submitted:true,orderNo:'MBM-'+(24100+Math.floor(Math.random()*90)),lastSum:total,cart:{}}); window.scrollTo(0,0); },
+      submitted:s.submitted, notSubmitted:!s.submitted, orderNo:s.orderNo, lastSumFmt:fmt(s.lastSum),
+      lgUser:s.lgUser, lgPass:s.lgPass, onLgUser:e=>this.setState({lgUser:e.target.value}), onLgPass:e=>this.setState({lgPass:e.target.value}),
+      doLogin:()=>this.setState({loggedIn:true,name:s.name||'Ерлан Сапаров',phone:s.phone||'+7 701 555 12 34'}), logout:()=>this.setState({loggedIn:false}),
+      accTabs:[['orders','Заявки'],['cars','Автомобили клиентов']].map(([k,l])=>({label:l,bg:s.accTab===k?'var(--color-text)':'transparent',color:s.accTab===k?'var(--color-bg)':'var(--color-text)',onPick:()=>this.setState({accTab:k})})),
+      isOrders:s.accTab==='orders', isCars:s.accTab==='cars',
+      orders:ORD.map(o=>{const ids=Object.entries(o.items); const sum=ids.reduce((a,[id,n])=>a+this.price(P.find(p=>p.id==id))*n,0);
+        return {...o,itemsText:`${ids.length} позиции, ${ids.reduce((a,[,n])=>a+n,0)} шт.`,sumFmt:fmt(sum),onRepeat:()=>{this.setState(x=>{const c={...x.cart}; ids.forEach(([id,n])=>{const p=P.find(pp=>pp.id==id); c[id]=Math.min(p.stock,(c[id]||0)+n);}); return {cart:c};}); this.go('cart');}};}),
+      cars:[{model:'Hyundai Tucson III',owner:'Асхат К.',plate:'123 ABC 02',vin:'KMHJ381ABJU472210'},{model:'Kia Optima III',owner:'Марат Д.',plate:'777 KZA 02',vin:'XWEGN412BD0018834'},{model:'Kia Rio IV',owner:'Айгерим С.',plate:'045 BNM 02',vin:'Z94C251ABKR091177'}]
+        .map(c=>({...c,onPick:()=>{this.setState({car:c.model,query:'',cat:'Все'});this.go('catalog');}})),
+      toastOn:!!s.toast, toast:s.toast,
+    };
+  }
+}
+</script>
+</body>
+</html>

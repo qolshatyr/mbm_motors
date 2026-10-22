@@ -2,19 +2,20 @@
 
 ## Project Structure & Module Organization
 
-This repository contains a working Java 21 / Spring Boot 4.0.8 application with CloudShop synchronization, catalog search, and a server-session cart, local checkout, a protected staff request view, and a React storefront. The delivery processor and CloudShop HTTP adapter exist but are not wired for real submissions; delivery stays disabled.
+This repository contains a partner-only (B2B) Java 21 / Spring Boot 4.0.8 portal: CloudShop synchronization, warehouse (СКЛАД) catalog, partner sign-in, server-session cart, checkout, a protected staff request view, a React storefront, and delivery of partner orders to CloudShop as unposted sales, enabled only by `delivery.enabled`. See `docs/B2B_Partner_Portal.md`.
 
 - `docs/Autoparts_Technical_Specification.md`: proposed scope, architecture, acceptance criteria, and operational requirements.
 - `docs/cloudshop/CloudShop_Postman_Guide.md`: import instructions, manual verification steps, and integration caveats.
 - `postman/assets/CloudShop_ReadOnly.postman_collection.json`: six numbered GET requests with response checks.
 - `postman/assets/CloudShop_Local.postman_environment.json`: local configuration template; keep credentials empty in committed copies.
 
-- `src/main/java/kz/mbmmotors/`: application modules `catalog`, `cart`, `order`, `delivery`, `admin`, `cloudshop`, `sync`, and `config`.
+- `src/main/java/kz/mbmmotors/`: application modules `catalog`, `cart`, `order`, `delivery`, `partner`, `admin`, `cloudshop`, `sync`, and `config`.
 - `src/main/resources/`: Thymeleaf templates, static assets, configuration, and Flyway migrations.
 - `frontend/`: React, TypeScript, Vite, and Tailwind storefront and staff UI.
 - `src/test/java/`: Java tests; `tests/`: Python tool tests; `tests/browser/`: Playwright scenario checks.
 - `docs/`: specification and checkout design; `docs/client/`: Notion-ready client questions; `docs/cloudshop/`: verification guides.
 - `tools/cloudshop/`: Python verification tools; `scripts/`: application launch/import helpers.
+- `deploy/production/`: Docker Compose, Caddy, and backup files for the server; see `docs/Deployment.md`.
 - `postman/assets/`: existing v2.1 GET-only collections and the environment template; `postman/collections/`: v3 collections of the application API; `postman/skills/`: Postman skills.
 - `.claude/skills/project-skills/SKILL.md`: catalog and routing table of all project and user skills.
 - `PROJECT_CONTEXT.md`: current decisions and historical evidence. Treat older statements about missing application files as history.

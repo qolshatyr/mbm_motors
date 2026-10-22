@@ -1,49 +1,37 @@
 import { useEffect, useRef, useState } from 'react';
-import type { FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ApiError, fetchProducts, fetchStores } from '../../shared/api/catalog';
+import { ApiError, carName, catalogSorts, fetchProducts, readFilter, writeFilter } from '../../shared/api/catalog';
+import type { CatalogFilter, CatalogSort, FacetValue } from '../../shared/api/catalog';
 import { EmptyState, Notice } from '../../shared/ui/Feedback';
-import { ProductCard } from './ProductCard';
-import { Icon } from '../../shared/ui/Icon';
-import { DemoCategories, DemoGuide } from '../../demo/Showcase';
-const demo = (import.meta.env.MODE === 'demo' && import.meta.env.VITE_DEMO === 'true');
+import { useCartQuantities } from '../cart/cartQueries';
+import { ProductRow } from './ProductRow';
+import { pickupText, useDefaultStore } from './useStore';
+
+const BRANDS_COLLAPSED = 8;
 
 export function Catalog() {
   const [search, setSearch] = useSearchParams();
   const query = search.get('q') ?? '';
-  const category = demo ? search.get('category') ?? '' : '';
-  const store = search.get('store') ?? '';
   const available = search.get('available') === 'true';
+  const filter = readFilter(search);
+  const rawSort = search.get('sort') ?? 'name';
+  const sort: CatalogSort = catalogSorts.some((item) => item.value === rawSort) ? rawSort as CatalogSort : 'name';
   const rawPage = search.get('page') ?? '0';
   const page = /^\d+$/.test(rawPage) ? Number(rawPage) : -1;
-  const invalid = query.length > 120 || !Number.isSafeInteger(page) || page < 0 || page > 1000000;
-  const [draft, setDraft] = useState(query);
-  const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 639px)').matches);
+  const tooLong = [filter.section, filter.subsection, filter.make, filter.model, ...filter.brands].some((value) => value && value.length > 120);
+  const invalid = query.length > 120 || !Number.isSafeInteger(page) || page < 0 || page > 1000000 || tooLong || filter.brands.length > 20 || (Boolean(filter.subsection) && !filter.section) || (Boolean(filter.model) && !filter.make);
+  const store = useDefaultStore();
+  const quantities = useCartQuantities();
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const filterDialog = useRef<HTMLDialogElement>(null);
-  const filterTrigger = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    const media = window.matchMedia('(max-width: 639px)');
-    const update = () => { setMobile(media.matches); if (!media.matches) setFiltersOpen(false); };
-    media.addEventListener('change', update);
-    return () => media.removeEventListener('change', update);
-  }, []);
-  useEffect(() => {
-    const dialog = filterDialog.current;
-    if (!filtersOpen || !dialog) return;
-    dialog.showModal();
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { dialog.close(); document.body.style.overflow = previousOverflow; (filterTrigger.current ?? document.getElementById('store'))?.focus({ preventScroll: true }); };
-  }, [filtersOpen, mobile]);
-  useEffect(() => setDraft(query), [query]);
-  const stores = useQuery({ queryKey: ['stores'], queryFn: ({ signal }) => fetchStores(signal), staleTime: 300000 });
+  const [allBrands, setAllBrands] = useState(false);
   const params = new URLSearchParams({ q: query, available: String(available), page: String(page) });
-  if (store) params.set('store', store);
-  if (category) params.set('category', category);
-  const products = useQuery({ queryKey: ['products', params.toString()], queryFn: ({ signal }) => fetchProducts(params, signal), enabled: !invalid, refetchInterval: 60000, staleTime: 0 });
+  if (store.id) params.set('store', store.id);
+  if (sort !== 'name') params.set('sort', sort);
+  writeFilter(params, filter);
+  const products = useQuery({ queryKey: ['products', params.toString()], queryFn: ({ signal }) => fetchProducts(params, signal), enabled: !invalid && Boolean(store.id), refetchInterval: 60000, staleTime: 0, placeholderData: (previous) => previous });
   const data = products.data;
+  const facets = data?.facets;
   const displayedPage = useRef(page);
   useEffect(() => {
     if (!data || data.page !== page || displayedPage.current === page) return;
@@ -52,39 +40,120 @@ export function Catalog() {
     heading?.focus({ preventScroll: true });
     heading?.scrollIntoView({ block: 'start', behavior: 'instant' });
   }, [data, page]);
-  const effectiveStore = store || stores.data?.defaultStoreId || data?.storeId || '';
-  function changeFilters(changes: Record<string, string>) {
+  useEffect(() => {
+    // Keep the chosen section and subsection visible in their horizontally scrolled chip rows.
+    document.querySelectorAll<HTMLElement>('.chip-row .chip[aria-pressed=true]').forEach((chip) => {
+      const row = chip.parentElement!;
+      row.scrollLeft = chip.offsetLeft - row.offsetLeft - (row.clientWidth - chip.offsetWidth) / 2;
+    });
+  }, [filter.section, filter.subsection, facets]);
+  function change(changes: Record<string, string>) {
     const next = new URLSearchParams(search);
     Object.entries(changes).forEach(([key, value]) => value ? next.set(key, value) : next.delete(key));
     next.delete('page');
     setSearch(next);
   }
-  function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); changeFilters({ q: draft.trim() }); }
-  function reset() { setDraft(''); setSearch({}); }
-  function pageLink(value: number) { const next = new URLSearchParams(search); next.set('page', String(value)); return `/?${next}`; }
-  const filters = <div className="filter-row"><div className="store-field"><label htmlFor="store">Магазин или склад</label><select name="store" id="store" value={effectiveStore} disabled={!stores.data} onChange={(event) => changeFilters({ store: event.target.value })}>{!stores.data && <option value="">{stores.isError ? 'Магазины недоступны' : 'Загружаем магазины…'}</option>}{stores.data?.stores.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></div>
-    <label className="available-filter"><input type="checkbox" name="available" checked={available} onChange={(event) => changeFilters({ available: event.target.checked ? 'true' : '' })} />Только в наличии</label><button className="text-button" type="button" onClick={reset}>Сбросить фильтры</button>
-  </div>;
+  function changeFilter(changes: Partial<CatalogFilter>) {
+    const next = new URLSearchParams(search);
+    writeFilter(next, { ...filter, ...changes });
+    next.delete('page');
+    setSearch(next);
+  }
+  function toggleBrand(brand: string) {
+    changeFilter({ brands: filter.brands.includes(brand) ? filter.brands.filter((item) => item !== brand) : [...filter.brands, brand] });
+  }
+  function pickCar(value: string) {
+    const [make, model] = value ? JSON.parse(value) as [string, string | null] : [null, null];
+    changeFilter({ make, model });
+  }
+  function reset() { setSearch({}); }
+  function pageLink(value: number) { const next = new URLSearchParams(search); next.set('page', String(value)); return `/search?${next}`; }
+  const hasFilters = Boolean(query) || available || sort !== 'name' || Boolean(filter.section || filter.make) || filter.brands.length > 0;
+  const storeError = store.query.isError;
+  const title = filter.subsection ?? filter.section ?? 'Каталог запчастей';
+  // Selected options stay visible even when the other filters leave them without products.
+  const keep = (values: FacetValue[] | undefined, selected: (string | null)[]) => {
+    const list = [...(values ?? [])];
+    selected.forEach((name) => { if (name && !list.some((item) => item.name === name)) list.push({ name, count: 0 }); });
+    return list;
+  };
+  const sections = keep(facets?.sections, [filter.section]);
+  const subsections = keep(facets?.subsections, [filter.subsection]);
+  const brands = keep(facets?.brands, filter.brands);
+  const shownBrands = allBrands || brands.length <= BRANDS_COLLAPSED + 2 ? brands
+    : [...brands].sort((a, b) => Number(filter.brands.includes(b.name)) - Number(filter.brands.includes(a.name)) || b.count - a.count).slice(0, BRANDS_COLLAPSED);
+  const makes = keep(facets?.makes, [filter.make]);
+  const models = keep(facets?.models, [filter.model]);
+  const carValue = filter.make ? JSON.stringify([filter.make, filter.model]) : '';
   return <>
-    <section className="search-section" aria-labelledby="catalog-title">
-      <div className="catalog-intro"><div className="catalog-heading"><h1 id="catalog-title">{demo ? 'Нужная деталь. Точный выбор.' : 'Найдите нужную деталь'}</h1><p>По артикулу, названию или коду товара</p></div><div className="catalog-caption">{demo ? <img className="demo-assembly" src="/demo-images/assembly.svg" alt="Схематическая иллюстрация тормозного диска" width="520" height="300" /> : <><Icon name="box" /><span>Запчасти в магазинах<br />и на складах MBM Motors</span></>}</div></div>
-      <form onSubmit={submit} className="search-form" role="search">
-        <div className="search-field"><label htmlFor="query">Поиск запчастей</label><div className="search-input-row"><Icon name="search" /><input id="query" name="q" type="search" autoComplete="off" spellCheck={false} placeholder="Например, 54610-2T000…" maxLength={120} value={draft} onChange={(event) => setDraft(event.target.value)} /><button className="button button-primary" type="submit">Найти</button></div></div>
-        {mobile ? <div className="mobile-filter-bar"><button ref={filterTrigger} className="button filter-trigger" type="button" aria-haspopup="dialog" onClick={() => setFiltersOpen(true)}><Icon name="filter" />Фильтры{(store || available) && <span className="filter-count">{Number(Boolean(store)) + Number(available)}</span>}</button><span>{stores.data?.stores.find((item) => item.id === effectiveStore)?.name || 'Магазины и склады'}{available ? ' · В наличии' : ''}</span></div> : filters}
-      </form>
-    </section>
-    {mobile && <dialog ref={filterDialog} className="filter-dialog" aria-labelledby="filter-title" onCancel={() => setFiltersOpen(false)} onClose={() => setFiltersOpen(false)}><div className="filter-dialog-heading"><h2 id="filter-title">Фильтры каталога</h2><button type="button" className="icon-button" aria-label="Закрыть фильтры" onClick={() => setFiltersOpen(false)}><Icon name="close" /></button></div><div className="filter-dialog-body">{stores.isError && <Notice error>Не удалось загрузить магазины. <button type="button" className="text-button" onClick={() => void stores.refetch()}>Повторить</button></Notice>}{filters}</div><div className="filter-dialog-footer"><button type="button" className="button button-primary" onClick={() => setFiltersOpen(false)}>Показать товары</button></div></dialog>}
-    {stores.isError && <Notice error>Не удалось загрузить магазины. <button type="button" className="text-button" onClick={() => void stores.refetch()}>Повторить</button></Notice>}
-    {demo && !query && !category && <DemoCategories />}
-    {data && <div className={`freshness ${data.stale ? 'freshness-stale' : ''}`}><span className="status-dot" aria-hidden="true" /><span>{demo ? 'Пример ассортимента — цены, остатки и иллюстрации демонстрационные' : data.lastSyncText ? `Данные обновлены: ${data.lastSyncText}` : 'Каталог ещё не обновлялся'}</span>{data.stale && <p>Данные могут быть устаревшими. Уточните цену и наличие перед покупкой.</p>}</div>}
-    <section aria-labelledby="results-title" aria-busy={products.isFetching}>
-      <div className="results-heading"><div><h2 id="results-title" tabIndex={-1}>{demo && category ? ({filter: 'Фильтры', brake: 'Тормозная система', suspension: 'Подвеска', light: 'Свет и электрика', oil: 'Масла и жидкости', body: 'Кузовные детали'} as Record<string, string>)[category] || 'Каталог запчастей' : 'Каталог запчастей'}</h2><p>{data?.storeName || stores.data?.stores.find((item) => item.id === effectiveStore)?.name}</p></div>{data && <span>Найдено: {data.totalProducts.toLocaleString('ru-RU')}</span>}</div>
-      {invalid ? <EmptyState title="Проверьте параметры поиска"><p>Используйте поиск до 120 символов и существующую страницу каталога.</p><button className="button" type="button" onClick={reset}>Сбросить фильтры</button></EmptyState> : products.isPending ? <div className="loading-state" role="status"><span className="spinner" aria-hidden="true" />Загружаем каталог…</div> : products.isError ? <Notice error><p>{products.error instanceof ApiError ? products.error.message : 'Не удалось загрузить каталог. Проверьте соединение и попробуйте ещё раз.'}</p><div className="flex flex-wrap gap-3"><button type="button" className="button" onClick={() => void products.refetch()}>Повторить</button><button type="button" className="text-button" onClick={reset}>Сбросить фильтры</button></div></Notice> : data && <>
-        <p className="refresh-status" role="status">{products.isFetching ? 'Обновляем данные…' : ''}</p>
-        {data.products.length === 0 ? <EmptyState title="Товары не найдены"><p>Проверьте артикул или попробуйте более короткое название. Можно выбрать другую точку или снять фильтр наличия.</p><button className="button" type="button" onClick={reset}>Показать весь каталог</button></EmptyState> : <div className="product-grid">{data.products.map((product) => <ProductCard key={product.id} product={product} store={data.storeId} />)}</div>}
-        {data.totalPages > 1 && <nav className="pagination" aria-label="Страницы каталога">{data.page > 0 ? <Link className="button" to={pageLink(data.page - 1)} rel="prev">Назад</Link> : <span className="button button-disabled" aria-disabled="true">Назад</span>}<span>Страница {data.page + 1} из {data.totalPages}</span>{data.page + 1 < data.totalPages ? <Link className="button" to={pageLink(data.page + 1)} rel="next">Далее</Link> : <span className="button button-disabled" aria-disabled="true">Далее</span>}</nav>}
-      </>}
-    </section>
-    {demo && <DemoGuide />}
+    <nav className="breadcrumbs" aria-label="Вы здесь"><ol><li><Link to="/">Главная</Link></li>{filter.section ? <><li><Link to="/search">Каталог</Link></li><li aria-current="page">{filter.section}</li></> : <li aria-current="page">Каталог</li>}</ol></nav>
+    <h1 className="page-title">{title}</h1>
+    {filter.make && <section className="car-banner" aria-label="Выбранный автомобиль">
+      <div className="car-banner-copy"><p className="car-banner-label">АВТОМОБИЛЬ</p><p className="car-banner-name">{carName(filter.make, filter.model)}</p></div>
+      {data && <p className="car-banner-count">Подходит: {data.totalProducts.toLocaleString('ru-RU')} поз.</p>}
+      <button type="button" className="button car-banner-reset" onClick={() => changeFilter({ make: null, model: null })}>Сбросить автомобиль</button>
+    </section>}
+    {sections.length > 0 && <nav className="chip-row" aria-label="Разделы каталога">
+      <button type="button" className="chip" aria-pressed={!filter.section} onClick={() => changeFilter({ section: null, subsection: null })}>Все</button>
+      {sections.map((item) => <button type="button" key={item.name} className="chip" aria-pressed={filter.section === item.name} onClick={() => changeFilter({ section: item.name, subsection: null })}>{item.name}</button>)}
+    </nav>}
+    {filter.section && subsections.length > 0 && <nav className="chip-row chip-row-sub" aria-label={`Подразделы: ${filter.section}`}>
+      <button type="button" className="chip" aria-pressed={!filter.subsection} onClick={() => changeFilter({ subsection: null })}>Все в разделе</button>
+      {subsections.map((item) => <button type="button" key={item.name} className="chip" aria-pressed={filter.subsection === item.name} onClick={() => changeFilter({ subsection: item.name })}>{item.name} <span className="chip-count">{item.count}</span></button>)}
+    </nav>}
+    <div className="catalog-layout">
+      <aside id="catalog-filters" className="catalog-sidebar" data-open={filtersOpen} aria-label="Фильтры каталога">
+        <button type="button" role="switch" aria-checked={available} className="switch-row" onClick={() => change({ available: available ? '' : 'true' })}>
+          <span>Только в наличии</span><span className="switch" aria-hidden="true"><span /></span>
+        </button>
+        {brands.length > 0 && <fieldset className="filter-group">
+          <legend className="filter-label">ПРОИЗВОДИТЕЛЬ</legend>
+          <div className="check-list">
+            {shownBrands.map((item) => <label key={item.name} className="check-row"><input type="checkbox" checked={filter.brands.includes(item.name)} onChange={() => toggleBrand(item.name)} /><span className="check-box" aria-hidden="true" /><span className="check-name">{item.name}</span><span className="check-count">{item.count}</span></label>)}
+          </div>
+          {shownBrands.length < brands.length ? <button type="button" className="link-button" onClick={() => setAllBrands(true)}>Показать все ({brands.length})</button>
+            : allBrands && <button type="button" className="link-button" onClick={() => setAllBrands(false)}>Свернуть</button>}
+        </fieldset>}
+        {makes.length > 0 && <div className="filter-group">
+          <label className="filter-label" htmlFor="car-select">АВТОМОБИЛЬ</label>
+          <select id="car-select" className="filter-select" value={carValue} onChange={(event) => pickCar(event.target.value)}>
+            <option value="">Любой</option>
+            {makes.map((make) => make.name === filter.make && models.length > 0
+              ? <optgroup key={make.name} label={make.name}>
+                <option value={JSON.stringify([make.name, null])}>{make.name} — все модели ({make.count})</option>
+                {models.map((model) => <option key={model.name} value={JSON.stringify([make.name, model.name])}>{carName(make.name, model.name)} ({model.count})</option>)}
+              </optgroup>
+              : <option key={make.name} value={JSON.stringify([make.name, null])}>{make.name} ({make.count})</option>)}
+          </select>
+          <p className="filter-note">Применимость взята из меток CloudShop.</p>
+        </div>}
+        <div className="sidebar-facts">
+          <p><strong>{store.name ?? 'Склад'}</strong><br />{pickupText}</p>
+          {data && <p className={data.stale ? 'stale-text' : undefined}>{data.lastSyncText ? `Наличие обновлено: ${data.lastSyncText}` : 'Каталог ещё не обновлялся'}{data.stale && '. Данные могут быть устаревшими — добавление в корзину временно недоступно.'}</p>}
+        </div>
+        {hasFilters && <button type="button" className="button button-block" onClick={reset}>Сбросить фильтры</button>}
+      </aside>
+      <section className="catalog-results" aria-labelledby="results-title" aria-busy={products.isFetching}>
+        <div className="results-toolbar">
+          <div className="results-heading">
+            <button type="button" className="button button-dark filters-toggle" aria-expanded={filtersOpen} aria-controls="catalog-filters" onClick={() => setFiltersOpen((open) => !open)}>{filtersOpen ? 'Скрыть фильтры' : 'Фильтры'}</button>
+            <h2 id="results-title" tabIndex={-1} className="results-count">{data ? <>Найдено: <b>{data.totalProducts.toLocaleString('ru-RU')}</b>{query && <> по запросу «{query}»</>}</> : 'Результаты'}</h2>
+          </div>
+          <fieldset className="segmented"><legend className="sr-only">Сортировка</legend>
+            {catalogSorts.map((item) => <label key={item.value} className={sort === item.value ? 'is-active' : undefined}><input type="radio" name="sort" value={item.value} checked={sort === item.value} onChange={() => change({ sort: item.value === 'name' ? '' : item.value })} />{item.label}</label>)}
+          </fieldset>
+        </div>
+        <p className="sr-only" role="status">{products.isFetching ? 'Обновляем данные…' : ''}</p>
+        {storeError ? <Notice error><p>Не удалось загрузить данные склада.</p><button type="button" className="button" onClick={() => void store.query.refetch()}>Повторить</button></Notice>
+          : invalid ? <EmptyState title="Проверьте параметры поиска"><p>Используйте запрос до 120 символов, существующую страницу и фильтры из списка.</p><button className="button" type="button" onClick={reset}>Показать весь каталог</button></EmptyState>
+          : products.isPending ? <div className="loading-state" role="status"><span className="spinner" aria-hidden="true" />Загружаем каталог…</div>
+          : products.isError ? <Notice error><p>{products.error instanceof ApiError ? products.error.message : 'Не удалось загрузить каталог.'}</p><div className="actions"><button type="button" className="button" onClick={() => void products.refetch()}>Повторить</button><button type="button" className="button" onClick={reset}>Сбросить фильтры</button></div></Notice>
+          : data && <>
+            {data.products.length === 0 ? <div className="empty-panel"><h3>Товары не найдены</h3><p>Проверьте артикул или попробуйте более короткое название. Можно снять фильтры или отправить список артикулов через быстрый заказ.</p><div className="actions"><button type="button" className="button button-dark" onClick={reset}>Показать весь каталог</button><Link to="/quick-order" className="button">Быстрый заказ</Link></div></div>
+              : <ul className="product-list">{data.products.map((product) => <ProductRow key={product.id} product={product} storeId={data.storeId} inCart={quantities.get(product.id) ?? 0} />)}</ul>}
+            {data.totalPages > 1 && <nav className="pagination" aria-label="Страницы каталога">{data.page > 0 ? <Link className="button" to={pageLink(data.page - 1)} rel="prev">Назад</Link> : <span className="button button-disabled" aria-disabled="true">Назад</span>}<span>Страница {data.page + 1} из {data.totalPages}</span>{data.page + 1 < data.totalPages ? <Link className="button" to={pageLink(data.page + 1)} rel="next">Далее</Link> : <span className="button button-disabled" aria-disabled="true">Далее</span>}</nav>}
+          </>}
+      </section>
+    </div>
   </>;
 }

@@ -22,7 +22,7 @@ class CloudShopProductParserTest {
     assertThat(result.stock()).isEmpty();
     assertThat(result.storePrices()).isEmpty();
     assertThat(result.price()).isNull();
-    assertThat(result.unit()).isNull();
+    assertThat(result.unit()).isEqualTo("шт");
     assertThat(result.name()).isEqualTo("Опора");
     assertThat(result.updatedAt()).isEqualTo(Instant.parse("2026-10-04T10:15:46Z"));
   }
@@ -69,6 +69,27 @@ class CloudShopProductParserTest {
     assertThatThrownBy(() -> parser.parse("[" + product + ",{}]"))
         .isInstanceOf(CloudShopException.class);
     assertThatThrownBy(() -> parser.parse("{\"status\":false}"))
+        .isInstanceOf(CloudShopException.class);
+  }
+
+  @Test
+  void blankUnitMeansPieceAndExplicitUnitIsKept() {
+    assertThat(CloudShopProductParser.unit(null)).isEqualTo("шт");
+    assertThat(CloudShopProductParser.unit("  ")).isEqualTo("шт");
+    assertThat(CloudShopProductParser.unit(" шт. ")).isEqualTo("шт.");
+    assertThat(CloudShopProductParser.unit("л")).isEqualTo("л");
+  }
+
+  @Test
+  void keepsTagsInOrderAndRejectsNonTextTags() {
+    assertThat(parser.parse("[" + product + "]").getFirst().tags()).isEmpty();
+    String tagged =
+        product.replace(
+            "\"img\":[]", "\"img\":[],\"tags\":[\"Двигатель\",\" Hyundai \",\"\",\"Hyundai\"]");
+    assertThat(parser.parse("[" + tagged + "]").getFirst().tags())
+        .containsExactly("Двигатель", "Hyundai");
+    String broken = product.replace("\"img\":[]", "\"img\":[],\"tags\":[1]");
+    assertThatThrownBy(() -> parser.parse("[" + broken + "]"))
         .isInstanceOf(CloudShopException.class);
   }
 }

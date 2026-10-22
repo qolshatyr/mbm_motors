@@ -84,6 +84,20 @@ public final class CloudShopDeliveryGateway implements DeliveryGateway {
     return new CustomerResult(id(result));
   }
 
+  /** Creates the CloudShop card of a partner company once, when staff link the partner. */
+  public CustomerResult createCompany(String name, String phone) {
+    if (name == null
+        || name.isBlank()
+        || name.length() > 120
+        || phone == null
+        || !phone.matches("\\+[1-9][0-9]{9,14}"))
+      throw new IllegalArgumentException("Invalid partner customer details");
+    JsonNode result =
+        post(
+            "/customers", Map.of("type", "company", "name", name, "phones", List.of(phone)), false);
+    return new CustomerResult(id(result));
+  }
+
   @Override
   public SaleResult createSale(SaleCommand command) {
     DeliverySnapshot snapshot = command.snapshot();
@@ -104,10 +118,17 @@ public final class CloudShopDeliveryGateway implements DeliveryGateway {
                         "discount_percent",
                         0))
             .toList();
+    // Staff work from the sale itself: number, contact for this order and the partner's note.
     String comment =
-        "MBM-"
-            + snapshot.orderId()
-            + (snapshot.comment().isBlank() ? "" : "\n" + snapshot.comment());
+        "Заявка MBM-"
+            + snapshot.number()
+            + " с сайта партнёров\nКонтакт: "
+            + snapshot.customerName()
+            + ", "
+            + snapshot.phone()
+            + (snapshot.comment().isBlank() ? "" : "\n" + snapshot.comment())
+            + "\nКлюч: "
+            + snapshot.orderId();
     JsonNode result =
         post(
             "/sales",

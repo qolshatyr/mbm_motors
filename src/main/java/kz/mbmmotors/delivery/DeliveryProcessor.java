@@ -6,7 +6,7 @@ import java.util.Objects;
 import java.util.UUID;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-/** Explicitly constructed internal processor; never a Spring bean or an automatic worker. */
+/** Explicitly constructed internal processor; only {@link DeliveryWorker} runs it automatically. */
 public final class DeliveryProcessor {
   private final DeliveryRepository repository;
   private final DeliveryGateway gateway;
@@ -20,6 +20,16 @@ public final class DeliveryProcessor {
 
   public boolean prepare(UUID id) {
     return repository.transition(id, "WAITING_CONFIGURATION", "READY", clock.instant());
+  }
+
+  /** Sends one partner order as an unposted sale; an uncertain outcome becomes UNKNOWN. */
+  public void deliverPartnerOrder(UUID id) {
+    repository.promotePartnerOrder(id, clock.instant());
+    process(id);
+  }
+
+  public java.util.List<UUID> deliverable(int limit) {
+    return repository.deliverable(limit);
   }
 
   public void process(UUID id) {

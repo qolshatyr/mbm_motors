@@ -25,5 +25,7 @@ class DeliveryDisabledConfigurationTest {
   void normalApplicationHasNoDeliveryAdapterOrProcessor() {
     assertThat(context.getBeansOfType(DeliveryGateway.class)).isEmpty();
     assertThat(context.getBeansOfType(DeliveryProcessor.class)).isEmpty();
+    // Live delivery is opt-in through delivery.enabled.
+    assertThat(context.containsBean("deliveryWorker")).isFalse();
   }
 }

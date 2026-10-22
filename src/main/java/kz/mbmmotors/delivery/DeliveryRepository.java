@@ -97,6 +97,43 @@ public class DeliveryRepository {
                 id));
   }
 
+  /**
+   * Partner orders skip customer creation: the partner's CloudShop card is already linked. Orders
+   * without a partner or without a linked card stay waiting for staff.
+   */
+  boolean promotePartnerOrder(UUID id, Instant now) {
+    return Boolean.TRUE.equals(
+        tx.execute(
+            status ->
+                jdbc.update(
+                        """
+                        update delivery_outbox d
+                        set state='CUSTOMER_CREATED',customer_id=p.cloudshop_customer_id,updated_at=?
+                        from local_orders o join partners p on p.id=o.partner_id
+                        where d.order_id=? and o.id=d.order_id and d.state='WAITING_CONFIGURATION'
+                          and p.enabled and p.cloudshop_customer_id is not null
+                        """,
+                        Timestamp.from(now),
+                        id)
+                    == 1));
+  }
+
+  /** Oldest deliverable partner orders first; at most {@code limit} per run. */
+  java.util.List<UUID> deliverable(int limit) {
+    return tx.execute(
+        status ->
+            jdbc.queryForList(
+                """
+                select d.order_id from delivery_outbox d
+                join local_orders o on o.id=d.order_id join partners p on p.id=o.partner_id
+                where (d.state='CUSTOMER_CREATED'
+                  or (d.state='WAITING_CONFIGURATION' and p.enabled and p.cloudshop_customer_id is not null))
+                order by d.created_at limit ?
+                """,
+                UUID.class,
+                limit));
+  }
+
   int recover(Instant before, Instant now) {
     return tx.execute(
         status ->

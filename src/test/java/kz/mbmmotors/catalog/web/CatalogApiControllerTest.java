@@ -1,5 +1,6 @@
 package kz.mbmmotors.catalog.web;
 
+import static kz.mbmmotors.catalog.CatalogViewService.CatalogFilter.NONE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -13,12 +14,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import tools.jackson.databind.json.JsonMapper;
 
 @WebMvcTest(CatalogApiController.class)
 @Import(WebSecurityConfiguration.class)
+// The portal is partner-only; access rules themselves are covered by PartnerSecurityTest.
+@WithMockUser(roles = "PARTNER")
 class CatalogApiControllerTest {
   @Autowired MockMvcTester mvc;
   @Autowired JsonMapper json;
@@ -36,7 +40,7 @@ class CatalogApiControllerTest {
 
   @Test
   void defaultProductsSerializeDisplayValuesFreshnessAndNullableFields() throws Exception {
-    when(service.list("", null, false, 0)).thenReturn(page());
+    when(service.list("", null, false, 0, null, NONE)).thenReturn(page());
     var result = mvc.get().uri("/api/catalog/products").exchange();
     assertThat(result).hasStatusOk();
     var body = json.readTree(result.getResponse().getContentAsString());
@@ -49,12 +53,12 @@ class CatalogApiControllerTest {
     for (String key : List.of("sku", "code", "unit", "imageUrl")) {
       assertThat(product.path(key).isNull()).as(key).isTrue();
     }
-    verify(service).list("", null, false, 0);
+    verify(service).list("", null, false, 0, null, NONE);
   }
 
   @Test
   void forwardsSearchFiltersAndPageToExistingService() {
-    when(service.list("54610-2T000", "warehouse", true, 2)).thenReturn(page());
+    when(service.list("54610-2T000", "warehouse", true, 2, null, NONE)).thenReturn(page());
     assertThat(
             mvc.get()
                 .uri("/api/catalog/products")
@@ -63,7 +67,7 @@ class CatalogApiControllerTest {
                 .param("available", "true")
                 .param("page", "2"))
         .hasStatusOk();
-    verify(service).list("54610-2T000", "warehouse", true, 2);
+    verify(service).list("54610-2T000", "warehouse", true, 2, null, NONE);
   }
 
   @Test
@@ -75,7 +79,7 @@ class CatalogApiControllerTest {
       assertThat(result.getResponse().getContentType()).startsWith("application/problem+json");
     }
     verifyNoInteractions(service);
-    when(service.list(anyString(), any(), anyBoolean(), anyInt()))
+    when(service.list(anyString(), any(), anyBoolean(), anyInt(), any(), any()))
         .thenThrow(new CatalogViewService.BadCatalogQuery());
     var result = mvc.get().uri("/api/catalog/products").param("store", "missing").exchange();
     assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
@@ -84,7 +88,8 @@ class CatalogApiControllerTest {
 
   @Test
   void pageOutsideResultsReturnsProblemNotFound() throws Exception {
-    when(service.list("", null, false, 99)).thenThrow(new CatalogViewService.CatalogNotFound());
+    when(service.list("", null, false, 99, null, NONE))
+        .thenThrow(new CatalogViewService.CatalogNotFound());
     var result = mvc.get().uri("/api/catalog/products").param("page", "99").exchange();
     assertThat(result).hasStatus(HttpStatus.NOT_FOUND);
     assertProblem(result.getResponse().getContentAsString(), 404);
@@ -102,6 +107,24 @@ class CatalogApiControllerTest {
   }
 
   @Test
+  void tagFiltersReachTheService() throws Exception {
+    var filter =
+        new CatalogViewService.CatalogFilter(
+            "Двигатель", "Поршневая группа", "Hyundai", "Sonata", List.of("NGP", "Mobis"));
+    when(service.list("", null, false, 0, null, filter)).thenReturn(page());
+    assertThat(
+            mvc.get()
+                .uri("/api/catalog/products")
+                .param("section", "Двигатель")
+                .param("subsection", "Поршневая группа")
+                .param("make", "Hyundai")
+                .param("model", "Sonata")
+                .param("brand", "NGP", "Mobis"))
+        .hasStatusOk();
+    verify(service).list("", null, false, 0, null, filter);
+  }
+
+  @Test
   void detailUsesExistingServiceAndReturnsMissingProductAs404() throws Exception {
     var detail =
         new CatalogViewService.Detail(
@@ -111,7 +134,8 @@ class CatalogApiControllerTest {
                     store().id(), store().name(), "3000 ₸", "4 шт", true, null)),
             store().id(),
             "06.10.2026",
-            false);
+            false,
+            new CatalogViewService.Classification(null, null, List.of(), List.of()));
     when(service.detail("item", store().id())).thenReturn(detail);
     var result =
         mvc.get().uri("/api/catalog/products/item").param("store", store().id()).exchange();
@@ -149,6 +173,10 @@ class CatalogApiControllerTest {
                 null,
                 "Цена уточняется",
                 "Наличие уточняется",
+                null,
+                null,
+                false,
+                null,
                 null)),
         "",
         store().id(),
@@ -158,6 +186,8 @@ class CatalogApiControllerTest {
         1,
         1,
         null,
-        true);
+        true,
+        CatalogViewService.CatalogFilter.NONE,
+        new CatalogViewService.Facets(List.of(), List.of(), List.of(), List.of(), List.of()));
   }
 }

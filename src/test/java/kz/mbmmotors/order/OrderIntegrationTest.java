@@ -2,6 +2,7 @@ package kz.mbmmotors.order;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -28,8 +29,11 @@ import org.springframework.test.web.servlet.MockMvc;
     })
 @AutoConfigureMockMvc
 class OrderIntegrationTest {
-  static final String STORE = "64feaaa51c9799143b532fcf";
+  static final String STORE = "6967a39f62918c7e760f3747";
   static final String PRODUCT = "aaaaaaaaaaaaaaaaaaaaaaaa";
+  static final UUID PARTNER = UUID.fromString("00000000-0000-4000-8000-000000000001");
+  static final org.springframework.test.web.servlet.request.RequestPostProcessor SIGNED_IN =
+      user("turbo").roles("PARTNER");
   @Autowired OrderService orders;
   @Autowired CartService carts;
   @Autowired CheckoutProperties properties;
@@ -39,7 +43,11 @@ class OrderIntegrationTest {
   @BeforeEach
   void setup() {
     jdbc.execute(
-        "delete from local_order_items; delete from local_orders; delete from product_images; delete from product_offers; delete from products; delete from sync_runs");
+        "delete from local_order_items; delete from local_orders; delete from partners; delete from product_tags; delete from product_images; delete from product_offers; delete from products; delete from sync_runs");
+    jdbc.update(
+        "insert into partners(id,login,password_hash,company,contact_name,phone,created_at) values (?,'turbo',?,'Synthetic Partner','Synthetic Buyer','+77011234567',now())",
+        PARTNER,
+        "$2a$10$" + "a".repeat(53));
     jdbc.update(
         "insert into products(id,name,sku,unit,imported_at) values (?,'Test item','TEST','шт',now())",
         PRODUCT);
@@ -73,9 +81,9 @@ class OrderIntegrationTest {
   void transactionPersistsExactSnapshotAndPrivateReplay() {
     var cart = cart();
     var state = new CheckoutSession();
-    var preview = orders.preview(cart, state);
+    var preview = orders.preview(cart, state, null);
     var cmd = command(preview);
-    var result = orders.submit(cart, state, cmd);
+    var result = orders.submit(cart, state, cmd, PARTNER);
     assertTrue(result.created());
     assertEquals(
         "5000.02", jdbc.queryForObject("select total::text from local_orders", String.class));
@@ -83,7 +91,7 @@ class OrderIntegrationTest {
     assertEquals(
         "+77011234567", jdbc.queryForObject("select phone from local_orders", String.class));
     carts.clear(cart);
-    assertFalse(orders.submit(cart, state, cmd).created());
+    assertFalse(orders.submit(cart, state, cmd, PARTNER).created());
     assertEquals(1, jdbc.queryForObject("select count(*) from delivery_outbox", Integer.class));
     assertEquals(
         "WAITING_CONFIGURATION",
@@ -97,7 +105,8 @@ class OrderIntegrationTest {
         new SubmitOrder(cmd.key(), cmd.revision(), cmd.customerName(), cmd.phone(), "Changed");
     assertEquals(
         409,
-        assertThrows(OrderProblem.class, () -> orders.submit(cart, state, different)).status());
+        assertThrows(OrderProblem.class, () -> orders.submit(cart, state, different, PARTNER))
+            .status());
     jdbc.update("delete from product_offers; delete from products");
     assertEquals(1, jdbc.queryForObject("select count(*) from local_order_items", Integer.class));
   }
@@ -106,19 +115,19 @@ class OrderIntegrationTest {
   void blocksUnconfiguredPickupStalePriceAndChangedRevisionWithoutClearingCart() {
     var cart = cart();
     var state = new CheckoutSession();
-    var p = orders.preview(cart, state);
+    var p = orders.preview(cart, state, null);
     var cmd = command(p);
     properties.setPickupStoreIds(java.util.List.of());
-    assertFalse(orders.preview(cart, state).canSubmit());
-    assertThrows(OrderProblem.class, () -> orders.submit(cart, state, cmd));
+    assertFalse(orders.preview(cart, state, null).canSubmit());
+    assertThrows(OrderProblem.class, () -> orders.submit(cart, state, cmd, PARTNER));
     properties.setPickupStoreIds(java.util.List.of(STORE));
     jdbc.update("update product_offers set price=2600 where product_id=?", PRODUCT);
-    assertThrows(OrderProblem.class, () -> orders.submit(cart, state, cmd));
+    assertThrows(OrderProblem.class, () -> orders.submit(cart, state, cmd, PARTNER));
     carts.confirmPrice(cart, PRODUCT, new java.math.BigDecimal("2600"));
-    assertThrows(OrderProblem.class, () -> orders.submit(cart, state, cmd));
-    var fresh = command(orders.preview(cart, state));
+    assertThrows(OrderProblem.class, () -> orders.submit(cart, state, cmd, PARTNER));
+    var fresh = command(orders.preview(cart, state, null));
     jdbc.update("update sync_runs set finished_at=now()-interval '16 minutes'");
-    assertThrows(OrderProblem.class, () -> orders.submit(cart, state, fresh));
+    assertThrows(OrderProblem.class, () -> orders.submit(cart, state, fresh, PARTNER));
     assertEquals(2, cart.itemCount());
     assertEquals(0, jdbc.queryForObject("select count(*) from local_orders", Integer.class));
   }
@@ -127,13 +136,13 @@ class OrderIntegrationTest {
   void rollbackWhenItemInsertFailsLeavesNoOrderAndKeepsCart() {
     var cart = cart();
     var state = new CheckoutSession();
-    var cmd = command(orders.preview(cart, state));
+    var cmd = command(orders.preview(cart, state, null));
     jdbc.execute(
         "alter table local_order_items add constraint test_reject_items check (quantity < 1)");
     try {
       assertThrows(
           org.springframework.dao.DataIntegrityViolationException.class,
-          () -> orders.submit(cart, state, cmd));
+          () -> orders.submit(cart, state, cmd, PARTNER));
       assertEquals(0, jdbc.queryForObject("select count(*) from local_orders", Integer.class));
       assertEquals(2, cart.itemCount());
     } finally {
@@ -145,13 +154,13 @@ class OrderIntegrationTest {
   void rollbackWhenOutboxInsertFailsLeavesNoOrderItemsOrJobAndKeepsCart() {
     var cart = cart();
     var state = new CheckoutSession();
-    var cmd = command(orders.preview(cart, state));
+    var cmd = command(orders.preview(cart, state, null));
     jdbc.execute(
         "alter table delivery_outbox add constraint test_reject_outbox check (state <> 'WAITING_CONFIGURATION')");
     try {
       assertThrows(
           org.springframework.dao.DataIntegrityViolationException.class,
-          () -> orders.submit(cart, state, cmd));
+          () -> orders.submit(cart, state, cmd, PARTNER));
       assertEquals(0, jdbc.queryForObject("select count(*) from local_orders", Integer.class));
       assertEquals(0, jdbc.queryForObject("select count(*) from local_order_items", Integer.class));
       var session = new MockHttpSession();
@@ -164,6 +173,7 @@ class OrderIntegrationTest {
                   mvc.perform(
                       post("/api/orders")
                           .session(session)
+                          .with(SIGNED_IN)
                           .with(csrf())
                           .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                           .param("idempotencyKey", cmd.key().toString())
@@ -189,20 +199,20 @@ class OrderIntegrationTest {
     var first = cart();
     var second = cart();
     var state = new CheckoutSession();
-    var cmd = command(orders.preview(first, state));
+    var cmd = command(orders.preview(first, state, null));
     var gate = new CountDownLatch(1);
     try (var pool = Executors.newFixedThreadPool(2)) {
       var a =
           pool.submit(
               () -> {
                 gate.await();
-                return orders.submit(first, state, cmd);
+                return orders.submit(first, state, cmd, PARTNER);
               });
       var b =
           pool.submit(
               () -> {
                 gate.await();
-                return orders.submit(second, state, cmd);
+                return orders.submit(second, state, cmd, PARTNER);
               });
       gate.countDown();
       var ar = a.get(20, TimeUnit.SECONDS);
@@ -219,26 +229,35 @@ class OrderIntegrationTest {
     var session = new MockHttpSession();
     var cart = cart();
     session.setAttribute("mbm.cart", cart);
-    mvc.perform(get("/api/checkout").session(session))
+    mvc.perform(get("/api/checkout").session(session)).andExpect(status().isUnauthorized());
+    mvc.perform(get("/api/checkout").session(session).with(SIGNED_IN))
         .andExpect(status().isOk())
-        .andExpect(header().string("Cache-Control", "no-store"));
+        .andExpect(header().string("Cache-Control", "no-store"))
+        .andExpect(jsonPath("$.contact.customerName").value("Synthetic Buyer"))
+        .andExpect(jsonPath("$.contact.phone").value("+77011234567"));
     mvc.perform(
             post("/api/orders")
                 .session(session)
+                .with(SIGNED_IN)
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.errors.phone").exists());
     mvc.perform(
-            post("/api/orders").session(session).contentType(MediaType.APPLICATION_FORM_URLENCODED))
+            post("/api/orders")
+                .session(session)
+                .with(SIGNED_IN)
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED))
         .andExpect(status().isForbidden());
-    mvc.perform(get("/api/orders/private")).andExpect(status().isForbidden());
-    mvc.perform(get("/api/orders/by-key/not-uuid")).andExpect(status().isBadRequest());
+    mvc.perform(get("/api/orders/private").with(SIGNED_IN)).andExpect(status().isForbidden());
+    mvc.perform(get("/api/orders/by-key/not-uuid").with(SIGNED_IN))
+        .andExpect(status().isBadRequest());
     var state = (CheckoutSession) session.getAttribute("mbm.checkout");
     var issuedKey = state.key();
     var request =
         post("/api/orders")
             .session(session)
+            .with(SIGNED_IN)
             .with(csrf())
             .contentType(MediaType.APPLICATION_FORM_URLENCODED)
             .param("idempotencyKey", state.key().toString())
@@ -253,11 +272,23 @@ class OrderIntegrationTest {
     assertTrue(cart.isEmpty());
     assertNull(state.key());
     mvc.perform(request).andExpect(status().isOk());
-    mvc.perform(get("/api/orders/by-key/" + issuedKey).session(session)).andExpect(status().isOk());
-    mvc.perform(get("/api/orders/by-key/" + issuedKey).session(new MockHttpSession()))
+    assertEquals(PARTNER, jdbc.queryForObject("select partner_id from local_orders", UUID.class));
+    mvc.perform(get("/api/account/orders").with(SIGNED_IN))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.orders.length()").value(1))
+        .andExpect(jsonPath("$.orders[0].status").value("RECEIVED"));
+    String number = jdbc.queryForObject("select 'MBM-'||number from local_orders", String.class);
+    mvc.perform(get("/api/account/orders/" + number).with(SIGNED_IN))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.items[0].productId").value(PRODUCT))
+        .andExpect(jsonPath("$.items[0].quantity").value(2));
+    mvc.perform(get("/api/orders/by-key/" + issuedKey).session(session).with(SIGNED_IN))
+        .andExpect(status().isOk());
+    mvc.perform(
+            get("/api/orders/by-key/" + issuedKey).session(new MockHttpSession()).with(SIGNED_IN))
         .andExpect(status().isNotFound());
     carts.add(cart, PRODUCT, STORE, 2);
-    mvc.perform(get("/api/checkout").session(session)).andExpect(status().isOk());
+    mvc.perform(get("/api/checkout").session(session).with(SIGNED_IN)).andExpect(status().isOk());
     assertNotEquals(issuedKey, state.key());
   }
 }

@@ -16,10 +16,12 @@ public record CloudShopProduct(
     Map<String, BigDecimal> storePrices,
     Instant updatedAt,
     String categoryId,
-    List<String> imageUrls) {
+    List<String> imageUrls,
+    List<String> tags) {
   public CloudShopProduct {
     stock = Map.copyOf(stock);
     storePrices = Map.copyOf(storePrices);
     imageUrls = List.copyOf(imageUrls);
+    tags = List.copyOf(tags);
   }
 }

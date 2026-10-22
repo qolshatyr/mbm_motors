@@ -6,7 +6,9 @@ import java.util.UUID;
 import kz.mbmmotors.cart.CartService;
 import kz.mbmmotors.cart.web.CartController;
 import kz.mbmmotors.order.*;
+import kz.mbmmotors.partner.PartnerAccountService;
 import org.springframework.http.*;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -14,18 +16,22 @@ public class CheckoutController {
   private static final org.slf4j.Logger log =
       org.slf4j.LoggerFactory.getLogger(CheckoutController.class);
   private final OrderService orders;
+  private final PartnerAccountService partners;
 
-  public CheckoutController(OrderService orders) {
+  public CheckoutController(OrderService orders, PartnerAccountService partners) {
     this.orders = orders;
+    this.partners = partners;
   }
 
   @GetMapping("/api/checkout")
-  ResponseEntity<OrderService.Preview> preview(HttpSession session) {
+  ResponseEntity<OrderService.Preview> preview(HttpSession session, Authentication authentication) {
+    var partner = partners.current(authentication);
+    var contact = new OrderService.Contact(partner.contactName(), partner.phone());
     var cart = CartController.sessionCart(session);
     synchronized (cart) {
       return ResponseEntity.ok()
           .cacheControl(CacheControl.noStore())
-          .body(orders.preview(cart, state(session)));
+          .body(orders.preview(cart, state(session), contact));
     }
   }
 
@@ -37,14 +43,16 @@ public class CheckoutController {
       @RequestParam(required = false) String phone,
       @RequestParam(required = false) String comment,
       @RequestParam(required = false) String consent,
-      HttpSession session) {
+      HttpSession session,
+      Authentication authentication) {
     // Contacts are validated before checking business state, so form errors always have HTTP400.
     var command =
         SubmitOrder.validate(idempotencyKey, revision, customerName, phone, comment, consent);
+    var partner = partners.current(authentication);
     var cart = CartController.sessionCart(session);
     synchronized (cart) {
       var checkout = state(session);
-      var result = orders.submit(cart, checkout, command);
+      var result = orders.submit(cart, checkout, command, partner.id());
       // OrderService's transaction interceptor has committed before this statement.
       if (result.created()) {
         cart.clearSelection();
@@ -91,6 +99,11 @@ public class CheckoutController {
     detail.setType(URI.create("urn:mbm:checkout:" + error.status()));
     if (!error.errors().isEmpty()) detail.setProperty("errors", error.errors());
     return ResponseEntity.status(error.status()).cacheControl(CacheControl.noStore()).body(detail);
+  }
+
+  @ExceptionHandler(PartnerAccountService.AccountProblem.class)
+  ResponseEntity<ProblemDetail> accountProblem(PartnerAccountService.AccountProblem error) {
+    return problem(new OrderProblem(error.status(), error.getMessage()));
   }
 
   @ExceptionHandler(CartService.CartProblem.class)

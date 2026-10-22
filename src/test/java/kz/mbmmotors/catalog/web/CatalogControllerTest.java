@@ -12,11 +12,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 
 @WebMvcTest(CatalogController.class)
 @Import(WebSecurityConfiguration.class)
+// The portal is partner-only; access rules themselves are covered by PartnerSecurityTest.
+@WithMockUser(roles = "PARTNER")
 class CatalogControllerTest {
   @Autowired MockMvcTester mvc;
   @MockitoBean CatalogViewService service;
@@ -32,6 +35,10 @@ class CatalogControllerTest {
             null,
             "3 000 ₸",
             "В наличии: 4",
+            null,
+            null,
+            false,
+            null,
             null);
     when(service.list("", null, false, 0))
         .thenReturn(
@@ -46,7 +53,10 @@ class CatalogControllerTest {
                 1,
                 1,
                 "05.10.2026 12:00",
-                false));
+                false,
+                CatalogViewService.CatalogFilter.NONE,
+                new CatalogViewService.Facets(
+                    List.of(), List.of(), List.of(), List.of(), List.of())));
     var result = mvc.get().uri("/catalog").exchange();
     assertThat(result).hasStatusOk().hasViewName("catalog/list");
     assertThat(result.getResponse().getContentAsString())

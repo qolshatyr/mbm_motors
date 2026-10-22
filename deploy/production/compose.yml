@@ -1,0 +1,62 @@
+# Production stack for one budget VPS. See docs/Deployment.md.
+services:
+  db:
+    image: postgres:17.6
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mbm_motors
+      POSTGRES_USER: mbm
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mbm -d mbm_motors"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    image: eclipse-temurin:21-jre-noble
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    working_dir: /app
+    command: ["java", "-Xmx512m", "-jar", "/app/app.jar"]
+    volumes:
+      - ./app.jar:/app/app.jar:ro
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/mbm_motors
+      DB_USER: mbm
+      DB_PASSWORD: ${DB_PASSWORD}
+      SERVER_ADDRESS: 0.0.0.0
+      SERVER_FORWARD_HEADERS_STRATEGY: framework
+      SERVER_SERVLET_SESSION_COOKIE_SECURE: "true"
+      FRONTEND_ENABLED: "true"
+      CLOUDSHOP_TOKEN: ${CLOUDSHOP_TOKEN:-}
+      CATALOG_SYNC_ENABLED: ${CATALOG_SYNC_ENABLED:-false}
+      MBM_DELIVERY_ENABLED: ${MBM_DELIVERY_ENABLED:-false}
+      MBM_ADMIN_ENABLED: ${MBM_ADMIN_ENABLED:-false}
+      MBM_ADMIN_USERNAME: ${MBM_ADMIN_USERNAME:-}
+      MBM_ADMIN_PASSWORD_HASH: ${MBM_ADMIN_PASSWORD_HASH:-}
+      TZ: Asia/Almaty
+
+  caddy:
+    image: caddy:2.10
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?Set SITE_ADDRESS in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:

@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { fetchCheckout, fetchReceipt, forgetPendingKey, readPendingKey, rememberPendingKey, submitOrder } from '../../shared/api/checkout';
 import type { CheckoutFields, OrderReceipt, OrderSubmission } from '../../shared/api/checkout';
 import { ApiError } from '../../shared/api/http';
-import { Icon } from '../../shared/ui/Icon';
 import { Button } from '../../shared/ui/Button';
 import { Notice } from '../../shared/ui/Feedback';
 import { useCartBusy } from '../cart/cartQueries';
+import { useMe } from '../auth/session';
+import { pickupText } from '../catalog/useStore';
 
-export function Checkout() {
+export function Checkout({ onLockChange }: { onLockChange?: (locked: boolean) => void }) {
   const navigate = useNavigate();
   const client = useQueryClient();
   const busy = useCartBusy();
@@ -23,6 +24,7 @@ export function Checkout() {
   const restartOrigin = useRef<HTMLElement | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [fields, setFields] = useState<CheckoutFields>({ customerName: '', phone: '', comment: '', consent: false });
+  const prefill = useRef<{ customerName: string; phone: string } | null>(null);
   const submitted = useRef<OrderSubmission | null>(null);
   const sending = useRef(false);
   const errorToFocus = useRef<string | null>(null);
@@ -103,6 +105,15 @@ export function Checkout() {
     setUncertain(true); setMessage(''); setErrors({}); mutation.mutate(payload);
   }
   useEffect(() => { if (uncertain) document.getElementById('recovery-title')?.focus(); }, [uncertain]);
+  useEffect(() => { onLockChange?.(uncertain); }, [uncertain, onLockChange]);
+  const me = useMe();
+  // Prefill once from the partner profile; never overwrite what the partner typed.
+  useEffect(() => {
+    if (prefill.current || !preview.data) return;
+    const contact = { customerName: preview.data.contact?.customerName ?? me.data?.contactName ?? '', phone: preview.data.contact?.phone ?? me.data?.phone ?? '' };
+    prefill.current = contact;
+    setFields((old) => ({ ...old, customerName: old.customerName || contact.customerName, phone: old.phone || contact.phone }));
+  }, [preview.data, me.data]);
   const data = preview.data;
   const locked = uncertain || busy || preview.isFetching || preview.isError;
   useEffect(() => {
@@ -112,7 +123,8 @@ export function Checkout() {
     return () => cancelAnimationFrame(frame);
   }, [errors, locked]);
   useEffect(() => {
-    if (uncertain || (!fields.customerName && !fields.phone && !fields.comment && !fields.consent)) return;
+    const initial = prefill.current ?? { customerName: '', phone: '' };
+    if (uncertain || (fields.customerName === initial.customerName && fields.phone === initial.phone && !fields.comment && !fields.consent)) return;
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
@@ -120,28 +132,26 @@ export function Checkout() {
   function fieldChanged<K extends keyof CheckoutFields>(key: K, value: CheckoutFields[K]) {
     setFields((old) => ({ ...old, [key]: value })); setErrors((old) => ({ ...old, [key]: '' }));
   }
-  return <>
-    <nav className="back-nav" aria-label="Навигация"><Link to="/basket"><Icon name="arrow" />Вернуться в корзину</Link></nav>
-    <nav className="purchase-steps" aria-label="Этапы покупки"><ol><li><Link to="/">Каталог</Link></li><li><Link to="/basket">Корзина</Link></li><li aria-current="step">Оформление</li></ol></nav>
-    <div className="heading-row"><div><h1 id="checkout-title" tabIndex={-1}>Оформление заявки</h1><p>Проверьте товары и укажите контактные данные.</p></div></div>
-    <p className="checkout-intro">Заявка сохраняется на сайте. Передача в магазин и подтверждение заказа пока недоступны. Товары не резервируются.</p>
+  const demo = import.meta.env.MODE === 'demo' && import.meta.env.VITE_DEMO === 'true';
+  const prefilled = Boolean(prefill.current && (prefill.current.customerName || prefill.current.phone));
+  return <aside className="checkout-panel" aria-labelledby="checkout-title">
+    <h2 id="checkout-title" tabIndex={-1}>Оформление заявки</h2>
+    <div className="pickup-box"><span className="pickup-dot" aria-hidden="true" /><div><p><strong>{pickupText}</strong></p><p className="muted">После подтверждения менеджером</p></div></div>
     {message && <div id="checkout-error" tabIndex={-1}><Notice error>{message}</Notice></div>}
-    {uncertain ? <section className="recovery-panel" aria-labelledby="recovery-title" aria-busy={recovering || busy}><h2 id="recovery-title" tabIndex={-1}>Проверка результата</h2><p>Не создавайте новую заявку, пока не проверен результат предыдущей отправки.</p>{recovering || busy ? <p role="status">{mutation.isPending ? 'Сохраняем заявку…' : 'Проверяем сохранение заявки…'}</p> : <><Button onClick={() => void checkResult()}>Проверить результат</Button>{submitted.current && <Button onClick={() => send(submitted.current!)}>Повторить ту же отправку</Button>}{!submitted.current && <><p>Данные формы не сохраняются в браузере. После перезагрузки повторить прежнюю отправку невозможно. Проверьте результат или начните новое оформление с подтверждением.</p><Button onClick={() => setRestartConfirmation(true)}>Начать новое оформление</Button></>}</>}</section> : <>
-      {preview.isPending ? <div className="loading-state" role="status">Проверяем корзину…</div> : preview.isError ? <Notice error><p>Не удалось проверить корзину. Отправка временно недоступна.</p><Button onClick={() => void preview.refetch()}>Обновить данные</Button></Notice> : data && <div className="checkout-layout">
-        {(import.meta.env.MODE === 'demo' && import.meta.env.VITE_DEMO === 'true') && <Notice>Проверка прототипа: используйте вымышленное имя и номер +77000000000. Контакты не сохраняются и никуда не отправляются.</Notice>}<form className="checkout-form" aria-busy={busy} onSubmit={(event) => { event.preventDefault(); if (!data.canSubmit || locked || !data.revision || submitted.current) return; send({ idempotencyKey: data.idempotencyKey, revision: data.revision, customerName: fields.customerName, phone: fields.phone, comment: fields.comment, consent: String(fields.consent) }); }}>
-          <div className="checkout-section-heading"><h2>Ваши контакты</h2><p className="muted">Укажите данные для работы с заявкой.</p></div>
-          <div className="checkout-field-grid">
-          <div className="checkout-field"><label htmlFor="customerName">Имя</label><input id="customerName" name="customerName" autoComplete="name" required maxLength={80} value={fields.customerName} disabled={locked} aria-invalid={Boolean(errors.customerName)} aria-describedby={errors.customerName ? 'customerName-error' : undefined} onChange={(event) => fieldChanged('customerName', event.target.value)} />{errors.customerName && <p id="customerName-error" className="field-error">{errors.customerName}</p>}</div>
-          <div className="checkout-field"><label htmlFor="phone">Телефон</label><input id="phone" name="phone" type="tel" autoComplete="tel" required maxLength={32} value={fields.phone} disabled={locked} aria-invalid={Boolean(errors.phone)} aria-describedby={errors.phone ? 'phone-error' : 'phone-hint'} onChange={(event) => fieldChanged('phone', event.target.value)} /><p id="phone-hint" className="field-hint">Казахстанский номер: +7 и 10 цифр.</p>{errors.phone && <p id="phone-error" className="field-error">{errors.phone}</p>}</div>
-          </div>
-          <div className="checkout-field"><label htmlFor="comment">Комментарий <span className="muted">(необязательно)</span></label><textarea id="comment" name="comment" rows={4} maxLength={1000} value={fields.comment} disabled={locked} aria-invalid={Boolean(errors.comment)} aria-describedby={errors.comment ? 'comment-error' : undefined} onChange={(event) => fieldChanged('comment', event.target.value)} />{errors.comment && <p id="comment-error" className="field-error">{errors.comment}</p>}</div>
-          <div><label className="checkout-consent" htmlFor="consent"><input id="consent" name="consent" type="checkbox" required checked={fields.consent} disabled={locked} aria-invalid={Boolean(errors.consent)} aria-describedby={errors.consent ? 'consent-error' : undefined} onChange={(event) => fieldChanged('consent', event.target.checked)} /><span>Согласен на обработку указанных контактных данных для работы с этой заявкой.</span></label>{errors.consent && <p id="consent-error" className="field-error">{errors.consent}</p>}</div>
-          {!data.canSubmit && <Notice error><p>Сохранение заявки пока недоступно.</p><ul>{data.issues.map((issue, index) => <li key={index}>{issue}</li>)}</ul><p>Вернитесь в корзину, чтобы проверить позиции. Попробуйте позже или уточните возможность самовывоза в магазине.</p></Notice>}
-          <Button primary type="submit" disabled={locked || !data.canSubmit}>Сохранить заявку<Icon name="arrow" /></Button>
-        </form>
-        <aside className="checkout-summary" aria-labelledby="checkout-summary-title"><h2 id="checkout-summary-title">Ваша заявка</h2><p className="checkout-summary-store"><Icon name="location" />{data.cart.storeName || 'Точка не выбрана'}</p>{data.cart.items.length === 0 ? <p>Корзина пуста. Добавьте товары из каталога.</p> : <ul className="checkout-items">{data.cart.items.map((item) => <li key={item.id}><span>{item.name}<small>{item.quantity} {item.unit || 'шт.'} × {item.priceText}</small>{item.problem && <span className="item-problem">{item.problem}</span>}{item.priceChanged && <span className="item-problem">Цена требует подтверждения в корзине.</span>}</span><strong>{item.totalText}</strong></li>)}</ul>}<div className="checkout-total"><span>Итого</span><strong>{data.cart.totalText}</strong></div><p className="summary-note">Цены и наличие проверяются при сохранении. Оплата на сайте не предусмотрена.</p></aside>
-      </div>}
+    {uncertain ? <section className="recovery-panel" aria-labelledby="recovery-title" aria-busy={recovering || busy}><h3 id="recovery-title" tabIndex={-1}>Проверка результата</h3><p>Не создавайте новую заявку, пока не проверен результат предыдущей отправки.</p>{recovering || busy ? <p role="status">{mutation.isPending ? 'Сохраняем заявку…' : 'Проверяем сохранение заявки…'}</p> : <><Button onClick={() => void checkResult()}>Проверить результат</Button>{submitted.current && <Button onClick={() => send(submitted.current!)}>Повторить ту же отправку</Button>}{!submitted.current && <><p>Данные формы не сохраняются в браузере. После перезагрузки повторить прежнюю отправку невозможно. Проверьте результат или начните новое оформление с подтверждением.</p><Button onClick={() => setRestartConfirmation(true)}>Начать новое оформление</Button></>}</>}</section> : <>
+      {preview.isPending ? <div className="loading-state loading-compact" role="status"><span className="spinner" aria-hidden="true" />Проверяем корзину…</div> : preview.isError ? <Notice error><p>Не удалось проверить корзину. Отправка временно недоступна.</p><Button onClick={() => void preview.refetch()}>Обновить данные</Button></Notice> : data && <form className="checkout-form" aria-busy={busy} onSubmit={(event) => { event.preventDefault(); if (!data.canSubmit || locked || !data.revision || submitted.current) return; send({ idempotencyKey: data.idempotencyKey, revision: data.revision, customerName: fields.customerName, phone: fields.phone, comment: fields.comment, consent: String(fields.consent) }); }}>
+        {demo && <p className="field-hint">Прототип: контакты не сохраняются и никуда не отправляются.</p>}
+        {prefilled && me.data && <p className="prefill-note">Данные заполнены из кабинета {me.data.company}</p>}
+        <div className="field"><label htmlFor="customerName">Имя</label><input id="customerName" name="customerName" autoComplete="name" required maxLength={80} placeholder="Как к вам обращаться" value={fields.customerName} disabled={locked} aria-invalid={Boolean(errors.customerName)} aria-describedby={errors.customerName ? 'customerName-error' : undefined} onChange={(event) => fieldChanged('customerName', event.target.value)} />{errors.customerName && <p id="customerName-error" className="field-error">{errors.customerName}</p>}</div>
+        <div className="field"><label htmlFor="phone">Телефон</label><input id="phone" name="phone" type="tel" autoComplete="tel" required maxLength={32} placeholder="+7 7__ ___ __ __" value={fields.phone} disabled={locked} aria-invalid={Boolean(errors.phone)} aria-describedby={errors.phone ? 'phone-error' : 'phone-hint'} onChange={(event) => fieldChanged('phone', event.target.value)} /><p id="phone-hint" className="field-hint">Казахстанский номер: +7 и 10 цифр.</p>{errors.phone && <p id="phone-error" className="field-error">{errors.phone}</p>}</div>
+        <div className="field"><label htmlFor="comment">Комментарий <span className="muted">(необязательно)</span></label><textarea id="comment" name="comment" rows={2} maxLength={1000} placeholder="Например, удобное время звонка" value={fields.comment} disabled={locked} aria-invalid={Boolean(errors.comment)} aria-describedby={errors.comment ? 'comment-error' : undefined} onChange={(event) => fieldChanged('comment', event.target.value)} />{errors.comment && <p id="comment-error" className="field-error">{errors.comment}</p>}</div>
+        <div><label className="checkout-consent" htmlFor="consent"><input id="consent" name="consent" type="checkbox" required checked={fields.consent} disabled={locked} aria-invalid={Boolean(errors.consent)} aria-describedby={errors.consent ? 'consent-error' : undefined} onChange={(event) => fieldChanged('consent', event.target.checked)} /><span>Согласен на обработку указанных контактных данных для работы с этой заявкой.</span></label>{errors.consent && <p id="consent-error" className="field-error">{errors.consent}</p>}</div>
+        {!data.canSubmit && <Notice error><p>Сохранение заявки пока недоступно.</p><ul>{data.issues.map((issue, index) => <li key={index}>{issue}</li>)}</ul><p>Проверьте позиции в корзине.</p></Notice>}
+        <dl className="checkout-sums"><div className="checkout-grand"><dt>Итого за {data.cart.items.reduce((sum, item) => sum + item.quantity, 0)} шт.</dt><dd>{data.cart.totalText}</dd></div></dl>
+        <Button primary className="button-lg" type="submit" disabled={locked || !data.canSubmit}>Отправить заявку</Button>
+        <p className="field-hint">Цены и наличие проверяются при сохранении. Оплата на сайте не предусмотрена; товар не резервируется до подтверждения.</p>
+      </form>}
     </>}
     <dialog ref={restartDialog} className="confirmation-dialog" aria-labelledby="restart-title" aria-describedby="restart-description" onCancel={(event) => { event.preventDefault(); setRestartConfirmation(false); }}><h2 id="restart-title">Начать новое оформление?</h2><p id="restart-description">Результат предыдущей отправки не удалось определить. Заявка могла сохраниться. Новое оформление может создать отдельную заявку.</p><div className="dialog-actions"><button ref={restartCancel} className="button" onClick={() => setRestartConfirmation(false)}>Отмена</button><Button primary disabled={busy || recovering || Boolean(submitted.current)} onClick={restartCheckout}>Начать заново</Button></div></dialog>
-  </>;
+  </aside>;
 }

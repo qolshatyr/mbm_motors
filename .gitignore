@@ -24,6 +24,7 @@ frontend/*.tsbuildinfo
 
 # Isolated client prototype output and Sites checkout
 frontend/dist-demo/
+frontend/dist-artifact/
 prototype/
 !frontend/.env.demo
 
@@ -31,3 +32,13 @@ prototype/
 .claude/settings.local.json
 .claude/worktrees/
 .claude/*.local.md
+
+# Playwright MCP browser artifacts
+.playwright-mcp/
+
+# CloudShop exports (contain costs) and generated catalog results
+docs/catalog-*.xlsx
+docs/catalog/*.xlsx
+.venv-catalog/
+docs/category format.xlsx
+.~lock.*#

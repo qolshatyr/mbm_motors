@@ -43,8 +43,13 @@ catalog:
     request-delay: 1s
     startup-mode: NONE
 checkout:
-  # Set only after the client approves pickup stores; inventory stores are not pickup points.
-  pickup-store-ids: []
+  # Partner orders are picked up at СКЛАД, the only place the portal sells from.
+  pickup-store-ids: [6967a39f62918c7e760f3747]
+delivery:
+  # Sends partner orders to CloudShop as unposted sales. Requires CLOUDSHOP_TOKEN with write access.
+  enabled: ${MBM_DELIVERY_ENABLED:false}
+  interval: 30s
+  stale-after: 5m
 admin:
   enabled: ${MBM_ADMIN_ENABLED:false}
   username: ${MBM_ADMIN_USERNAME:}
