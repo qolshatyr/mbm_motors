@@ -180,6 +180,20 @@ class CloudShopDeliveryGatewayTest {
     assertThat(calls.get()).isEqualTo(1);
   }
 
+  @Test
+  void rejectionKeepsOnlyCloudShopErrorTextWithoutPhonesOrToken() {
+    status = 404;
+    reply =
+        "{\"status\":false,\"error\":\"Customer +7 (700) 000-00-00 not found\",\"phone\":\"x\"}";
+    assertSanitized(() -> gateway(Duration.ofSeconds(2)).createSale(command()));
+    assertThatThrownBy(() -> gateway(Duration.ofSeconds(2)).createSale(command()))
+        .hasMessage("CloudShop delivery failed with HTTP 404: Customer … not found");
+    reply = "{\"status\":false,\"error\":\"bad token " + TOKEN + "\"}";
+    assertThatThrownBy(() -> gateway(Duration.ofSeconds(2)).createSale(command()))
+        .hasMessage("CloudShop delivery failed with HTTP 404");
+    assertThat(calls.get()).isEqualTo(3);
+  }
+
   @ParameterizedTest
   @ValueSource(
       strings = {
