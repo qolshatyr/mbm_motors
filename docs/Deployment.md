@@ -32,7 +32,7 @@
 ```sh
 python3 scripts/build_site.py
 scp target/mbm-motors-0.0.1-SNAPSHOT.jar user@server:/opt/mbm/app.jar
-scp deploy/production/{compose.yml,Caddyfile,backup.sh,env.example} user@server:/opt/mbm/
+scp deploy/production/{compose.yml,Caddyfile,backup.sh,restore_check.sh,env.example} user@server:/opt/mbm/
 ```
 
 На сервере (Docker Engine с плагином Compose установлен по официальной инструкции Docker):
@@ -102,17 +102,57 @@ docker compose run --rm -e MBM_PARTNER_LOGIN=turbo \
 ## Резервные копии
 
 ```sh
-chmod +x /opt/mbm/backup.sh
+chmod +x /opt/mbm/backup.sh /opt/mbm/restore_check.sh
 crontab -e   # 30 3 * * * /opt/mbm/backup.sh >> /opt/mbm/backup.log 2>&1
 ```
 
-Копии хранятся 14 дней в `/opt/mbm/backups/`. Раз в неделю копируйте свежий файл на другой
-носитель. Проверка восстановления на отдельной базе:
+`backup.sh` делает дамп, проверяет, что архив цел и дамп дописан до конца, и хранит копии
+14 дней в `/opt/mbm/backups/`. Если задан `BACKUP_REMOTE`, тот же файл уходит с сервера.
+Любая ошибка завершает скрипт с ненулевым кодом и строкой `ERROR:` в `backup.log`. Локальная
+копия при этом сохраняется. Время последней успешной отправки — `backups/.last-offsite`.
+
+### Копии вне сервера
+
+Копии хранятся у другого провайдера, чем сервер: S3-совместимое хранилище (Backblaze B2,
+Yandex Object Storage, PS Cloud и т. п.) или любое другое, которое поддерживает
+[rclone](https://rclone.org/overview/). В дампе есть контакты партнёров и история заказов,
+поэтому скрипт отправляет копию только через шифрующий remote rclone `crypt`.
+
+1. Заведите хранилище и ключ доступа только к одному бакету. Если провайдер позволяет,
+   включите блокировку удаления или версионирование, чтобы взломанный сервер не мог стереть
+   копии.
+2. На сервере: `sudo apt install rclone`, затем `rclone config`:
+   - remote хранилища, например `mbm-storage` (тип по провайдеру);
+   - remote `mbm-backup` типа `crypt` с `remote = mbm-storage:<бакет>/mbm`, шифрованием имён
+     файлов и двумя сгенерированными паролями.
+3. **Сохраните оба пароля crypt и ключ хранилища вне сервера** (менеджер паролей владельца).
+   Без них копию не расшифровать, даже если она цела.
+4. В `.env`: `BACKUP_REMOTE=mbm-backup:mbm-motors`, при необходимости
+   `BACKUP_REMOTE_KEEP_DAYS` (по умолчанию 30, минимум 7). Срок хранения должен совпадать с
+   согласованным сроком хранения персональных данных.
+5. Запустите `./backup.sh` вручную и убедитесь, что в конце есть строка `Off-server copy:`.
+
+Remote другого типа (не `crypt`) скрипт отклоняет. Принять его можно только явно,
+`BACKUP_REMOTE_ALLOW_PLAIN=true`, если хранилище само шифрует данные и ему доверяют.
+
+### Проверка восстановления
 
 ```sh
-docker compose exec -T db psql -U mbm -d postgres -c 'create database restore_check'
-gunzip -c backups/<файл>.sql.gz | docker compose exec -T db psql -U mbm -d restore_check
+./restore_check.sh --remote     # свежая копия из хранилища — проверяет и отправку, и пароли
+./restore_check.sh              # свежая локальная копия
+./restore_check.sh backups/<файл>.sql.gz
 ```
+
+Скрипт восстанавливает копию в отдельную базу `restore_check` и останавливается на первой
+ошибке SQL. Затем сравнивает с рабочей базой версию миграций и число строк в основных
+таблицах и удаляет `restore_check`. Рабочая база только читается. Числа в рабочей базе могут
+быть больше: туда попали записи, сделанные после копии.
+
+Выполняйте `--remote` при запуске (критерий приёмки), после смены паролей или хранилища и раз
+в месяц. Результат записывайте в журнал эксплуатации.
+
+Восстановление рабочей базы из копии — отдельное решение владельца: остановите `app`,
+сохраните текущее состояние новой копией и только потом заменяйте базу.
 
 ## Обновление версии
 
