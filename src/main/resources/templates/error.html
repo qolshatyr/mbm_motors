@@ -1,5 +1,0 @@
-<!DOCTYPE html>
-<html lang="ru" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/catalog :: head('Не удалось открыть страницу — MBM Motors')}"></head>
-<body><header th:replace="~{fragments/catalog :: header}"></header><main id="main" class="container catalog-main"><section class="empty-state error-state"><h1>Не удалось открыть страницу</h1><p th:text="${message != null ? message : 'Попробуйте перейти в каталог и повторить поиск.'}">Попробуйте перейти в каталог и повторить поиск.</p><a class="btn search-button" th:href="@{/catalog}">Перейти в каталог</a></section></main><footer th:replace="~{fragments/catalog :: footer}"></footer></body>
-</html>

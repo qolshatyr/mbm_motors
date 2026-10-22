@@ -12,6 +12,7 @@ import '@fontsource/golos-text/cyrillic-700.css';
 import '@fontsource/golos-text/latin-700.css';
 import '@fontsource/manrope/cyrillic-700.css';
 import '@fontsource/manrope/latin-700.css';
+import '@fontsource-variable/archivo/wdth.css';
 import './styles/theme.css';
 import { App } from './app/App';
 import { ApiError } from './shared/api/http';

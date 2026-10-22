@@ -10,7 +10,7 @@ This repository contains a partner-only (B2B) Java 21 / Spring Boot 4.0.8 portal
 - `postman/assets/CloudShop_Local.postman_environment.json`: local configuration template; keep credentials empty in committed copies.
 
 - `src/main/java/kz/mbmmotors/`: application modules `catalog`, `cart`, `order`, `delivery`, `partner`, `admin`, `cloudshop`, `sync`, and `config`.
-- `src/main/resources/`: Thymeleaf templates, static assets, configuration, and Flyway migrations.
+- `src/main/resources/`: configuration, Flyway migrations, and static error pages (the interface is the React app in `frontend/`).
 - `frontend/`: React, TypeScript, Vite, and Tailwind storefront and staff UI.
 - `src/test/java/`: Java tests; `tests/`: Python tool tests; `tests/browser/`: Playwright scenario checks.
 - `docs/`: specification and checkout design; `docs/client/`: Notion-ready client questions; `docs/cloudshop/`: verification guides.
@@ -18,7 +18,8 @@ This repository contains a partner-only (B2B) Java 21 / Spring Boot 4.0.8 portal
 - `deploy/production/`: Docker Compose, Caddy, and backup files for the server; see `docs/Deployment.md`.
 - `postman/assets/`: existing v2.1 GET-only collections and the environment template; `postman/collections/`: v3 collections of the application API; `postman/skills/`: Postman skills.
 - `.claude/skills/project-skills/SKILL.md`: catalog and routing table of all project and user skills.
-- `PROJECT_CONTEXT.md`: current decisions and historical evidence. Treat older statements about missing application files as history.
+- `PROJECT_CONTEXT.md`: current state, decisions, and next steps; `docs/Project_History.md`: archived stage records and historical evidence.
+- `.github/workflows/ci.yml`: CI for pushes to `main` and pull requests (`./mvnw verify` with PostgreSQL, frontend build, Python tests).
 
 Keep `.env`, `.cloudshop-audit/`, and `.cloudshop-test-sales/` local and in the repository root. The sale journal is required to prevent repeated submissions. PostgreSQL runs through `compose.yml`; Maven Wrapper and launch configuration stay in the root.
 

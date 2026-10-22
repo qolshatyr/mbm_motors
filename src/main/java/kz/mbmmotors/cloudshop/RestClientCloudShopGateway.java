@@ -61,7 +61,7 @@ final class RestClientCloudShopGateway implements CloudShopGateway {
   }
 
   @Override
-  public List<CloudShopProduct> products(int limit, int offset) {
+  public CloudShopBatch products(int limit, int offset) {
     if (limit < 1 || limit > 1000 || offset < 0)
       throw new IllegalArgumentException("Invalid CloudShop pagination");
     return read(
@@ -70,7 +70,7 @@ final class RestClientCloudShopGateway implements CloudShopGateway {
   }
 
   @Override
-  public List<CloudShopProduct> updated(Instant since) {
+  public CloudShopBatch updated(Instant since) {
     if (since == null)
       throw new IllegalArgumentException("CloudShop update start time is required");
     return read(
@@ -78,7 +78,21 @@ final class RestClientCloudShopGateway implements CloudShopGateway {
             uri.path("/product/updated").queryParam("start_time", API_DATE.format(since)).build());
   }
 
-  private List<CloudShopProduct> read(Function<UriBuilder, URI> uri) {
+  @Override
+  public List<String> deleted(Instant since) {
+    if (since == null)
+      throw new IllegalArgumentException("CloudShop deletion start time is required");
+    return read(
+        uri ->
+            uri.path("/product/deleted").queryParam("start_time", API_DATE.format(since)).build(),
+        parser::parseIds);
+  }
+
+  private CloudShopBatch read(Function<UriBuilder, URI> uri) {
+    return read(uri, parser::parseBatch);
+  }
+
+  private <T> T read(Function<UriBuilder, URI> uri, Function<String, T> parse) {
     if (token == null || token.isBlank())
       throw new CloudShopException("CloudShop token is not configured");
     try {
@@ -95,7 +109,7 @@ final class RestClientCloudShopGateway implements CloudShopGateway {
                 String body =
                     new String(
                         response.getBody().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
-                return parser.parse(body);
+                return parse.apply(body);
               });
     } catch (CloudShopException exception) {
       throw exception;

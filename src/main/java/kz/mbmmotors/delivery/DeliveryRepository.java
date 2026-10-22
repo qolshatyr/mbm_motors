@@ -34,6 +34,21 @@ public class DeliveryRepository {
                     == 1));
   }
 
+  /** Marks an in-flight step UNKNOWN and keeps the reason staff see during reconciliation. */
+  boolean unknown(UUID id, String before, String reason, Instant now) {
+    String kept = reason.length() > 300 ? reason.substring(0, 299) + "…" : reason;
+    return Boolean.TRUE.equals(
+        tx.execute(
+            status ->
+                jdbc.update(
+                        "update delivery_outbox set state='UNKNOWN',failure_reason=?,updated_at=? where order_id=? and state=?",
+                        kept,
+                        Timestamp.from(now),
+                        id,
+                        before)
+                    == 1));
+  }
+
   DeliverySnapshot snapshot(UUID id) {
     return tx.execute(
         status -> {
@@ -138,7 +153,7 @@ public class DeliveryRepository {
     return tx.execute(
         status ->
             jdbc.update(
-                "update delivery_outbox set state='UNKNOWN',updated_at=? where state in ('CUSTOMER_IN_FLIGHT','SALE_IN_FLIGHT') and updated_at < ?",
+                "update delivery_outbox set state='UNKNOWN',failure_reason='Попытка прервана: ответ CloudShop не получен (перезапуск или зависание)',updated_at=? where state in ('CUSTOMER_IN_FLIGHT','SALE_IN_FLIGHT') and updated_at < ?",
                 Timestamp.from(now),
                 Timestamp.from(before)));
   }

@@ -8,7 +8,14 @@ export interface StaffSummary {
   storeName: string;
   itemCount: number;
   totalText: string;
-  delivery: { state: 'WAITING_CONFIGURATION' | 'READY' | 'CUSTOMER_IN_FLIGHT' | 'CUSTOMER_CREATED' | 'SALE_IN_FLIGHT' | 'SENT' | 'UNKNOWN' | 'NOT_PREPARED'; message: string };
+  delivery: StaffDelivery;
+}
+/** reason — why the attempt became UNKNOWN; reconciliation — the staff check in CloudShop. */
+export interface StaffDelivery {
+  state: 'WAITING_CONFIGURATION' | 'READY' | 'CUSTOMER_IN_FLIGHT' | 'CUSTOMER_CREATED' | 'SALE_IN_FLIGHT' | 'SENT' | 'UNKNOWN' | 'NOT_PREPARED';
+  message: string;
+  reason: string | null;
+  reconciliation: { result: 'FOUND' | 'NOT_CREATED'; saleNumber: number | null; by: string; at: string } | null;
 }
 export interface StaffPage {
   items: StaffSummary[];
@@ -25,6 +32,8 @@ export interface StaffDetail extends StaffSummary {
 }
 export const fetchStaffPage = (page: number, signal: AbortSignal) => request<StaffPage>(`/admin/api/requests?page=${page}`, { signal });
 export const fetchStaffDetail = (number: string, signal: AbortSignal) => request<StaffDetail>(`/admin/api/requests/${encodeURIComponent(number)}`, { signal });
+export const reconcileRequest = (number: string, result: 'FOUND' | 'NOT_CREATED', saleNumber: number | null) =>
+  postJson<StaffDetail>(`/admin/api/requests/${encodeURIComponent(number)}/reconciliation`, { result, saleNumber });
 
 /** NONE — no card, PENDING — request interrupted, UNKNOWN — unclear answer, LINKED — card attached. */
 export type CustomerState = 'NONE' | 'PENDING' | 'UNKNOWN' | 'LINKED';

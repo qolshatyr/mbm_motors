@@ -37,7 +37,8 @@ def main():
         shutil.rmtree(OUT)
     OUT.mkdir(parents=True)
     (OUT / 'index.html').write_text(page, encoding='utf-8')
-    shutil.copytree(dist / 'demo-images', OUT / 'demo-images')
+    for images in ('demo-images', 'photos'):
+        shutil.copytree(dist / images, OUT / images)
     size = sum(p.stat().st_size for p in OUT.rglob('*') if p.is_file())
     print(f'Artifact demo: {OUT / "index.html"} ({size // 1024} KB with images)')
 

@@ -5,7 +5,10 @@ import java.util.List;
 
 /** GET-only boundary; document creation is intentionally not exposed. */
 public interface CloudShopGateway {
-  List<CloudShopProduct> products(int limit, int offset);
+  CloudShopBatch products(int limit, int offset);
 
-  List<CloudShopProduct> updated(Instant since);
+  CloudShopBatch updated(Instant since);
+
+  /** IDs of products deleted in CloudShop since the given time. */
+  List<String> deleted(Instant since);
 }

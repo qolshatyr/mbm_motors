@@ -124,13 +124,7 @@ public class WebSecurityConfiguration {
                 auth.requestMatchers(HttpMethod.GET, SPA_ROUTES)
                     .permitAll()
                     .requestMatchers(
-                        HttpMethod.GET,
-                        "/api/csrf",
-                        "/api/auth/me",
-                        "/frontend/**",
-                        "/css/**",
-                        "/images/**",
-                        "/webjars/**")
+                        HttpMethod.GET, "/api/csrf", "/api/auth/me", "/frontend/**", "/css/**")
                     .permitAll()
                     .requestMatchers("/error")
                     .permitAll()
@@ -154,8 +148,6 @@ public class WebSecurityConfiguration {
                         "/api/cart/clear",
                         "/api/cart/confirm-price",
                         "/api/orders")
-                    .hasRole(Partner.ROLE)
-                    .requestMatchers("/catalog/**", "/cart/**")
                     .hasRole(Partner.ROLE)
                     .anyRequest()
                     .denyAll())
