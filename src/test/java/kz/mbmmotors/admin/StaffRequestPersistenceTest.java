@@ -78,4 +78,47 @@ class StaffRequestPersistenceTest {
     assertThat(jdbc.queryForObject("select count(*) from local_orders", Long.class))
         .isEqualTo(before + 21);
   }
+
+  @Test
+  void reconciliationIsRecordedOnceAndOnlyForUnknownDelivery() {
+    var id = UUID.randomUUID();
+    long number =
+        jdbc.queryForObject(
+            """
+        insert into local_orders(id,idempotency_key,owner_id,request_hash,revision,status,
+        store_id,store_name,customer_name,phone,comment,consent_at,created_at,total,total_text,item_count)
+        values (?,?,?,?,?,'RECEIVED','aaaaaaaaaaaaaaaaaaaaaaaa','Synthetic store',
+        'Synthetic buyer','+77000000000','',now(),now(),500,'500 ₸',1) returning number
+        """,
+            Long.class,
+            id,
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            "a".repeat(64),
+            "b".repeat(64));
+    jdbc.update(
+        "insert into delivery_outbox(order_id,state,created_at) values (?,'WAITING_CONFIGURATION',now())",
+        id);
+    assertThatThrownBy(() -> service.reconcile(number, "NOT_CREATED", null, "staff"))
+        .isInstanceOf(StaffRequestService.Problem.class)
+        .hasMessageContaining("неизвестным результатом");
+    jdbc.update(
+        "update delivery_outbox set state='UNKNOWN',failure_reason='Продажа: HTTP 404' where order_id=?",
+        id);
+    assertThat(service.detail(number).orElseThrow().delivery().reason())
+        .isEqualTo("Продажа: HTTP 404");
+    assertThatThrownBy(() -> service.reconcile(number, "FOUND", null, "staff"))
+        .isInstanceOf(StaffRequestService.Problem.class);
+    assertThatThrownBy(() -> service.reconcile(number, "NOT_CREATED", 7L, "staff"))
+        .isInstanceOf(StaffRequestService.Problem.class);
+    var found = service.reconcile(number, "FOUND", 35825L, "staff").orElseThrow().delivery();
+    assertThat(found.state()).isEqualTo("UNKNOWN");
+    assertThat(found.reconciliation().saleNumber()).isEqualTo(35825L);
+    assertThat(found.reconciliation().by()).isEqualTo("staff");
+    assertThat(found.message()).contains("№35825", "найдена");
+    assertThatThrownBy(() -> service.reconcile(number, "NOT_CREATED", null, "other"))
+        .isInstanceOf(StaffRequestService.Problem.class)
+        .hasMessageContaining("уже записана");
+    assertThat(service.reconcile(Long.MAX_VALUE, "NOT_CREATED", null, "staff")).isEmpty();
+  }
 }

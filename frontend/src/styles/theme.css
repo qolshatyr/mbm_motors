@@ -477,6 +477,12 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--blue); fle
 .staff-facts > div { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 16px; margin-top: 12px; }
 .staff-facts dt { color: var(--muted); }
 .staff-facts dd { margin: 0; overflow-wrap: anywhere; }
+.staff-reconcile { margin-top: 20px; padding: clamp(16px, 3vw, 22px); border-radius: var(--r-md); background: var(--panel); display: grid; gap: 12px; max-width: 560px; }
+.staff-reconcile h3 { font-size: 18px; }
+.staff-reconcile fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 10px; }
+.staff-reconcile-option { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }
+.staff-reconcile-option input { width: 20px; height: 20px; accent-color: var(--blue); }
+.staff-reconcile .button { justify-self: start; }
 .staff-comment { white-space: pre-wrap; max-width: 75ch; }
 .staff-items { margin-block: 20px; }
 .staff-items li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; padding-block: 20px; border-top: 1px solid var(--color-line); }

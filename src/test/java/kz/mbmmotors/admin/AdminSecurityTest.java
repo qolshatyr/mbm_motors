@@ -137,6 +137,36 @@ class AdminSecurityTest {
   }
 
   @Test
+  void reconciliationNeedsStaffAndCsrfAndRecordsTheSignedInStaff() throws Exception {
+    String body = "{\"result\":\"NOT_CREATED\"}";
+    mvc.perform(
+            post("/admin/api/requests/5/reconciliation")
+                .with(user("staff").roles("STAFF"))
+                .contentType("application/json")
+                .content(body))
+        .andExpect(status().isForbidden());
+    mvc.perform(
+            post("/admin/api/requests/5/reconciliation")
+                .with(user("viewer").roles("USER"))
+                .with(csrf())
+                .contentType("application/json")
+                .content(body))
+        .andExpect(status().isForbidden());
+    verifyNoInteractions(service);
+    when(service.reconcile(5, "NOT_CREATED", null, "staff"))
+        .thenThrow(new StaffRequestService.Problem(409, "Сверка по этой заявке уже записана."));
+    mvc.perform(
+            post("/admin/api/requests/5/reconciliation")
+                .with(user("staff").roles("STAFF"))
+                .with(csrf())
+                .contentType("application/json")
+                .content(body))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.detail").value("Сверка по этой заявке уже записана."));
+    verify(service).reconcile(5, "NOT_CREATED", null, "staff");
+  }
+
+  @Test
   void boundedPagesAndNumbersRejectBadInputBeforeQuery() throws Exception {
     for (String page : List.of("-1", "100001", "1.5", "word", "999999999999999999999")) {
       mvc.perform(get("/admin/api/requests").param("page", page).with(user("staff").roles("STAFF")))

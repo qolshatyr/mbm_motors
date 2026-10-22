@@ -47,8 +47,9 @@ public final class DeliveryProcessor {
         DeliverySnapshot.validateId(result == null ? null : result.id());
         if (!repository.customerConfirmed(id, result.id(), clock.instant())) return;
       } catch (RuntimeException e) {
-        repository.transition(id, "CUSTOMER_IN_FLIGHT", "UNKNOWN", clock.instant());
-        LOG.warn("Delivery customer step marked UNKNOWN: order={}, reason={}", id, reason(e));
+        String reason = reason(e);
+        repository.unknown(id, "CUSTOMER_IN_FLIGHT", "Покупатель: " + reason, clock.instant());
+        LOG.warn("Delivery customer step marked UNKNOWN: order={}, reason={}", id, reason);
         return;
       }
     }
@@ -62,15 +63,17 @@ public final class DeliveryProcessor {
         if (result.number() <= 0) throw new IllegalArgumentException("Invalid sale number");
         repository.saleConfirmed(id, result, clock.instant());
       } catch (RuntimeException e) {
-        repository.transition(id, "SALE_IN_FLIGHT", "UNKNOWN", clock.instant());
-        LOG.warn("Delivery sale step marked UNKNOWN: order={}, reason={}", id, reason(e));
+        String reason = reason(e);
+        repository.unknown(id, "SALE_IN_FLIGHT", "Продажа: " + reason, clock.instant());
+        LOG.warn("Delivery sale step marked UNKNOWN: order={}, reason={}", id, reason);
       }
     }
   }
 
   /** Messages of these types are fixed texts without customer data; others are named only. */
   private static String reason(RuntimeException e) {
-    return e instanceof CloudShopException || e instanceof IllegalArgumentException
+    return (e instanceof CloudShopException || e instanceof IllegalArgumentException)
+            && e.getMessage() != null
         ? e.getMessage()
         : e.getClass().getSimpleName();
   }
