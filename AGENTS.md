@@ -10,7 +10,7 @@ This repository contains a partner-only (B2B) Java 21 / Spring Boot 4.0.8 portal
 - `postman/assets/CloudShop_Local.postman_environment.json`: local configuration template; keep credentials empty in committed copies.
 
 - `src/main/java/kz/mbmmotors/`: application modules `catalog`, `cart`, `order`, `delivery`, `partner`, `admin`, `cloudshop`, `sync`, and `config`.
-- `src/main/resources/`: Thymeleaf templates, static assets, configuration, and Flyway migrations.
+- `src/main/resources/`: configuration, Flyway migrations, and static error pages (the interface is the React app in `frontend/`).
 - `frontend/`: React, TypeScript, Vite, and Tailwind storefront and staff UI.
 - `src/test/java/`: Java tests; `tests/`: Python tool tests; `tests/browser/`: Playwright scenario checks.
 - `docs/`: specification and checkout design; `docs/client/`: Notion-ready client questions; `docs/cloudshop/`: verification guides.

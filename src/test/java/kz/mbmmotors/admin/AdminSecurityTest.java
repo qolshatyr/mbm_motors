@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Optional;
 import kz.mbmmotors.config.WebSecurityConfiguration;
 import kz.mbmmotors.config.web.CsrfController;
+import kz.mbmmotors.config.web.FrontendController;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -22,7 +23,9 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-@WebMvcTest({StaffRequestController.class, AdminLoginController.class, CsrfController.class})
+@WebMvcTest(
+    controllers = {StaffRequestController.class, FrontendController.class, CsrfController.class},
+    properties = "frontend.enabled=true")
 @Import({WebSecurityConfiguration.class, AdminSecurityConfiguration.class})
 class AdminSecurityTest {
   @Autowired MockMvc mvc;
@@ -51,16 +54,31 @@ class AdminSecurityTest {
   }
 
   @Test
-  void loginRendersHiddenCsrfAndHasSecurityHeaders() throws Exception {
+  void loginPageIsTheFrontendAndApiCsrfTokenSignsIn() throws Exception {
     mvc.perform(get("/admin/login"))
         .andExpect(status().isOk())
-        .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"_csrf\"")))
+        .andExpect(forwardedUrl("/frontend/index.html"))
         .andExpect(header().string("Cache-Control", "no-store"))
         .andExpect(
             header()
                 .string(
                     "Content-Security-Policy",
                     org.hamcrest.Matchers.containsString("form-action 'self'")));
+    // The React form posts the token from /api/csrf as _csrf in the same session.
+    var session = new MockHttpSession();
+    String body =
+        mvc.perform(get("/api/csrf").session(session))
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    String token = body.replaceAll(".*\"token\":\"([^\"]+)\".*", "$1");
+    mvc.perform(
+            post("/admin/login")
+                .session(session)
+                .param("_csrf", token)
+                .param("username", "staff")
+                .param("password", "synthetic-test-only"))
+        .andExpect(redirectedUrl("/admin/clients"));
   }
 
   @Test

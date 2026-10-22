@@ -66,7 +66,7 @@ public class CartApiController {
 
   private ResponseEntity<CartSnapshot> change(
       HttpSession session, String message, Consumer<Cart> action) {
-    Cart cart = CartController.sessionCart(session);
+    Cart cart = SessionCart.of(session);
     synchronized (cart) {
       action.accept(cart);
       var view = service.view(cart);

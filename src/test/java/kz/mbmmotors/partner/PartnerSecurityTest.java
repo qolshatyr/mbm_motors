@@ -70,7 +70,6 @@ class PartnerSecurityTest {
         .andExpect(jsonPath("$.status").value(401));
     mvc.perform(get("/api/csrf")).andExpect(status().isOk());
     mvc.perform(post("/api/cart/add").with(csrf())).andExpect(status().isUnauthorized());
-    mvc.perform(get("/catalog")).andExpect(redirectedUrl("/login"));
     // SPA routes are not gated by security; without a built frontend they are simply absent.
     mvc.perform(get("/search")).andExpect(status().isNotFound());
     verifyNoInteractions(catalog);

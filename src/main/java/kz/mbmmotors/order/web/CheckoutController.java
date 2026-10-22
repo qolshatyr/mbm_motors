@@ -4,7 +4,7 @@ import jakarta.servlet.http.HttpSession;
 import java.net.URI;
 import java.util.UUID;
 import kz.mbmmotors.cart.CartService;
-import kz.mbmmotors.cart.web.CartController;
+import kz.mbmmotors.cart.web.SessionCart;
 import kz.mbmmotors.order.*;
 import kz.mbmmotors.partner.PartnerAccountService;
 import org.springframework.http.*;
@@ -27,7 +27,7 @@ public class CheckoutController {
   ResponseEntity<OrderService.Preview> preview(HttpSession session, Authentication authentication) {
     var partner = partners.current(authentication);
     var contact = new OrderService.Contact(partner.contactName(), partner.phone());
-    var cart = CartController.sessionCart(session);
+    var cart = SessionCart.of(session);
     synchronized (cart) {
       return ResponseEntity.ok()
           .cacheControl(CacheControl.noStore())
@@ -49,7 +49,7 @@ public class CheckoutController {
     var command =
         SubmitOrder.validate(idempotencyKey, revision, customerName, phone, comment, consent);
     var partner = partners.current(authentication);
-    var cart = CartController.sessionCart(session);
+    var cart = SessionCart.of(session);
     synchronized (cart) {
       var checkout = state(session);
       var result = orders.submit(cart, checkout, command, partner.id());

@@ -14,6 +14,7 @@ import { useCart } from '../features/cart/cartQueries';
 import { pickupText } from '../features/catalog/useStore';
 import { EmptyState, Notice } from '../shared/ui/Feedback';
 import { Staff } from '../features/staff/Staff';
+import { StaffLogin } from '../features/staff/StaffLogin';
 import { Icon } from '../shared/ui/Icon';
 import { Logo } from '../shared/ui/Logo';
 import type { Partner } from '../shared/api/auth';
@@ -22,7 +23,8 @@ const demo = import.meta.env.MODE === 'demo' && import.meta.env.VITE_DEMO === 't
 
 export function App() {
   const location = useLocation();
-  return !demo && location.pathname.startsWith('/admin/') ? <Staff /> : <PartnerApp />;
+  if (demo || !location.pathname.startsWith('/admin/')) return <PartnerApp />;
+  return location.pathname === '/admin/login' ? <StaffLogin /> : <Staff />;
 }
 
 const titles: Record<string, string> = {
@@ -67,7 +69,7 @@ function PartnerApp() {
     <Header partner={partner ?? null} />
     <main id="main" tabIndex={-1} className="page-width main-content">{content}</main>
     <footer className="site-footer"><div className="page-width footer-grid">
-      <div><p className="footer-brand">MBM Automotors</p><p>Оптовый портал для СТО и оптовых покупателей. {pickupText}.</p></div>
+      <div><div className="footer-brand"><Logo dark /></div><p>Оптовый портал для СТО и оптовых покупателей. {pickupText}.</p></div>
       {partner && <nav aria-label="Разделы портала"><Link to="/search">Каталог</Link><Link to="/quick-order">Быстрый заказ</Link><Link to="/basket">Корзина</Link><Link to="/account">Мои заявки</Link></nav>}
       <p>Цены оптовые, в тенге. Наличие — по данным склада, товар не резервируется до подтверждения заявки.</p>
     </div></footer>

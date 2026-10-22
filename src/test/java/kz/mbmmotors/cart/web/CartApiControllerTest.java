@@ -50,12 +50,10 @@ class CartApiControllerTest {
             .param("storeId", "store")
             .exchange();
     assertThat(result).hasStatusOk();
-    verify(service)
-        .add(same(CartController.sessionCart(session)), eq("product"), eq("store"), eq(1));
+    verify(service).add(same(SessionCart.of(session)), eq("product"), eq("store"), eq(1));
     var body = json.readTree(result.getResponse().getContentAsString());
     assertThat(body.path("message").asString()).isEqualTo("Товар добавлен в корзину.");
-    assertThat(CartController.sessionCart(new MockHttpSession()))
-        .isNotSameAs(CartController.sessionCart(session));
+    assertThat(SessionCart.of(new MockHttpSession())).isNotSameAs(SessionCart.of(session));
   }
 
   @Test
@@ -106,7 +104,7 @@ class CartApiControllerTest {
   void allActionsUseExistingService() {
     var session = new MockHttpSession();
     when(service.view(any())).thenReturn(empty());
-    var cart = CartController.sessionCart(session);
+    var cart = SessionCart.of(session);
     assertThat(
             mvc.post()
                 .uri("/api/cart/update")

@@ -4,8 +4,8 @@
   --color-canvas: #f4f5f7;
   --color-surface: #e8ebef;
   --color-ink: #14181f;
-  --color-primary: #2552c8;
-  --color-accent: #2552c8;
+  --color-primary: #0a4fa6;
+  --color-accent: #0a4fa6;
   --color-line: rgb(20 24 31 / 14%);
   --font-sans: 'Golos Text', system-ui, sans-serif;
   --font-heading: 'Manrope', 'Golos Text', system-ui, sans-serif;
@@ -13,7 +13,8 @@
 :root {
   --bg: #f4f5f7; --panel: #e8ebef; --card: #fcfcfd; --ink: #14181f; --divider: rgb(20 24 31 / 14%);
   --n200: #eef0f3; --n300: #dde1e7; --n400: #c0c6cf; --n500: #9aa2ae; --n700: #555d68; --n800: #3d434c; --n900: #1b1f25;
-  --blue: #2552c8; --blue-600: #1f47b0; --blue-700: #1c3f95; --blue-100: #eef3ff; --blue-200: #dbe5ff; --blue-300: #b9cbfb; --blue-800: #173274; --blue-900: #10224d;
+  --blue: #0a4fa6; --blue-600: #08448f; --blue-700: #073b7d; --blue-100: #ebf2fb; --blue-200: #d6e4f6; --blue-300: #adc8ec; --blue-800: #062f63; --blue-900: #041f42;
+  --blue-on-dark: #2f7be0; --blue-on-dark-300: #7fb0f0;
   --green-100: #e9f5ee; --green-200: #d3eadc; --green-300: #a9d3b8; --green-500: #2f8a57; --green-600: #2a6e48; --green-800: #1d5034;
   --slate-700: #1f2a38; --slate-800: #161e29; --slate-900: #0f141b;
   --warn-100: #fdf1e7; --warn-800: #8a3b0c;
@@ -26,7 +27,7 @@
 }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
-body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); color: var(--ink); line-height: 1.5; font-size: 16px; -webkit-tap-highlight-color: rgb(37 82 200 / 12%); }
+body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; background: var(--bg); color: var(--ink); line-height: 1.5; font-size: 16px; -webkit-tap-highlight-color: rgb(10 79 166 / 12%); }
 #root { flex: 1; display: flex; flex-direction: column; }
 a { color: var(--blue-700); text-underline-offset: 3px; }
 a:hover { color: var(--blue-600); }
@@ -122,18 +123,20 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--blue); fle
 .portal-header-inner { display: flex; align-items: center; gap: 14px; padding-block: 14px; }
 .portal-brand { display: inline-flex; align-items: center; gap: 10px; flex-shrink: 0; color: var(--ink); text-decoration: none; border-radius: var(--r-sm); }
 .portal-brand:hover { color: var(--ink); }
-.logo { --logo-blue: #0a4fa6; --logo-ink: #0b0b0c; display: inline-flex; align-items: center; gap: 12px; color: var(--logo-ink); }
+.logo { --logo-blue: var(--blue); --logo-ink: var(--ink); --logo-sub: var(--blue); display: inline-flex; align-items: center; gap: 12px; color: var(--logo-ink); }
 .logo-word { display: inline-flex; align-items: center; gap: 2px; font-family: 'Archivo Variable', var(--font-heading); font-stretch: 125%; font-weight: 800; font-size: 34px; line-height: 1; }
 .logo-nut { width: 27px; height: 27px; color: var(--logo-blue); }
 .logo-nut-hole { fill: var(--bg); }
 .logo-rule { width: 2px; height: 32px; background: var(--logo-blue); }
 .logo-text { display: flex; flex-direction: column; gap: 4px; line-height: 1; }
 .logo-text > span:first-child { font-family: 'Archivo Variable', var(--font-heading); font-stretch: 110%; font-weight: 700; font-size: 14px; letter-spacing: .14em; }
-.logo-text > span:last-child:not(:first-child) { font-weight: 500; font-size: 10px; letter-spacing: .2em; color: var(--logo-blue); }
+.logo-text > span:last-child:not(:first-child) { font-weight: 500; font-size: 10px; letter-spacing: .2em; color: var(--logo-sub); }
+.logo-dark { --logo-blue: var(--blue-on-dark); --logo-ink: #fcfcfd; --logo-sub: var(--blue-on-dark-300); }
+.logo-dark .logo-nut-hole { fill: var(--n900); }
 .header-catalog { flex-shrink: 0; display: inline-flex; align-items: center; height: 46px; padding: 0 20px; border-radius: var(--r-sm); background: var(--ink); color: var(--bg); font-family: var(--font-heading); font-weight: 700; font-size: 15px; text-decoration: none; }
 .header-catalog:hover, .header-catalog[aria-current] { background: var(--n800); color: var(--bg); }
 .header-search { flex: 1 1 300px; min-width: 0; display: flex; align-items: center; gap: 4px; height: 46px; padding: 4px; border: 1px solid var(--divider); border-radius: var(--r-sm); background: var(--card); }
-.header-search:focus-within { border-color: var(--blue); box-shadow: 0 0 0 3px rgb(37 82 200 / 20%); }
+.header-search:focus-within { border-color: var(--blue); box-shadow: 0 0 0 3px rgb(10 79 166 / 20%); }
 .header-search > .icon { margin-left: 8px; color: var(--n700); width: 18px; height: 18px; }
 .header-search input { flex: 1; min-width: 0; height: 100%; border: 0; outline: 0; background: transparent; padding: 0 8px; font-size: 15px; }
 .header-search input::-webkit-search-cancel-button { cursor: pointer; }
@@ -148,7 +151,9 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--blue); fle
 .site-footer { margin-top: auto; background: var(--n900); color: var(--n400); font-size: 14px; }
 .footer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 24px 40px; padding-block: 40px; }
 .footer-grid p { line-height: 1.55; max-width: 44ch; }
-.footer-brand { font-family: var(--font-heading); font-weight: 700; font-size: 22px; color: #fcfcfd; margin-bottom: 8px !important; }
+.footer-brand { margin-bottom: 14px; }
+.footer-brand .logo-word { font-size: 30px; }
+.footer-brand .logo-nut { width: 24px; height: 24px; }
 .footer-grid nav { display: flex; flex-direction: column; gap: 4px; }
 .footer-grid nav a { color: #fcfcfd; text-decoration: none; min-height: 32px; display: inline-flex; align-items: center; width: fit-content; }
 .footer-grid nav a:hover { color: var(--blue-300); text-decoration: underline; }
@@ -563,6 +568,7 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--blue); fle
 /* Staff: clients (v4) */
 .staff-content:has(.clients-layout) { max-width: var(--content-width); }
 .staff-tag { margin-right: auto; padding: 4px 10px; border-radius: var(--r-sm); background: var(--blue-100); color: var(--blue-800); font-size: var(--text-caption); font-weight: 700; }
+.staff-login { display: grid; justify-items: center; }
 .staff-header nav a[aria-current=page] { font-weight: 700; text-decoration: underline; text-underline-offset: 6px; }
 .clients-heading { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
 .clients-heading .muted { margin-top: 6px; font-size: var(--text-body-small); }
