@@ -37,6 +37,7 @@ class CatalogIntegrationTest {
   }
 
   static void verify(CatalogImportService catalog, JdbcTemplate jdbc) {
+    jdbc.update("delete from product_tags");
     jdbc.update("delete from product_images");
     jdbc.update("delete from product_offers");
     jdbc.update("delete from products");
@@ -58,6 +59,7 @@ class CatalogIntegrationTest {
             Map.of(warehouse, BigDecimal.ZERO),
             now,
             null,
+            List.of(),
             List.of());
     CloudShopProduct b =
         new CloudShopProduct(
@@ -71,7 +73,8 @@ class CatalogIntegrationTest {
             Map.of(car, new BigDecimal("100")),
             now,
             null,
-            List.of("https://example.com/image.png"));
+            List.of("https://example.com/image.png"),
+            List.of("Двигатель", "Поршневая группа", "Hyundai", "Sonata", "Бренд NGP"));
     catalog.apply(run, List.of(a, b), now, now, true);
     assertThat(
             jdbc.queryForObject(
@@ -106,6 +109,7 @@ class CatalogIntegrationTest {
             Map.of(),
             now,
             null,
+            List.of(),
             List.of());
     assertThatThrownBy(
             () ->
@@ -116,5 +120,16 @@ class CatalogIntegrationTest {
     assertThat(jdbc.queryForObject("select count(*) from products", Integer.class)).isEqualTo(2);
     assertThat(jdbc.queryForObject("select count(*) from product_images", Integer.class))
         .isEqualTo(1);
+    assertThat(
+            jdbc.queryForList(
+                "select kind||':'||name||':'||coalesce(parent,'') from product_tags where product_id=? order by position",
+                String.class,
+                b.id()))
+        .containsExactly(
+            "SECTION:Двигатель:",
+            "SUBSECTION:Поршневая группа:Двигатель",
+            "MAKE:Hyundai:",
+            "MODEL:Sonata:Hyundai",
+            "BRAND:NGP:");
   }
 }

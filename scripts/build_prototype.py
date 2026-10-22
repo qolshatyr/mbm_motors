@@ -17,10 +17,6 @@ def main():
     if destination.exists():
         shutil.rmtree(destination)
     shutil.copytree(source, destination)
-    manifest = ROOT / 'prototype' / '.openai' / 'hosting.json'
-    if not manifest.exists():
-        manifest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(ROOT / 'deploy' / 'prototype-hosting.json', manifest)
     (destination / 'robots.txt').write_text('User-agent: *\nDisallow: /\n')
     with zipfile.ZipFile(ROOT / 'prototype' / 'mbm-motors-demo.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
         for file in sorted(destination.rglob('*')):

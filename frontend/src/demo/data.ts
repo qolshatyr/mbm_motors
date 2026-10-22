@@ -1,10 +1,10 @@
-import type { Product, Store } from '../shared/api/catalog';
+import type { Classification, Product, Store } from '../shared/api/catalog';
 
 export const demoStores: Store[] = [{ id: 'dddddddddddddddddddd0003', name: 'СКЛАД (демо)' }];
 export const demoStore = demoStores[0];
 
 type Image = 'filter' | 'brake' | 'suspension' | 'light' | 'oil' | 'body';
-export interface DemoProduct extends Omit<Product, 'price' | 'canAdd' | 'availableQuantity'> { price: number; stock: number }
+export interface DemoProduct extends Omit<Product, 'price' | 'canAdd' | 'availableQuantity' | 'brand'> { price: number; stock: number; classification: Classification }
 // Prototype assortment from the v2 design. Prices and stock are illustrative only.
 const rows: [string, string, string, Image, number, number][] = [
   ['Амортизатор передний левый', '54651-2T000', '0004812', 'suspension', 42800, 6],
@@ -22,9 +22,27 @@ const rows: [string, string, string, Image, number, number][] = [
   ['Датчик ABS передний правый', '95670-D3000', '0005402', 'light', 0, 3],
   ['Диск тормозной передний', '51712-D7000', '0002250', 'brake', 27400, 8],
 ];
+// Section, subsection, brand and fitting cars per row, in the shape of the CloudShop tags.
+const tags: [string, string, string, [string, string[]][]][] = [
+  ['Ходовая часть', 'Амортизаторы и опоры', 'Mobis', [['Hyundai', ['Tucson']], ['Kia', ['Sportage']]]],
+  ['Ходовая часть', 'Амортизаторы и опоры', 'Mobis', [['Hyundai', ['Tucson']], ['Kia', ['Sportage']]]],
+  ['Ходовая часть', 'Амортизаторы и опоры', 'Mando', [['Hyundai', ['Sonata']]]],
+  ['Тормозная система', 'Колодки', 'Hyundai/Kia', [['Hyundai', ['Sonata']], ['Kia', ['Optima']]]],
+  ['Фильтры и обслуживание', 'Масляные фильтры', 'Hyundai/Kia', [['Hyundai', ['Tucson', 'Elantra']], ['Kia', ['Rio']]]],
+  ['Фильтры и обслуживание', 'Воздушные фильтры', 'Parts-Mall', [['Hyundai', ['Tucson']]]],
+  ['Фильтры и обслуживание', 'Салонные фильтры', 'Sangsin', [['Hyundai', ['Tucson']], ['Kia', ['Sportage']]]],
+  ['Электрика и освещение', 'Зажигание', 'Hyundai/Kia', [['Kia', ['Rio']], ['Hyundai', ['Accent']]]],
+  ['Двигатель', 'ГРМ и приводные ремни', 'Mobis', [['Hyundai', ['Elantra']]]],
+  ['Ходовая часть', 'Стойки и втулки стабилизатора', 'Sangsin', [['Hyundai', ['Elantra']], ['Kia', ['Cerato']]]],
+  ['Масла и технические жидкости', 'Моторные масла', 'Hyundai/Kia', []],
+  ['Ходовая часть', 'Рычаги и шаровые', 'Mobis', [['Hyundai', ['Elantra']]]],
+  ['Электрика и освещение', 'Датчики', 'Mobis', [['Hyundai', ['Elantra']]]],
+  ['Тормозная система', 'Диски и барабаны', 'Mando', [['Hyundai', ['Sonata']], ['Kia', ['Optima']]]],
+];
 export const money = (value: number) => `${value.toLocaleString('ru-RU')} ₸`;
 export const demoProducts: DemoProduct[] = rows.map(([name, sku, code, image, price, stock], index) => ({
-  id: (index + 1).toString(16).padStart(24, '0'), name, sku, code, unit: 'шт.', imageUrl: `/demo-images/${image}.svg`,
+  id: (index + 1).toString(16).padStart(24, '0'), name, sku, code, unit: 'шт.', imageUrl: `${import.meta.env.BASE_URL}demo-images/${image}.svg`,
   priceText: price > 0 ? money(price) : 'Цена уточняется', stockText: stock > 0 ? `В наличии: ${stock} шт.` : 'Нет в наличии', price, stock,
+  classification: { section: tags[index][0], subsection: tags[index][1], brands: [tags[index][2]], fitment: tags[index][3].map(([make, models]) => ({ make, models })) },
 }));
 export const demoPartner = { login: 'demo', company: 'СТО «Демо Сервис»', contactName: 'Ерлан', phone: '+77000000000' };

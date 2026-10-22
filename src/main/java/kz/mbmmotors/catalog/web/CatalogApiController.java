@@ -28,8 +28,19 @@ public class CatalogApiController {
       @RequestParam(required = false) String store,
       @RequestParam(defaultValue = "false") boolean available,
       @RequestParam(defaultValue = "0") int page,
-      @RequestParam(required = false) String sort) {
-    return catalog.list(q, store, available, page, sort);
+      @RequestParam(required = false) String sort,
+      @RequestParam(required = false) String section,
+      @RequestParam(required = false) String subsection,
+      @RequestParam(required = false) String make,
+      @RequestParam(required = false) String model,
+      @RequestParam(required = false) List<String> brand) {
+    return catalog.list(
+        q,
+        store,
+        available,
+        page,
+        sort,
+        new CatalogViewService.CatalogFilter(section, subsection, make, model, brand));
   }
 
   @GetMapping("/products/{id}")
