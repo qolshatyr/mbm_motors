@@ -52,10 +52,11 @@ description: Порядок завершения задачи в MBM Motors — 
 
 - Работай в ветке задачи, не в `main`: `feature/…`, `fix/…`, `docs/…`,
   `chore/…`.
-- PR в проекте идут цепочкой: новая ветка создаётся от последней
-  незамёрженной, и её PR указывает базой предыдущую ветку. Проверь
-  цепочку командой
-  `gh pr list --json number,headRefName,baseRefName`.
+- Новая ветка создаётся от свежего `main`, PR — в `main`. Длинные цепочки
+  PR не заводи: в 22.10.2026 цепочка #15–#22 застряла на merge (GitHub
+  не обновил head промежуточного PR). Если задача зависит от
+  невлитого PR, проверь `gh pr list --json number,headRefName,baseRefName`
+  и ставь базой его ветку, но только на одну ступень.
 - Добавляй файлы явно (`git add <пути>`), затем проверь `git diff --cached`.
   Никогда не добавляй `.env`, `.cloudshop-audit/`, `.cloudshop-test-sales/`,
   `target/`, `.claude/settings.local.json`.
@@ -71,7 +72,7 @@ PR или push либо разрешил это в текущем диалоге
 
 ```sh
 git push -u origin HEAD
-gh pr create --base <предыдущая-ветка> --title "<тема>" --body-file <файл>
+gh pr create --base main --title "<тема>" --body-file <файл>
 ```
 
 Описание PR пиши на русском, короткими абзацами:
@@ -82,7 +83,7 @@ gh pr create --base <предыдущая-ветка> --title "<тема>" --bod
 5. строка «База <ветка> (PR#N), merge не выполняется.»
 
 В конце добавь атрибуцию PR из текущей сессии. Merge не выполняй без
-отдельной просьбы.
+отдельной просьбы; перед merge дождись зелёного CI (`gh pr checks <N> --watch`).
 
 ## 5. Запись ссылки на PR
 
