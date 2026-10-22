@@ -184,9 +184,17 @@ public final class CloudShopDeliveryGateway implements DeliveryGateway {
     } catch (CloudShopException exception) {
       throw exception;
     } catch (Exception exception) {
-      // Neither causes nor bodies are retained: they can contain tokens and customer data.
-      throw new CloudShopException("CloudShop delivery transport or response failed");
+      // Neither causes nor bodies are retained: they can contain tokens and customer data. Only the
+      // root cause type is kept, to tell a timeout from a refused connection or a parse failure.
+      throw new CloudShopException(
+          "CloudShop delivery transport or response failed: " + rootType(exception));
     }
+  }
+
+  private static String rootType(Throwable exception) {
+    Throwable root = exception;
+    while (root.getCause() != null && root.getCause() != root) root = root.getCause();
+    return root.getClass().getSimpleName();
   }
 
   private String id(JsonNode result) {

@@ -234,7 +234,10 @@ class CloudShopDeliveryGatewayTest {
   void headersTimeoutDoesNotRetry() {
     stall = true;
     assertSanitized(() -> gateway(Duration.ofMillis(150)).createCustomer(snapshot()));
-    assertThat(calls.get()).isEqualTo(1);
+    // The root cause type is kept so that the log tells a timeout from other failures.
+    assertThatThrownBy(() -> gateway(Duration.ofMillis(150)).createCustomer(snapshot()))
+        .hasMessageContaining("TimeoutException");
+    assertThat(calls.get()).isEqualTo(2);
   }
 
   @Test
