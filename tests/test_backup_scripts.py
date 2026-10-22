@@ -50,6 +50,11 @@ esac
 exit 0
 '''
 
+CURL_STUB = r'''#!/usr/bin/env bash
+echo "curl ${!#}" >> "$STUB_LOG"
+exit 0
+'''
+
 COUNTS = '|'.join(['9'] + ['3'] * 8)
 
 
@@ -63,7 +68,7 @@ class BackupScriptsTest(unittest.TestCase):
             shutil.copy(DEPLOY / name, self.site / name)
         bin_dir = self.dir / 'bin'
         bin_dir.mkdir()
-        for name, body in (('docker', DOCKER_STUB), ('rclone', RCLONE_STUB)):
+        for name, body in (('docker', DOCKER_STUB), ('rclone', RCLONE_STUB), ('curl', CURL_STUB)):
             path = bin_dir / name
             path.write_text(body)
             path.chmod(0o755)
@@ -145,6 +150,28 @@ class BackupScriptsTest(unittest.TestCase):
         result = self.run_script('backup.sh', BACKUP_REMOTE='mbm-backup:mbm', BACKUP_REMOTE_KEEP_DAYS='2')
         self.assertNotEqual(0, result.returncode)
         self.assertNotIn('rclone copy', self.calls())
+
+    def test_heartbeat_reports_success(self):
+        result = self.run_script('backup.sh', BACKUP_HEARTBEAT_URL='https://hc-ping.com/abc')
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn('curl https://hc-ping.com/abc\n', self.calls())
+
+    def test_heartbeat_reports_failure(self):
+        result = self.run_script(
+            'backup.sh', BACKUP_HEARTBEAT_URL='https://hc-ping.com/abc', STUB_DUMP_INCOMPLETE='1')
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn('curl https://hc-ping.com/abc/fail', self.calls())
+
+    def test_heartbeat_reports_failed_off_server_copy(self):
+        result = self.run_script('backup.sh', BACKUP_HEARTBEAT_URL='https://hc-ping.com/abc',
+                                 BACKUP_REMOTE='mbm-backup:mbm', STUB_REMOTE_TYPE='s3')
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn('curl https://hc-ping.com/abc/fail', self.calls())
+
+    def test_plain_http_heartbeat_is_rejected(self):
+        result = self.run_script('backup.sh', BACKUP_HEARTBEAT_URL='http://hc-ping.com/abc')
+        self.assertNotEqual(0, result.returncode)
+        self.assertNotIn('pg_dump', self.calls())
 
     def test_restore_check_uses_newest_local_copy_and_drops_database(self):
         backups = self.site / 'backups'

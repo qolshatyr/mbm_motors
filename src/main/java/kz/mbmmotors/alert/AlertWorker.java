@@ -15,7 +15,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
 
 /**
  * Tells staff in Telegram about new orders and about orders that need attention: an UNKNOWN
@@ -24,7 +23,7 @@ import org.springframework.web.client.RestClient;
  * while the bot token is empty.
  */
 @Component
-@ConditionalOnExpression("!'${alerts.telegram.bot-token:}'.isBlank()")
+@ConditionalOnExpression(AlertConfiguration.ENABLED)
 class AlertWorker {
   private static final Logger LOG = LoggerFactory.getLogger(AlertWorker.class);
   static final int BATCH = 15;
@@ -41,14 +40,14 @@ class AlertWorker {
   @Autowired
   AlertWorker(
       AlertRepository repository,
-      RestClient.Builder builder,
+      TelegramNotifier notifier,
       AlertProperties properties,
       Clock clock,
       @Value("${delivery.enabled:false}") boolean deliveryEnabled) {
-    // Fails startup on a malformed token, chat or site address rather than at the first alert.
+    // Fails startup on a malformed site address rather than at the first alert.
     this(
         repository,
-        new TelegramNotifier(builder, properties.telegram()),
+        notifier,
         clock,
         properties.waitingAfter(),
         deliveryEnabled,

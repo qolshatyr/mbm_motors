@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Daily PostgreSQL dump with 14-day local retention and, when BACKUP_REMOTE is set in .env,
-# an off-server copy through rclone. Run from cron in deploy/production; see docs/Deployment.md.
+# an off-server copy through rclone; BACKUP_HEARTBEAT_URL reports each run to a monitor. Run from cron in deploy/production; see docs/Deployment.md.
 set -euo pipefail
 cd "$(dirname "$0")"
 umask 077
@@ -18,10 +18,23 @@ remote=${BACKUP_REMOTE-$(env_value BACKUP_REMOTE)}
 keep_days=${BACKUP_REMOTE_KEEP_DAYS-$(env_value BACKUP_REMOTE_KEEP_DAYS)}
 keep_days=${keep_days:-30}
 allow_plain=${BACKUP_REMOTE_ALLOW_PLAIN-$(env_value BACKUP_REMOTE_ALLOW_PLAIN)}
+heartbeat=${BACKUP_HEARTBEAT_URL-$(env_value BACKUP_HEARTBEAT_URL)}
+case "$heartbeat" in "" | https://*) ;; *) fail "BACKUP_HEARTBEAT_URL must start with https://" ;; esac
 
 mkdir -p backups
 file="backups/mbm_motors-$(date +%Y%m%d-%H%M).sql.gz"
-trap 'rm -f "$file.tmp"' EXIT
+# Healthchecks-style monitor: the URL on success, URL/fail on any error; a missing ping alerts too.
+finish() {
+  local status=$?
+  rm -f "$file.tmp"
+  if [ -n "$heartbeat" ]; then
+    local suffix=""
+    [ "$status" -eq 0 ] || suffix=/fail
+    curl -fsS -m 10 --retry 3 -o /dev/null "$heartbeat$suffix" || log "WARNING: heartbeat ping failed"
+  fi
+  exit "$status"
+}
+trap finish EXIT
 
 docker compose exec -T db pg_dump -U mbm -d mbm_motors --no-owner | gzip > "$file.tmp"
 # A dump cut short (disk full, killed container) still gzips cleanly; pg_dump's closing line proves it finished.

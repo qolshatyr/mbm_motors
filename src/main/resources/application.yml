@@ -20,6 +20,20 @@ spring:
         order_updates: true
   flyway:
     enabled: true
+management:
+  # Only /actuator/health is published, as UP or DOWN without details, for an external uptime
+  # monitor. It checks the database; catalog freshness is reported to staff by alerts instead.
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      show-components: never
+      # No Kubernetes here: without probe groups the answer is just {"status":"UP"}.
+      probes:
+        enabled: false
 server:
   address: 127.0.0.1
   servlet:
@@ -60,6 +74,8 @@ alerts:
   interval: 1m
   waiting-after: 15m
   new-orders: ${MBM_ALERT_NEW_ORDERS:true}
+  # With catalog sync on: tell staff when no sync has succeeded for this long, and when it recovers.
+  sync-stale-after: 30m
 admin:
   enabled: ${MBM_ADMIN_ENABLED:false}
   username: ${MBM_ADMIN_USERNAME:}
