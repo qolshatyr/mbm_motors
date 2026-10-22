@@ -128,6 +128,11 @@ public class WebSecurityConfiguration {
                     .permitAll()
                     .requestMatchers("/error")
                     .permitAll()
+                    // UP or DOWN only, for an external uptime monitor; no other actuator endpoint
+                    // is
+                    // exposed.
+                    .requestMatchers(HttpMethod.GET, "/actuator/health")
+                    .permitAll()
                     // Deny by default: only listed partner operations are reachable.
                     .requestMatchers(
                         HttpMethod.GET,

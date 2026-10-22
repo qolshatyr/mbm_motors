@@ -10,7 +10,8 @@ public record AlertProperties(
     Telegram telegram,
     String siteUrl,
     @DefaultValue("15m") Duration waitingAfter,
-    @DefaultValue("true") boolean newOrders) {
+    @DefaultValue("true") boolean newOrders,
+    @DefaultValue("30m") Duration syncStaleAfter) {
 
   public record Telegram(
       @DefaultValue("https://api.telegram.org") String apiUrl,
