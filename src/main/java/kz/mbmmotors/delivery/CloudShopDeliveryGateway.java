@@ -19,6 +19,8 @@ import tools.jackson.databind.json.JsonMapper;
 /** Explicitly constructed only. This adapter does not authorize or schedule live delivery. */
 public final class CloudShopDeliveryGateway implements DeliveryGateway {
   private static final int MAX_RESPONSE_BYTES = 64 * 1024;
+  private static final int MAX_ERROR_BYTES = 4 * 1024;
+  private static final int MAX_ERROR_TEXT = 200;
   private static final DateTimeFormatter API_DATE =
       DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss").withZone(ZoneOffset.UTC);
   private final RestClient client;
@@ -172,7 +174,12 @@ public final class CloudShopDeliveryGateway implements DeliveryGateway {
                 // Documented as 201; the live API answered 200 to a sale and, in the control
                 // test of 21.10.2026, a created customer card was not accepted with strict 201.
                 if (status != 201 && status != 200)
-                  throw new CloudShopException("CloudShop delivery failed with HTTP " + status);
+                  throw new CloudShopException(
+                      "CloudShop delivery failed with HTTP "
+                          + status
+                          + (status >= 400 && status < 500
+                              ? apiError(response.getBody().readNBytes(MAX_ERROR_BYTES))
+                              : ""));
                 byte[] bytes = response.getBody().readNBytes(MAX_RESPONSE_BYTES + 1);
                 if (bytes.length > MAX_RESPONSE_BYTES)
                   throw new CloudShopException("CloudShop delivery response exceeds size limit");
@@ -184,9 +191,40 @@ public final class CloudShopDeliveryGateway implements DeliveryGateway {
     } catch (CloudShopException exception) {
       throw exception;
     } catch (Exception exception) {
-      // Neither causes nor bodies are retained: they can contain tokens and customer data.
-      throw new CloudShopException("CloudShop delivery transport or response failed");
+      // Neither causes nor bodies are retained: they can contain tokens and customer data. Only the
+      // root cause type is kept, to tell a timeout from a refused connection or a parse failure.
+      throw new CloudShopException(
+          "CloudShop delivery transport or response failed: " + rootType(exception));
     }
+  }
+
+  /**
+   * CloudShop explains a rejection in {@code {"status":false,"error":"..."}}. Only that text is
+   * kept, shortened, with control characters removed and long digit runs (phones) masked; anything
+   * else in the body, or a text that echoes the token, is dropped.
+   */
+  private String apiError(byte[] body) {
+    try {
+      JsonNode error = mapper.readTree(body).get("error");
+      if (error == null || !error.isString()) return "";
+      String text =
+          error
+              .stringValue()
+              .replaceAll("\\p{Cntrl}", " ")
+              .replaceAll("\\+?\\d[\\d ()-]{5,}\\d", "…")
+              .strip();
+      if (text.isEmpty() || text.contains(token)) return "";
+      return ": "
+          + (text.length() > MAX_ERROR_TEXT ? text.substring(0, MAX_ERROR_TEXT) + "…" : text);
+    } catch (RuntimeException exception) {
+      return "";
+    }
+  }
+
+  private static String rootType(Throwable exception) {
+    Throwable root = exception;
+    while (root.getCause() != null && root.getCause() != root) root = root.getCause();
+    return root.getClass().getSimpleName();
   }
 
   private String id(JsonNode result) {

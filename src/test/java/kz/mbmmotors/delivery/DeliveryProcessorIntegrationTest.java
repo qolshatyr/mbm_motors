@@ -174,6 +174,9 @@ class DeliveryProcessorIntegrationTest {
     assertEquals("UNKNOWN", state());
     assertEquals(1, gateway.sales.get());
     assertEquals(java.util.List.of(), processor.deliverable(10));
+    assertTrue(
+        jdbc.queryForObject("select failure_reason from delivery_outbox", String.class)
+            .startsWith("Продажа: "));
   }
 
   @Test
@@ -222,6 +225,9 @@ class DeliveryProcessorIntegrationTest {
       assertEquals(flight, state());
       assertEquals(1, processor.staleInFlight(NOW.minusSeconds(30)));
       assertEquals("UNKNOWN", state());
+      assertTrue(
+          jdbc.queryForObject("select failure_reason from delivery_outbox", String.class)
+              .startsWith("Попытка прервана"));
       processor.process(id);
     }
     assertEquals(0, gateway.customers.get());

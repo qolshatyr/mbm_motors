@@ -1,6 +1,7 @@
 package kz.mbmmotors.admin;
 
 import java.net.URI;
+import java.security.Principal;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -8,6 +9,8 @@ import org.springframework.web.ErrorResponseException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -30,18 +33,36 @@ public class StaffRequestController {
 
   @GetMapping("/admin/api/requests/{number}")
   StaffRequestService.Detail detail(@PathVariable String number) {
+    return service
+        .detail(number(number))
+        .orElseThrow(() -> problem(HttpStatus.NOT_FOUND, "Заявка не найдена."));
+  }
+
+  private static long number(String number) {
     if (!number.matches("[1-9][0-9]{0,18}"))
       throw problem(HttpStatus.BAD_REQUEST, "Некорректный номер заявки.");
-    long parsed;
     try {
-      parsed = Long.parseLong(number);
+      return Long.parseLong(number);
     } catch (NumberFormatException exception) {
       throw problem(HttpStatus.BAD_REQUEST, "Некорректный номер заявки.");
     }
-    return service
-        .detail(parsed)
-        .orElseThrow(() -> problem(HttpStatus.NOT_FOUND, "Заявка не найдена."));
   }
+
+  /** Staff record what they found in CloudShop for an order whose delivery result is unknown. */
+  @PostMapping("/admin/api/requests/{number}/reconciliation")
+  StaffRequestService.Detail reconcile(
+      @PathVariable String number, @RequestBody Reconciliation request, Principal staff) {
+    long parsed = number(number);
+    try {
+      return service
+          .reconcile(parsed, request.result(), request.saleNumber(), staff.getName())
+          .orElseThrow(() -> problem(HttpStatus.NOT_FOUND, "Заявка не найдена."));
+    } catch (StaffRequestService.Problem error) {
+      throw problem(HttpStatus.valueOf(error.status()), error.getMessage());
+    }
+  }
+
+  record Reconciliation(String result, Long saleNumber) {}
 
   @ExceptionHandler(ErrorResponseException.class)
   ResponseEntity<ProblemDetail> error(ErrorResponseException exception) {

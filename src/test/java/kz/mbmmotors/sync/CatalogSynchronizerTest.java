@@ -60,27 +60,29 @@ class CatalogSynchronizerTest {
 
   @Test
   void shortPagesAdvanceByActualCountAndWaitForEmptyPage() {
-    when(gateway.products(1000, 0)).thenReturn(List.of(product("a")));
-    when(gateway.products(1000, 1)).thenReturn(List.of(product("b")));
-    when(gateway.products(1000, 2)).thenReturn(List.of());
+    when(gateway.products(1000, 0)).thenReturn(CloudShopBatch.of(List.of(product("a"))));
+    when(gateway.products(1000, 1)).thenReturn(CloudShopBatch.of(List.of(product("b"))));
+    when(gateway.products(1000, 2)).thenReturn(CloudShopBatch.of(List.of()));
     assertThat(sync.synchronize(true)).isTrue();
-    verify(catalog).apply(any(), argThat(rows -> rows.size() == 2), eq(now), eq(now), eq(true));
+    verify(catalog)
+        .apply(any(), argThat(rows -> rows.size() == 2), eq(List.of()), eq(now), eq(now), eq(true));
+    verify(gateway, never()).deleted(any());
   }
 
   @Test
   void failedLaterPageDoesNotApplyOrAdvanceCheckpoint() {
-    when(gateway.products(1000, 0)).thenReturn(List.of(product("a")));
+    when(gateway.products(1000, 0)).thenReturn(CloudShopBatch.of(List.of(product("a"))));
     when(gateway.products(1000, 1)).thenThrow(new IllegalStateException("upstream-secret"));
     assertThatThrownBy(() -> sync.synchronize(true)).hasMessageNotContaining("upstream-secret");
-    verify(catalog, never()).apply(any(), any(), any(), any(), anyBoolean());
+    verify(catalog, never()).apply(any(), any(), any(), any(), any(), anyBoolean());
     verify(catalog).fail(any(), eq(now), eq("SYNC_FAILED"));
   }
 
   @Test
   void repeatedPageIsFailureWithoutCommit() {
-    when(gateway.products(anyInt(), anyInt())).thenReturn(List.of(product("a")));
+    when(gateway.products(anyInt(), anyInt())).thenReturn(CloudShopBatch.of(List.of(product("a"))));
     assertThatThrownBy(() -> sync.synchronize(true)).isInstanceOf(IllegalStateException.class);
-    verify(catalog, never()).apply(any(), any(), any(), any(), anyBoolean());
+    verify(catalog, never()).apply(any(), any(), any(), any(), any(), anyBoolean());
   }
 
   @Test
@@ -88,11 +90,52 @@ class CatalogSynchronizerTest {
     Instant checkpoint = now.minusSeconds(600);
     when(catalog.state())
         .thenReturn(new CatalogImportService.State(checkpoint, now.minusSeconds(3600)));
-    when(gateway.updated(checkpoint.minusSeconds(300))).thenReturn(List.of());
+    when(gateway.updated(checkpoint.minusSeconds(300))).thenReturn(CloudShopBatch.of(List.of()));
+    when(gateway.deleted(checkpoint.minusSeconds(300))).thenReturn(List.of("d"));
     sync.synchronize(false);
     verify(gateway).updated(checkpoint.minusSeconds(300));
-    verify(catalog).apply(any(), eq(List.of()), eq(now), eq(now), eq(false));
+    verify(catalog).apply(any(), eq(List.of()), eq(List.of("d")), eq(now), eq(now), eq(false));
     verify(gateway, never()).products(anyInt(), anyInt());
+  }
+
+  @Test
+  void failedIncrementalFeedFallsBackToFullListingInTheSameRun() {
+    Instant checkpoint = now.minusSeconds(60);
+    when(catalog.state())
+        .thenReturn(new CatalogImportService.State(checkpoint, now.minusSeconds(3600)));
+    when(gateway.updated(any())).thenThrow(new CloudShopException("timeout"));
+    when(gateway.products(1000, 0)).thenReturn(CloudShopBatch.of(List.of(product("a"))));
+    when(gateway.products(1000, 1)).thenReturn(CloudShopBatch.of(List.of()));
+    sync.synchronize(false);
+    verify(catalog).mode(any(), eq("FULL"));
+    verify(catalog)
+        .apply(any(), argThat(rows -> rows.size() == 1), eq(List.of()), eq(now), eq(now), eq(true));
+  }
+
+  @Test
+  void unreadableCardsAreWithdrawnAndPaginationCountsThem() {
+    when(gateway.products(1000, 0))
+        .thenReturn(new CloudShopBatch(List.of(product("a")), List.of("x"), 3));
+    when(gateway.products(1000, 3)).thenReturn(CloudShopBatch.of(List.of()));
+    sync.synchronize(true);
+    verify(catalog)
+        .apply(any(), argThat(rows -> rows.size() == 1), eq(List.of()), eq(now), eq(now), eq(true));
+
+    Instant checkpoint = now.minusSeconds(60);
+    when(catalog.state())
+        .thenReturn(new CatalogImportService.State(checkpoint, now.minusSeconds(3600)));
+    when(gateway.updated(checkpoint.minusSeconds(300)))
+        .thenReturn(new CloudShopBatch(List.of(product("b")), List.of("x"), 2));
+    when(gateway.deleted(checkpoint.minusSeconds(300))).thenReturn(List.of("d"));
+    sync.synchronize(false);
+    verify(catalog)
+        .apply(
+            any(),
+            argThat(rows -> rows.size() == 1),
+            eq(List.of("d", "x")),
+            eq(now),
+            eq(now),
+            eq(false));
   }
 
   @Test

@@ -75,7 +75,7 @@ class CatalogIntegrationTest {
             null,
             List.of("https://example.com/image.png"),
             List.of("Двигатель", "Поршневая группа", "Hyundai", "Sonata", "Бренд NGP"));
-    catalog.apply(run, List.of(a, b), now, now, true);
+    catalog.apply(run, List.of(a, b), List.of(), now, now, true);
     assertThat(
             jdbc.queryForObject(
                 "select count(*) from products where sku='duplicate'", Integer.class))
@@ -114,7 +114,12 @@ class CatalogIntegrationTest {
     assertThatThrownBy(
             () ->
                 catalog.apply(
-                    failed, List.of(invalid), now.plusSeconds(300), now.plusSeconds(301), false))
+                    failed,
+                    List.of(invalid),
+                    List.of(),
+                    now.plusSeconds(300),
+                    now.plusSeconds(301),
+                    false))
         .isInstanceOf(RuntimeException.class);
     assertThat(catalog.state().checkpoint()).isEqualTo(now);
     assertThat(jdbc.queryForObject("select count(*) from products", Integer.class)).isEqualTo(2);
@@ -131,5 +136,33 @@ class CatalogIntegrationTest {
             "MAKE:Hyundai:",
             "MODEL:Sonata:Hyundai",
             "BRAND:NGP:");
+
+    // CloudShop deleted b: an incremental run removes it with its offers, images and tags.
+    UUID removal = UUID.randomUUID();
+    catalog.start(removal, "INCREMENTAL", now.plusSeconds(600));
+    catalog.apply(
+        removal, List.of(), List.of(b.id()), now.plusSeconds(600), now.plusSeconds(601), false);
+    assertThat(jdbc.queryForList("select id from products", String.class)).containsExactly(a.id());
+    assertThat(
+            jdbc.queryForObject(
+                "select (select count(*) from product_offers where product_id=?)"
+                    + " + (select count(*) from product_images where product_id=?)"
+                    + " + (select count(*) from product_tags where product_id=?)",
+                Integer.class,
+                b.id(),
+                b.id(),
+                b.id()))
+        .isZero();
+
+    // A full listing without a removes it; an empty listing removes nothing.
+    UUID empty = UUID.randomUUID();
+    catalog.start(empty, "FULL", now.plusSeconds(900));
+    catalog.apply(empty, List.of(), List.of(), now.plusSeconds(900), now.plusSeconds(901), true);
+    assertThat(jdbc.queryForList("select id from products", String.class)).containsExactly(a.id());
+    UUID replaced = UUID.randomUUID();
+    catalog.start(replaced, "FULL", now.plusSeconds(1200));
+    catalog.apply(
+        replaced, List.of(b), List.of(), now.plusSeconds(1200), now.plusSeconds(1201), true);
+    assertThat(jdbc.queryForList("select id from products", String.class)).containsExactly(b.id());
   }
 }
