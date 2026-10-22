@@ -80,6 +80,9 @@ final class CloudShopProductParser {
     Map<String, BigDecimal> values = new LinkedHashMap<>();
     for (String key : node.propertyNames()) {
       BigDecimal value = decimal(node.get(key));
+      // CloudShop sends null store prices (seen 22.10.2026); like a missing key, they mean
+      // "no price for this place". A null stock quantity is still rejected.
+      if (value == null && allowMissing) continue;
       if (value == null) throw new IllegalArgumentException();
       values.put(key, value);
     }

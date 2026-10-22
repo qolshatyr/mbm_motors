@@ -50,6 +50,18 @@ class CloudShopProductParserTest {
   }
 
   @Test
+  void nullStorePriceMeansNoPriceForThatPlaceButNullStockIsRejected() {
+    String partial =
+        product.replace("\"store_prices\":[]", "\"store_prices\":{\"a\":null,\"b\":\"5.00\"}");
+    var prices = parser.parse("[" + partial + "]").getFirst().storePrices();
+    assertThat(prices).containsOnlyKeys("b");
+    assertThatThrownBy(
+            () ->
+                parser.parse("[" + product.replace("\"stock\":[]", "\"stock\":{\"a\":null}") + "]"))
+        .isInstanceOf(CloudShopException.class);
+  }
+
+  @Test
   void rejectsNonemptyArraysAndInvalidNumbersWithoutExposingResponse() {
     for (String invalid :
         new String[] {
