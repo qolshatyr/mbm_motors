@@ -1,7 +1,9 @@
 package kz.mbmmotors.partner;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -68,7 +70,6 @@ class PartnerSecurityTest {
         .andExpect(jsonPath("$.status").value(401));
     mvc.perform(get("/api/csrf")).andExpect(status().isOk());
     mvc.perform(post("/api/cart/add").with(csrf())).andExpect(status().isUnauthorized());
-    mvc.perform(get("/catalog")).andExpect(redirectedUrl("/login"));
     // SPA routes are not gated by security; without a built frontend they are simply absent.
     mvc.perform(get("/search")).andExpect(status().isNotFound());
     verifyNoInteractions(catalog);
@@ -106,9 +107,53 @@ class PartnerSecurityTest {
   }
 
   @Test
+  void blockedPartnerIsToldOnlyWithTheRightPassword() throws Exception {
+    mvc.perform(
+            post("/api/auth/login")
+                .with(csrf())
+                .param("username", "closed")
+                .param("password", PASSWORD))
+        .andExpect(status().isForbidden())
+        .andExpect(
+            jsonPath("$.detail")
+                .value("Доступ к этой учётной записи приостановлен. Свяжитесь с менеджером."));
+  }
+
+  @Test
+  void newPasswordOrBlockEndsExistingSessions() throws Exception {
+    var login =
+        mvc.perform(
+                post("/api/auth/login")
+                    .with(csrf())
+                    .param("username", "turbo")
+                    .param("password", PASSWORD))
+            .andExpect(status().isOk())
+            .andReturn();
+    var session = (MockHttpSession) login.getRequest().getSession(false);
+    verify(partners).recordLogin(eq("turbo"), any());
+    mvc.perform(get("/api/auth/me").session(session)).andExpect(status().isOk());
+    var changed =
+        new Partner(
+            UUID.randomUUID(),
+            "turbo",
+            HASH,
+            "СТО «Turbo»",
+            "Ерлан",
+            "+77015551234",
+            null,
+            true,
+            1);
+    when(partners.find("turbo")).thenReturn(Optional.of(changed));
+    mvc.perform(get("/api/auth/me").session(session)).andExpect(status().isUnauthorized());
+    assertThat(session.isInvalid()).isTrue();
+  }
+
+  @Test
   void wrongPasswordDisabledPartnerAndStaffCredentialsAreRejectedAlike() throws Exception {
     for (var credentials :
-        new String[][] {{"turbo", "wrong-password"}, {"closed", PASSWORD}, {"staff", PASSWORD}}) {
+        new String[][] {
+          {"turbo", "wrong-password"}, {"closed", "wrong-password"}, {"staff", PASSWORD}
+        }) {
       mvc.perform(
               post("/api/auth/login")
                   .with(csrf())
@@ -161,6 +206,6 @@ class PartnerSecurityTest {
 
   private static Partner partner(String login, boolean enabled) {
     return new Partner(
-        UUID.randomUUID(), login, HASH, "СТО «Turbo»", "Ерлан", "+77015551234", null, enabled);
+        UUID.randomUUID(), login, HASH, "СТО «Turbo»", "Ерлан", "+77015551234", null, enabled, 0);
   }
 }

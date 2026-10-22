@@ -54,8 +54,19 @@ public class AdminSecurityConfiguration {
                         HttpMethod.GET,
                         "/admin/requests",
                         "/admin/requests/{number}",
+                        "/admin/clients",
                         "/admin/api/requests",
-                        "/admin/api/requests/{number}")
+                        "/admin/api/requests/{number}",
+                        "/admin/api/clients")
+                    .hasRole("STAFF")
+                    .requestMatchers(
+                        HttpMethod.POST,
+                        "/admin/api/clients",
+                        "/admin/api/clients/{login}/password",
+                        "/admin/api/clients/{login}/enabled",
+                        "/admin/api/clients/{login}/customer",
+                        "/admin/api/clients/{login}/customer/create",
+                        "/admin/api/requests/{number}/reconciliation")
                     .hasRole("STAFF")
                     .anyRequest()
                     .denyAll())
@@ -64,7 +75,7 @@ public class AdminSecurityConfiguration {
                 login
                     .loginPage("/admin/login")
                     .loginProcessingUrl("/admin/login")
-                    .defaultSuccessUrl("/admin/requests", true)
+                    .defaultSuccessUrl("/admin/clients", true)
                     .failureUrl("/admin/login?error"))
         .logout(logout -> logout.logoutUrl("/admin/logout").logoutSuccessUrl("/admin/login?logout"))
         .build();

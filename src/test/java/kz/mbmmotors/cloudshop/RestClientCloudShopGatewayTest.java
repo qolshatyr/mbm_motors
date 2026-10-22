@@ -35,7 +35,7 @@ class RestClientCloudShopGatewayTest {
         .andExpect(header("X-CloudShop-API-Access-Token", "local-test-token"))
         .andExpect(header("Accept", "application/json"))
         .andRespond(withSuccess("[]", MediaType.APPLICATION_JSON));
-    assertThat(gateway.products(1000, 2000)).isEmpty();
+    assertThat(gateway.products(1000, 2000).products()).isEmpty();
     server.verify();
   }
 
@@ -47,8 +47,35 @@ class RestClientCloudShopGatewayTest {
                 "https://connect-api.cloudshop.ru/api/v4/product/updated?start_time=2026-10-04%2010:15:46"))
         .andExpect(method(HttpMethod.GET))
         .andRespond(withSuccess("[]", MediaType.APPLICATION_JSON));
-    assertThat(gateway.updated(Instant.parse("2026-10-04T10:15:46.123Z"))).isEmpty();
+    assertThat(gateway.updated(Instant.parse("2026-10-04T10:15:46.123Z")).products()).isEmpty();
     server.verify();
+  }
+
+  @Test
+  void readsOnlyIdsOfDeletedProducts() {
+    // Deleted cards may carry fields the product parser rejects, such as null store prices.
+    server
+        .expect(
+            requestTo(
+                "https://connect-api.cloudshop.ru/api/v4/product/deleted?start_time=2026-10-04%2010:15:46"))
+        .andExpect(method(HttpMethod.GET))
+        .andRespond(
+            withSuccess(
+                "[{\"id\":\"6aa155719b6c1d0d46466561\",\"store_prices\":{\"x\":null}},"
+                    + "{\"id\":\"6aa155719b6c1d0d46466561\"}]",
+                MediaType.APPLICATION_JSON));
+    assertThat(gateway.deleted(Instant.parse("2026-10-04T10:15:46.123Z")))
+        .containsExactly("6aa155719b6c1d0d46466561");
+    server.verify();
+  }
+
+  @Test
+  void rejectsDeletedProductsWithoutValidIds() {
+    server
+        .expect(requestTo(org.hamcrest.Matchers.containsString("/product/deleted")))
+        .andRespond(withSuccess("[{\"id\":\"bad\"}]", MediaType.APPLICATION_JSON));
+    assertThatThrownBy(() -> gateway.deleted(Instant.parse("2026-10-04T10:15:46Z")))
+        .isInstanceOf(CloudShopException.class);
   }
 
   @Test

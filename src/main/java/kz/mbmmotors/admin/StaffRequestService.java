@@ -25,7 +25,8 @@ public class StaffRequestService {
     var items =
         jdbc.query(
             """
-        select o.number,o.status,o.created_at,o.store_name,o.item_count,o.total_text,d.state delivery_state
+        select o.number,o.status,o.created_at,o.store_name,o.item_count,o.total_text,d.state delivery_state,
+        d.failure_reason,d.reconciled_result,d.reconciled_sale_number,d.reconciled_by,d.reconciled_at
         from local_orders o left join delivery_outbox d on d.order_id=o.id
         order by o.created_at desc,o.number desc limit 20 offset ?
         """,
@@ -37,7 +38,7 @@ public class StaffRequestService {
                     rs.getString("store_name"),
                     rs.getInt("item_count"),
                     rs.getString("total_text"),
-                    delivery(rs.getString("delivery_state"))),
+                    delivery(rs)),
             page * 20L);
     return new Page(items, page, 20, count, (int) Math.min(Integer.MAX_VALUE, (count + 19) / 20));
   }
@@ -48,7 +49,8 @@ public class StaffRequestService {
         .query(
             """
         select o.number,o.status,o.created_at,o.store_name,o.item_count,o.total_text,
-        o.customer_name,o.phone,o.comment,d.state delivery_state
+        o.customer_name,o.phone,o.comment,d.state delivery_state,
+        d.failure_reason,d.reconciled_result,d.reconciled_sale_number,d.reconciled_by,d.reconciled_at
         from local_orders o left join delivery_outbox d on d.order_id=o.id where o.number = ?
         """,
             (rs, row) ->
@@ -63,7 +65,7 @@ public class StaffRequestService {
                     rs.getString("phone"),
                     rs.getString("comment"),
                     List.of(),
-                    delivery(rs.getString("delivery_state"))),
+                    delivery(rs)),
             number)
         .stream()
         .findFirst()
@@ -100,10 +102,89 @@ public class StaffRequestService {
             });
   }
 
+  /**
+   * Records the outcome of a manual check in CloudShop for an UNKNOWN order. The state stays
+   * UNKNOWN, so the worker never sends the order again; a second check cannot overwrite the first.
+   */
+  @Transactional
+  public Optional<Detail> reconcile(long number, String result, Long saleNumber, String staff) {
+    if (!("FOUND".equals(result) || "NOT_CREATED".equals(result)))
+      throw new Problem(400, "Укажите итог сверки.");
+    if ("FOUND".equals(result) != (saleNumber != null))
+      throw new Problem(400, "Номер продажи указывается, только если она найдена в CloudShop.");
+    if (saleNumber != null && (saleNumber <= 0 || saleNumber > 999_999_999_999L))
+      throw new Problem(400, "Некорректный номер продажи.");
+    if (staff == null || staff.isBlank() || staff.length() > 64)
+      throw new Problem(400, "Не удалось определить сотрудника.");
+    int updated =
+        jdbc.update(
+            """
+            update delivery_outbox set reconciled_result=?,reconciled_sale_number=?,reconciled_by=?,
+            reconciled_at=now() where order_id=(select id from local_orders where number=?)
+            and state='UNKNOWN' and reconciled_result is null
+            """,
+            result,
+            saleNumber,
+            staff,
+            number);
+    if (updated == 0) {
+      // The guarded update is atomic; this read only explains why nothing changed.
+      var state =
+          jdbc.query(
+              """
+              select d.state,d.reconciled_result from local_orders o
+              left join delivery_outbox d on d.order_id=o.id where o.number=?
+              """,
+              (rs, row) -> new String[] {rs.getString(1), rs.getString(2)},
+              number);
+      if (state.isEmpty()) return Optional.empty();
+      if (!"UNKNOWN".equals(state.getFirst()[0]))
+        throw new Problem(
+            409, "Сверка нужна только для заявок с неизвестным результатом передачи.");
+      throw new Problem(409, "Сверка по этой заявке уже записана.");
+    }
+    return detail(number);
+  }
+
+  public static class Problem extends RuntimeException {
+    private final int status;
+
+    Problem(int status, String message) {
+      super(message);
+      this.status = status;
+    }
+
+    public int status() {
+      return status;
+    }
+  }
+
+  private static Delivery delivery(java.sql.ResultSet rs) throws java.sql.SQLException {
+    Delivery base = delivery(rs.getString("delivery_state"));
+    String result = rs.getString("reconciled_result");
+    Reconciliation reconciliation =
+        result == null
+            ? null
+            : new Reconciliation(
+                result,
+                rs.getObject("reconciled_sale_number", Long.class),
+                rs.getString("reconciled_by"),
+                rs.getTimestamp("reconciled_at").toInstant());
+    String message =
+        reconciliation == null
+            ? base.message()
+            : "FOUND".equals(result)
+                ? "Сверено вручную: продажа №"
+                    + reconciliation.saleNumber()
+                    + " найдена в CloudShop."
+                : "Сверено вручную: продажи в CloudShop нет, заявка не передана.";
+    return new Delivery(base.state(), message, rs.getString("failure_reason"), reconciliation);
+  }
+
   static Delivery delivery(String state) {
     if (state == null) {
       return new Delivery(
-          "NOT_PREPARED", "Передача ещё не подготовлена. Обратитесь к администратору.");
+          "NOT_PREPARED", "Передача ещё не подготовлена. Обратитесь к администратору.", null, null);
     }
     String message =
         switch (state) {
@@ -120,10 +201,17 @@ public class StaffRequestService {
               "Результат передачи неизвестен. Нужна ручная сверка; автоматический повтор запрещён.";
           default -> "Неизвестное состояние передачи. Обратитесь к администратору.";
         };
-    return new Delivery(state, message);
+    return new Delivery(state, message, null, null);
   }
 
-  public record Delivery(String state, String message) {}
+  /**
+   * {@code reason} is why the attempt became UNKNOWN; {@code reconciliation} is the staff check.
+   */
+  public record Delivery(
+      String state, String message, String reason, Reconciliation reconciliation) {}
+
+  /** {@code result}: FOUND (sale number given) or NOT_CREATED. */
+  public record Reconciliation(String result, Long saleNumber, String by, Instant at) {}
 
   static String money(BigDecimal value) {
     var format = NumberFormat.getNumberInstance(Locale.forLanguageTag("ru-RU"));

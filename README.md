@@ -33,7 +33,6 @@
 |---|---|
 | Backend | Java 21, Spring Boot 4.0.8, Spring MVC |
 | Интерфейс | React, TypeScript, Vite, Tailwind CSS 4; каталог, корзина, оформление и служебные заявки |
-| Серверные страницы | Thymeleaf, Bootstrap 5.3.8; сохраняются во время перехода |
 | Данные | PostgreSQL 17.6, Spring Data JPA, JdbcTemplate, Flyway |
 | Интеграция | Spring RestClient, CloudShop API |
 | Защита | Spring Security, CSRF, серверная валидация |

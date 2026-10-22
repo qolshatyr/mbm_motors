@@ -50,10 +50,9 @@ with sync_playwright() as p:
  href=page.locator('.product-card h3 a').first.get_attribute('href')
  page.locator('.product-card h3 a').first.click();page.wait_for_load_state('networkidle');expect(page.locator('#product-title')).to_be_visible()
  assert '/products/' in page.url and page.url.startswith(base)
- assert ctx.request.get(base+'/css/catalog.css').status==200
  page.goto(base);page.get_by_role('link',name='Корзина',exact=False).click();expect(page.get_by_role('heading',name='Корзина',exact=True)).to_be_visible()
  assert page.url.startswith(base+'/basket')
- ok('React-карточка и корзина открываются на том же origin; legacy CSS доступен')
+ ok('React-карточка и корзина открываются на том же origin')
  page.route('**/api/catalog/products?**',lambda route:route.fulfill(status=503,content_type='application/problem+json',body=json.dumps({'detail':'Каталог временно недоступен. Попробуйте ещё раз.'})))
  page.goto(base);expect(page.get_by_role('alert')).to_contain_text('временно недоступен')
  page.unroute('**/api/catalog/products?**');page.get_by_role('button',name='Повторить',exact=True).click();expect(page.locator('.product-card')).to_have_count(24)

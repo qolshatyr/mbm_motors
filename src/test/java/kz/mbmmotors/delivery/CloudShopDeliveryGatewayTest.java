@@ -115,8 +115,10 @@ class CloudShopDeliveryGatewayTest {
     return new SaleCommand(snapshot(), ID, Instant.parse("2026-10-12T01:02:03Z"));
   }
 
-  @Test
-  void customerPayloadUsesSeparatePersonCardAndStrict201() {
+  @ParameterizedTest
+  @ValueSource(ints = {200, 201})
+  void customerPayloadUsesSeparatePersonCardAndAcceptsCreatedOrOk(int success) {
+    status = success;
     assertThat(gateway(Duration.ofSeconds(2)).createCustomer(snapshot()).id()).isEqualTo(ID);
     JsonNode body = mapper.readTree(received);
     assertThat(body.size()).isEqualTo(3);
@@ -170,12 +172,26 @@ class CloudShopDeliveryGatewayTest {
   }
 
   @ParameterizedTest
-  @ValueSource(ints = {200, 202, 301, 302, 307, 308, 400, 401, 403, 429, 500})
+  @ValueSource(ints = {202, 204, 301, 302, 307, 308, 400, 401, 403, 429, 500})
   void customerRejectsOtherStatusesWithoutFollowingOrRetrying(int responseStatus) {
     status = responseStatus;
     reply = TOKEN + snapshot().phone() + "x".repeat(100_000);
     assertSanitized(() -> gateway(Duration.ofSeconds(2)).createCustomer(snapshot()));
     assertThat(calls.get()).isEqualTo(1);
+  }
+
+  @Test
+  void rejectionKeepsOnlyCloudShopErrorTextWithoutPhonesOrToken() {
+    status = 404;
+    reply =
+        "{\"status\":false,\"error\":\"Customer +7 (700) 000-00-00 not found\",\"phone\":\"x\"}";
+    assertSanitized(() -> gateway(Duration.ofSeconds(2)).createSale(command()));
+    assertThatThrownBy(() -> gateway(Duration.ofSeconds(2)).createSale(command()))
+        .hasMessage("CloudShop delivery failed with HTTP 404: Customer … not found");
+    reply = "{\"status\":false,\"error\":\"bad token " + TOKEN + "\"}";
+    assertThatThrownBy(() -> gateway(Duration.ofSeconds(2)).createSale(command()))
+        .hasMessage("CloudShop delivery failed with HTTP 404");
+    assertThat(calls.get()).isEqualTo(3);
   }
 
   @ParameterizedTest
@@ -232,7 +248,10 @@ class CloudShopDeliveryGatewayTest {
   void headersTimeoutDoesNotRetry() {
     stall = true;
     assertSanitized(() -> gateway(Duration.ofMillis(150)).createCustomer(snapshot()));
-    assertThat(calls.get()).isEqualTo(1);
+    // The root cause type is kept so that the log tells a timeout from other failures.
+    assertThatThrownBy(() -> gateway(Duration.ofMillis(150)).createCustomer(snapshot()))
+        .hasMessageContaining("TimeoutException");
+    assertThat(calls.get()).isEqualTo(2);
   }
 
   @Test

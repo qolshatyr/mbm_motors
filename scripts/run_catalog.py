@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Start the local catalog, optionally enabling read-only CloudShop synchronization."""
+"""Start the local backend (API for the Vite dev server), optionally enabling read-only CloudShop sync."""
 
 import argparse
 import getpass
@@ -21,7 +21,8 @@ def main():
             env['CLOUDSHOP_TOKEN'] = getpass.getpass('Токен CloudShop (только чтение, ввод скрыт): ').strip()
         if not env['CLOUDSHOP_TOKEN'] or any(c.isspace() for c in env['CLOUDSHOP_TOKEN']):
             raise SystemExit('Введите непустой токен без пробелов.')
-    print('Каталог: http://localhost:8080/catalog. Остановка: Ctrl+C.', flush=True)
+    print('API: http://localhost:8080. Интерфейс: (cd frontend && npm run dev) → http://127.0.0.1:5173. '
+          'Остановка: Ctrl+C.', flush=True)
     command = [str(root / 'mvnw'), '-q', 'spring-boot:run',
                '-Dspring-boot.run.arguments=--catalog.sync.startup-mode=NONE --catalog.sync.enabled=' + str(args.sync).lower()]
     return subprocess.run(command, cwd=root, env=env).returncode

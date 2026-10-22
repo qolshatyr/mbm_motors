@@ -115,7 +115,7 @@ export function Catalog() {
             : allBrands && <button type="button" className="link-button" onClick={() => setAllBrands(false)}>Свернуть</button>}
         </fieldset>}
         {makes.length > 0 && <div className="filter-group">
-          <label className="filter-label" htmlFor="car-select">АВТОМОБИЛЬ</label>
+          <label className="filter-label" htmlFor="car-select">МАРКА АВТО</label>
           <select id="car-select" className="filter-select" value={carValue} onChange={(event) => pickCar(event.target.value)}>
             <option value="">Любой</option>
             {makes.map((make) => make.name === filter.make && models.length > 0

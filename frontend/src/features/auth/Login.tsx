@@ -15,8 +15,8 @@ export function Login() {
   useEffect(() => { if (error) errorRef.current?.focus(); }, [error]);
   return <div className="login-layout">
     <section className="login-card" aria-labelledby="login-title">
-      <h1 id="login-title">Вход для партнёров</h1>
-      <p className="login-lead">Войдите, чтобы видеть оптовые цены и наличие на складе.</p>
+      <h1 id="login-title">Вход для оптовых клиентов</h1>
+      <p className="login-lead">Сайт работает только для СТО и оптовых покупателей MBM по договору.</p>
       <form className="login-form" onSubmit={(event) => {
         event.preventDefault();
         if (loginMutation.isPending || !username.trim() || !password) return;
@@ -37,6 +37,7 @@ export function Login() {
         <li>заказ списком артикулов из Excel или мессенджера</li>
         <li>история заявок и повтор заказа в один клик</li>
       </ul>
+      <p className="login-aside-contact">Стать клиентом: обратитесь в отдел продаж MBM.</p>
     </section>
   </div>;
 }

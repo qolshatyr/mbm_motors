@@ -1,8 +1,0 @@
-<!doctype html>
-<html lang="ru" xmlns:th="http://www.thymeleaf.org">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Вход сотрудника — MBM Motors</title><link rel="stylesheet" th:href="@{/css/admin-login.css}"></head>
-<body><main class="login"><a th:href="@{/}">MBM Motors</a><p class="eyebrow">Служебный раздел</p><h1>Вход сотрудника</h1><p>Просмотр заявок покупателей.</p>
-<p th:if="${param.error}" role="alert" class="error">Не удалось войти. Проверьте логин и пароль.</p>
-<p th:if="${param.logout}" role="status">Вы вышли из служебного раздела.</p>
-<form th:action="@{/admin/login}" method="post"><label for="username">Логин</label><input id="username" name="username" autocomplete="username" required maxlength="64"><label for="password">Пароль</label><input id="password" type="password" name="password" autocomplete="current-password" required><button type="submit">Войти</button></form>
-<a th:href="@{/}">Вернуться в каталог</a></main></body></html>

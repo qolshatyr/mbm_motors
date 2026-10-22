@@ -8,6 +8,9 @@ public class AdminProperties {
   private String username = "";
   private String passwordHash = "";
 
+  /** Creating a client also creates its CloudShop customer card (a write to CloudShop). */
+  private boolean createCustomers;
+
   public boolean isEnabled() {
     return enabled;
   }
@@ -30,6 +33,14 @@ public class AdminProperties {
 
   public void setPasswordHash(String passwordHash) {
     this.passwordHash = passwordHash;
+  }
+
+  public boolean isCreateCustomers() {
+    return createCustomers;
+  }
+
+  public void setCreateCustomers(boolean createCustomers) {
+    this.createCustomers = createCustomers;
   }
 
   public void validate() {

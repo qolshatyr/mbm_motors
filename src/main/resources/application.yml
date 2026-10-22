@@ -54,3 +54,5 @@ admin:
   enabled: ${MBM_ADMIN_ENABLED:false}
   username: ${MBM_ADMIN_USERNAME:}
   password-hash: ${MBM_ADMIN_PASSWORD_HASH:}
+  # New clients get a CloudShop customer card right away. Requires CLOUDSHOP_TOKEN with write access.
+  create-customers: ${MBM_ADMIN_CREATE_CUSTOMERS:false}

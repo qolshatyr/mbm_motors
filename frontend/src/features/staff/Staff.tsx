@@ -1,10 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, Route, Routes, useLocation, useParams, useSearchParams } from 'react-router-dom';
-import { fetchStaffDetail, fetchStaffPage } from '../../shared/api/staff';
+import { fetchStaffDetail, fetchStaffPage, reconcileRequest } from '../../shared/api/staff';
+import type { StaffDetail } from '../../shared/api/staff';
 import { ApiError, request } from '../../shared/api/http';
 import { Button } from '../../shared/ui/Button';
 import { EmptyState, Notice } from '../../shared/ui/Feedback';
+import { Logo } from '../../shared/ui/Logo';
+import { Clients } from './Clients';
 
 const StaffAccess = createContext({ blocked: false, deny: () => {} });
 const staffOptions = { gcTime: 0, staleTime: 0, retry: false, refetchOnWindowFocus: false, refetchOnReconnect: false } as const;
@@ -13,10 +16,10 @@ function CreatedAt({ value }: { value: string }) {
   return <time dateTime={value}>{dateFormatter.format(new Date(value))} <span className="muted">(Алматы)</span></time>;
 }
 function ScopeNote() {
-  return <Notice>Заявки сохранены на сайте. Они ещё не переданы в CloudShop и не подтверждены магазином. Товары не резервируются.</Notice>;
+  return <Notice>Заявки сохранены на сайте. Состояние передачи в CloudShop указано у каждой заявки; переданная заявка — непроведённая продажа, не подтверждённая магазином. Товары не резервируются.</Notice>;
 }
 function AccessDenied() {
-  return <Notice error><p>Войдите в служебный раздел, чтобы просматривать заявки. Если вход не помогает, обратитесь к администратору: доступ может быть отключён.</p><a className="button button-primary" href="/admin/login">Войти в служебный раздел</a></Notice>;
+  return <Notice error><p>Войдите в служебный раздел, чтобы управлять клиентами и просматривать заявки. Если вход не помогает, обратитесь к администратору: доступ может быть отключён.</p><a className="button button-primary" href="/admin/login">Войти в служебный раздел</a></Notice>;
 }
 function useAuthError(error: Error | null) {
   const access = useContext(StaffAccess);
@@ -45,7 +48,7 @@ export function Staff() {
     if (blocked || loggingOut) document.getElementById('main')?.focus({ preventScroll: true });
   }, [blocked, loggingOut]);
   useEffect(() => {
-    document.title = location.pathname === '/admin/requests' ? 'Заявки — MBM Motors' : 'Заявка — MBM Motors';
+    document.title = location.pathname === '/admin/clients' ? 'Клиенты — MBM Motors' : location.pathname === '/admin/requests' ? 'Заявки — MBM Motors' : 'Заявка — MBM Motors';
     const nextPath = location.pathname + location.search;
     if (previousPath.current !== nextPath) {
       document.getElementById('main')?.focus({ preventScroll: true });
@@ -104,14 +107,14 @@ export function Staff() {
   return <StaffAccess.Provider value={{ blocked, deny }}>
     <a href="#main" className="skip-link">Перейти к содержимому</a>
     <header className="site-header"><div className="page-width staff-header">
-      <Link to="/admin/requests" className="brand" aria-label="MBM Motors — служебные заявки"><span className="brand-mark" aria-hidden="true">M</span><span>MBM <span className="brand-light">Motors</span></span></Link>
-      <nav aria-label="Служебная навигация"><Link to="/admin/requests">Заявки</Link><a href="/">Каталог</a><form ref={form} action="/admin/logout" method="post"><input type="hidden" name="_csrf" value={logoutToken} /><Button type="button" disabled={loggingOut} onClick={() => void logout()}>{loggingOut ? 'Выходим…' : 'Выйти'}</Button></form></nav>
+      <Link to="/admin/requests" className="brand" aria-label="MBM Motors — служебные заявки"><Logo tagline={false} /></Link>
+      <span className="staff-tag">Администрирование</span><nav aria-label="Служебная навигация"><Link to="/admin/clients" aria-current={location.pathname === '/admin/clients' ? 'page' : undefined}>Клиенты</Link><Link to="/admin/requests" aria-current={location.pathname.startsWith('/admin/requests') ? 'page' : undefined}>Заявки</Link><a href="/">Каталог</a><form ref={form} action="/admin/logout" method="post"><input type="hidden" name="_csrf" value={logoutToken} /><Button type="button" disabled={loggingOut} onClick={() => void logout()}>{loggingOut ? 'Выходим…' : 'Выйти'}</Button></form></nav>
     </div></header>
     <main id="main" tabIndex={-1} className="page-width main-content staff-content">
       {logoutError && <Notice error>{logoutError}</Notice>}
-      {loggingOut ? <><h1>Служебные заявки</h1><div className="loading-state" role="status">Завершаем служебную сессию…</div></> : blocked ? <><h1>Служебные заявки</h1><AccessDenied /></> : !visible ? <><h1>Служебные заявки</h1><div className="loading-state" role="status">При возвращении проверим доступ к заявкам…</div></> : <Routes key={accessCheck}><Route path="/admin/requests" element={<RequestList />} /><Route path="/admin/requests/:number" element={<RequestDetail />} /><Route path="*" element={<EmptyState title="Страница не найдена"><Link className="button" to="/admin/requests">К заявкам</Link></EmptyState>} /></Routes>}
+      {loggingOut ? <><h1>Служебный раздел</h1><div className="loading-state" role="status">Завершаем служебную сессию…</div></> : blocked ? <><h1>Служебный раздел</h1><AccessDenied /></> : !visible ? <><h1>Служебный раздел</h1><div className="loading-state" role="status">При возвращении проверим доступ…</div></> : <Routes key={accessCheck}><Route path="/admin/clients" element={<Clients onDenied={deny} />} /><Route path="/admin/requests" element={<RequestList />} /><Route path="/admin/requests/:number" element={<RequestDetail />} /><Route path="*" element={<EmptyState title="Страница не найдена"><Link className="button" to="/admin/requests">К заявкам</Link></EmptyState>} /></Routes>}
     </main>
-    <footer className="page-width footer"><span>MBM Motors · Служебный раздел</span><span>Только просмотр заявок</span></footer>
+    <footer className="page-width footer"><span>MBM Motors · Служебный раздел</span><span>Клиенты и заявки</span></footer>
   </StaffAccess.Provider>;
 }
 
@@ -141,9 +144,38 @@ function RequestDetail() {
   const denied = useAuthError(result.error);
   return <><div className="back-nav"><Link to="/admin/requests">Все заявки</Link></div><div className="heading-row staff-heading"><h1>Заявка №{number}</h1><Button disabled={!valid || result.isFetching || denied} onClick={() => void result.refetch()}>Обновить</Button></div><ScopeNote />
     {!valid ? <Notice error>Некорректный номер заявки.</Notice> : denied ? <AccessDenied /> : result.isFetching || result.isPending ? <div className="loading-state" role="status">Загружаем заявку…</div> : result.isError ? <Notice error>{result.error instanceof ApiError && result.error.status === 404 ? 'Заявка не найдена. Проверьте номер или вернитесь к списку заявок.' : 'Не удалось загрузить заявку. Проверьте соединение и нажмите «Обновить».'}</Notice> : <>
-      <section className="staff-overview" aria-labelledby="request-summary"><h2 id="request-summary">Сохранена на сайте</h2><dl className="staff-facts"><div><dt>Дата и время</dt><dd><CreatedAt value={result.data.createdAt} /></dd></div><div><dt>Точка</dt><dd>{result.data.storeName}</dd></div><div><dt>Передача</dt><dd>{result.data.delivery?.message || 'Передача ещё не подключена.'}</dd></div><div><dt>Товаров</dt><dd>{result.data.itemCount}</dd></div><div><dt>Сумма</dt><dd>{result.data.totalText}</dd></div></dl></section>
+      <section className="staff-overview" aria-labelledby="request-summary"><h2 id="request-summary">Сохранена на сайте</h2><dl className="staff-facts"><div><dt>Дата и время</dt><dd><CreatedAt value={result.data.createdAt} /></dd></div><div><dt>Точка</dt><dd>{result.data.storeName}</dd></div><div><dt>Передача</dt><dd>{result.data.delivery?.message || 'Передача ещё не подключена.'}</dd></div>{result.data.delivery?.reason && <div><dt>Причина</dt><dd className="code">{result.data.delivery.reason}</dd></div>}{result.data.delivery?.reconciliation && <div><dt>Сверка</dt><dd>{result.data.delivery.reconciliation.by}, <CreatedAt value={result.data.delivery.reconciliation.at} /></dd></div>}<div><dt>Товаров</dt><dd>{result.data.itemCount}</dd></div><div><dt>Сумма</dt><dd>{result.data.totalText}</dd></div></dl>{result.data.delivery?.state === 'UNKNOWN' && !result.data.delivery.reconciliation && <Reconciliation number={number} />}</section>
       <section className="staff-contact" aria-labelledby="request-contact"><h2 id="request-contact">Покупатель</h2><dl className="staff-facts"><div><dt>Имя</dt><dd>{result.data.customerName}</dd></div><div><dt>Телефон</dt><dd>{result.data.phone}</dd></div><div><dt>Комментарий</dt><dd className="staff-comment">{result.data.comment || 'Не указан'}</dd></div></dl></section>
       <section aria-labelledby="request-items"><h2 id="request-items">Состав заявки</h2><p className="flow-note">Цены, названия и количество сохранены в момент оформления.</p><ol className="staff-items">{result.data.items.map(item => <li key={item.position}><div><h3>{item.productName}</h3>{item.sku && <p className="sku">Артикул: {item.sku}</p>}<p className="muted">{item.quantity} {item.unit} × {item.priceText}</p></div><strong>{item.lineTotalText}</strong></li>)}</ol><div className="checkout-total"><span>Итого</span><strong>{result.data.totalText}</strong></div></section>
     </>}
   </>;
+}
+
+/**
+ * Manual check of an order whose delivery result is unknown. Staff look for «Заявка MBM-<number>»
+ * in CloudShop sales and record what they found; the site never resends the order.
+ */
+function Reconciliation({ number }: { number: string }) {
+  const client = useQueryClient();
+  const access = useContext(StaffAccess);
+  const [result, setResult] = useState<'FOUND' | 'NOT_CREATED' | ''>('');
+  const [sale, setSale] = useState('');
+  const saleValid = /^[1-9][0-9]{0,11}$/.test(sale.trim());
+  const save = useMutation({
+    mutationFn: () => reconcileRequest(number, result as 'FOUND' | 'NOT_CREATED', result === 'FOUND' ? Number(sale.trim()) : null),
+    onSuccess: (detail: StaffDetail) => client.setQueryData(['staff', 'request', number], detail),
+    onError: (error) => { if (error instanceof ApiError && (error.status === 401 || error.status === 403)) access.deny(); },
+  });
+  const ready = result === 'NOT_CREATED' || (result === 'FOUND' && saleValid);
+  return <form className="staff-reconcile" onSubmit={(event) => { event.preventDefault(); if (ready) save.mutate(); }} aria-labelledby="reconcile-title">
+    <h3 id="reconcile-title">Ручная сверка</h3>
+    <p className="muted">Найдите в продажах CloudShop комментарий «Заявка MBM-{number}» и отметьте результат. Сайт заявку повторно не отправит.</p>
+    <fieldset><legend className="sr-only">Результат сверки</legend>
+      <label className="staff-reconcile-option"><input type="radio" name="reconcile" checked={result === 'FOUND'} onChange={() => setResult('FOUND')} />Продажа найдена в CloudShop</label>
+      {result === 'FOUND' && <label className="field"><span className="field-label">Номер продажи</span><input className="code" value={sale} onChange={(event) => setSale(event.target.value)} inputMode="numeric" maxLength={12} placeholder="Например, 35825" aria-invalid={sale !== '' && !saleValid} autoComplete="off" required /></label>}
+      <label className="staff-reconcile-option"><input type="radio" name="reconcile" checked={result === 'NOT_CREATED'} onChange={() => setResult('NOT_CREATED')} />Продажи в CloudShop нет</label>
+    </fieldset>
+    {save.isError && <p className="form-error" role="alert">{save.error instanceof ApiError ? save.error.message : 'Не удалось записать сверку. Проверьте соединение и повторите.'}</p>}
+    <Button type="submit" primary disabled={!ready || save.isPending}>{save.isPending ? 'Сохраняем…' : 'Записать сверку'}</Button>
+  </form>;
 }

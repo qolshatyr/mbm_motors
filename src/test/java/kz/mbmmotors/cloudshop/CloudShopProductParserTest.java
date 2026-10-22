@@ -50,6 +50,18 @@ class CloudShopProductParserTest {
   }
 
   @Test
+  void nullStorePriceMeansNoPriceForThatPlaceButNullStockIsRejected() {
+    String partial =
+        product.replace("\"store_prices\":[]", "\"store_prices\":{\"a\":null,\"b\":\"5.00\"}");
+    var prices = parser.parse("[" + partial + "]").getFirst().storePrices();
+    assertThat(prices).containsOnlyKeys("b");
+    assertThatThrownBy(
+            () ->
+                parser.parse("[" + product.replace("\"stock\":[]", "\"stock\":{\"a\":null}") + "]"))
+        .isInstanceOf(CloudShopException.class);
+  }
+
+  @Test
   void rejectsNonemptyArraysAndInvalidNumbersWithoutExposingResponse() {
     for (String invalid :
         new String[] {
@@ -70,6 +82,29 @@ class CloudShopProductParserTest {
         .isInstanceOf(CloudShopException.class);
     assertThatThrownBy(() -> parser.parse("{\"status\":false}"))
         .isInstanceOf(CloudShopException.class);
+  }
+
+  @Test
+  void batchSkipsUnreadableCardsAndReportsTheirIds() {
+    String broken =
+        product
+            .replace("6a6e12abb0b00726916dde8b", "6a6e12abb0b00726916dde8c")
+            .replace("\"stock\":[]", "\"stock\":{\"a\":null}");
+    String undated =
+        product
+            .replace("6a6e12abb0b00726916dde8b", "6a6e12abb0b00726916dde8d")
+            .replace("\"updated_at\":\"2026-10-04 10:15:46\"", "\"updated_at\":null");
+    var batch = parser.parseBatch("[" + product + "," + broken + "," + undated + ",{},7]");
+    assertThat(batch.products())
+        .extracting(CloudShopProduct::id)
+        .containsExactly("6a6e12abb0b00726916dde8b");
+    assertThat(batch.unreadable())
+        .containsExactly("6a6e12abb0b00726916dde8c", "6a6e12abb0b00726916dde8d");
+    assertThat(batch.size()).isEqualTo(5);
+    assertThat(batch.skipped()).isEqualTo(4);
+    assertThatThrownBy(() -> parser.parseBatch("{\"status\":false}"))
+        .isInstanceOf(CloudShopException.class);
+    assertThatThrownBy(() -> parser.parseBatch("broken")).isInstanceOf(CloudShopException.class);
   }
 
   @Test

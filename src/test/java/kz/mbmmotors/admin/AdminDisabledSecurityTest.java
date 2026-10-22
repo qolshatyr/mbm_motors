@@ -13,9 +13,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-@WebMvcTest(
-    controllers = {StaffRequestController.class, AdminLoginController.class},
-    properties = "admin.enabled=false")
+@WebMvcTest(controllers = StaffRequestController.class, properties = "admin.enabled=false")
 @Import({WebSecurityConfiguration.class, AdminSecurityConfiguration.class})
 class AdminDisabledSecurityTest {
   @Autowired MockMvc mvc;
