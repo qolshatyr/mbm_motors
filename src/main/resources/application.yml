@@ -51,7 +51,7 @@ delivery:
   interval: 30s
   stale-after: 5m
 alerts:
-  # Telegram message to staff about UNKNOWN deliveries and orders stuck before delivery.
+  # Telegram messages to staff about new orders, UNKNOWN deliveries and orders stuck before delivery.
   # Off while the bot token is empty. See docs/Deployment.md.
   telegram:
     bot-token: ${MBM_ALERT_TELEGRAM_BOT_TOKEN:}
@@ -59,6 +59,7 @@ alerts:
   site-url: ${MBM_SITE_URL:}
   interval: 1m
   waiting-after: 15m
+  new-orders: ${MBM_ALERT_NEW_ORDERS:true}
 admin:
   enabled: ${MBM_ADMIN_ENABLED:false}
   username: ${MBM_ADMIN_USERNAME:}

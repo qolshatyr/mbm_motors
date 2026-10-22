@@ -148,4 +148,57 @@ class AlertRepositoryIntegrationTest {
         id);
     assertThat(pendingIds(BOUNDARY)).isEmpty();
   }
+
+  @Test
+  void newOrdersCarryCompanyItemsAndTotalUntilAnnounced() {
+    UUID first = order(NOW.minusSeconds(10), null, true);
+    UUID second = order(NOW, null, true);
+    jdbc.update("update local_orders set partner_id=null where id=?", second);
+    var orders = repository.newOrders(15);
+    assertThat(orders).extracting(AlertRepository.NewOrder::orderId).containsExactly(first, second);
+    assertThat(orders.getFirst().company()).isEqualTo("Synthetic Partner");
+    assertThat(orders.getFirst().itemCount()).isEqualTo(1);
+    assertThat(orders.getFirst().total()).isEqualByComparingTo("1.00");
+    assertThat(orders.get(1).company()).isNull();
+    assertThat(repository.markAnnounced(List.of(first), NOW)).isEqualTo(1);
+    assertThat(repository.markAnnounced(List.of(first), NOW.plusSeconds(60))).isZero();
+    assertThat(repository.newOrders(15))
+        .extracting(AlertRepository.NewOrder::orderId)
+        .containsExactly(second);
+  }
+
+  @Test
+  void ordersPlacedBeforeTheMigrationAreNotAnnounced() {
+    String older = "alert_old_" + UUID.randomUUID().toString().replace("-", "");
+    var source =
+        new DriverManagerDataSource(
+            System.getenv("MBM_TEST_DATABASE_URL"),
+            System.getenv().getOrDefault("MBM_TEST_DATABASE_USER", "mbm"),
+            System.getenv().getOrDefault("MBM_TEST_DATABASE_PASSWORD", ""));
+    try {
+      Flyway.configure()
+          .dataSource(source)
+          .schemas(older)
+          .defaultSchema(older)
+          .target("10")
+          .load()
+          .migrate();
+      var oldJdbc = new JdbcTemplate(source);
+      oldJdbc.update(
+          "insert into "
+              + older
+              + ".local_orders(id,idempotency_key,owner_id,request_hash,revision,status,store_id,store_name,customer_name,phone,comment,consent_at,created_at,total,total_text,item_count) values (?,?,?,repeat('a',64),repeat('b',64),'RECEIVED','aaaaaaaaaaaaaaaaaaaaaaaa','Synthetic store','Synthetic Buyer','+77000000000','Synthetic',now(),now(),1.00,'1.00',1)",
+          UUID.randomUUID(),
+          UUID.randomUUID(),
+          UUID.randomUUID());
+      Flyway.configure().dataSource(source).schemas(older).defaultSchema(older).load().migrate();
+      assertThat(
+              oldJdbc.queryForObject(
+                  "select count(*) from " + older + ".local_orders where announced_at is null",
+                  Integer.class))
+          .isZero();
+    } finally {
+      admin.execute("drop schema if exists " + older + " cascade");
+    }
+  }
 }

@@ -7,7 +7,10 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 /** Staff alerts about orders that need attention. Off while the bot token is empty. */
 @ConfigurationProperties(prefix = "alerts")
 public record AlertProperties(
-    Telegram telegram, String siteUrl, @DefaultValue("15m") Duration waitingAfter) {
+    Telegram telegram,
+    String siteUrl,
+    @DefaultValue("15m") Duration waitingAfter,
+    @DefaultValue("true") boolean newOrders) {
 
   public record Telegram(
       @DefaultValue("https://api.telegram.org") String apiUrl,

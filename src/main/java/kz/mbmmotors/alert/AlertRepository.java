@@ -1,5 +1,6 @@
 package kz.mbmmotors.alert;
 
+import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
@@ -50,6 +51,42 @@ public class AlertRepository {
                 rs.getString("reason")),
         Timestamp.from(waitingBefore == null ? Instant.EPOCH : waitingBefore),
         limit);
+  }
+
+  /** A new order for staff: the partner company, not the contact person or phone. */
+  public record NewOrder(
+      UUID orderId, long number, String company, int itemCount, BigDecimal total) {}
+
+  /** Orders not yet announced to staff, oldest first. */
+  public List<NewOrder> newOrders(int limit) {
+    return jdbc.query(
+        """
+        select o.id, o.number, p.company, o.item_count, o.total
+        from local_orders o
+        left join partners p on p.id = o.partner_id
+        where o.announced_at is null
+        order by o.created_at
+        limit ?
+        """,
+        (rs, row) ->
+            new NewOrder(
+                rs.getObject("id", UUID.class),
+                rs.getLong("number"),
+                rs.getString("company"),
+                rs.getInt("item_count"),
+                rs.getBigDecimal("total")),
+        limit);
+  }
+
+  /** Marks orders announced; an order already marked keeps its first time. */
+  public int markAnnounced(List<UUID> orderIds, Instant now) {
+    if (orderIds.isEmpty()) return 0;
+    return jdbc.update(
+        "update local_orders set announced_at = ? where id = any(?) and announced_at is null",
+        ps -> {
+          ps.setTimestamp(1, Timestamp.from(now));
+          ps.setArray(2, ps.getConnection().createArrayOf("uuid", orderIds.toArray()));
+        });
   }
 
   /** Marks orders alerted; an order already marked keeps its first time. */
