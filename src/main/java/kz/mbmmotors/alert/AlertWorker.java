@@ -132,8 +132,8 @@ class AlertWorker {
     var text =
         new StringBuilder(
             orders.size() == 1
-                ? "MBM Motors: новая заявка\n"
-                : "MBM Motors: новые заявки (" + orders.size() + ")\n");
+                ? "MBM AutoMotors: новая заявка\n"
+                : "MBM AutoMotors: новые заявки (" + orders.size() + ")\n");
     for (var order : orders) {
       String company =
           order.company() == null
@@ -164,7 +164,8 @@ class AlertWorker {
   }
 
   String message(List<AlertRepository.Pending> pending) {
-    var text = new StringBuilder("MBM Motors: заявки требуют внимания (" + pending.size() + ")\n");
+    var text =
+        new StringBuilder("MBM AutoMotors: заявки требуют внимания (" + pending.size() + ")\n");
     for (var order : pending) {
       String reason = order.reason().replaceAll("\\p{Cntrl}", " ").strip();
       if (reason.length() > MAX_REASON) reason = reason.substring(0, MAX_REASON) + "…";

@@ -29,7 +29,7 @@ def main():
     if re.search(r'url\((?!data:)', css):
         raise SystemExit('Stylesheet still references external files')
     # Gallery name of the artifact; the app still sets the tab title per screen.
-    page = ('<title>Демо MBM Automotors</title>\n'
+    page = ('<title>Демо MBM AutoMotors</title>\n'
             f'<style>\n{css}\n</style>\n'
             '<div id="root"></div>\n'
             f'<script type="module">\n{js}\n</script>\n')

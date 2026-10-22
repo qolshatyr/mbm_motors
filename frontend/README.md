@@ -1,6 +1,6 @@
-# Интерфейс MBM Motors
+# Интерфейс MBM AutoMotors
 
-Партнёрский портал MBM Automotors (вход, каталог, карточка товара, быстрый заказ, корзина с оформлением, кабинет) на React, TypeScript, Vite и Tailwind CSS. Требуется Node.js ≥22.12.0. Версии закреплены в `package-lock.json`.
+Партнёрский портал MBM AutoMotors (вход, каталог, карточка товара, быстрый заказ, корзина с оформлением, кабинет) на React, TypeScript, Vite и Tailwind CSS. Требуется Node.js ≥22.12.0. Версии закреплены в `package-lock.json`.
 
 ```sh
 cd frontend

@@ -63,7 +63,7 @@ class AlertWorkerTest {
     var text = ArgumentCaptor.forClass(String.class);
     verify(notifier).send(text.capture());
     assertThat(text.getValue())
-        .startsWith("MBM Motors: заявки требуют внимания (2)")
+        .startsWith("MBM AutoMotors: заявки требуют внимания (2)")
         .contains("№7 — неясен результат передачи, сверьте с CloudShop: Продажа: HTTP 404")
         .contains("№8 — не передана в CloudShop: у партнёра нет карточки CloudShop")
         .endsWith("Заявки: https://shop.example.kz/admin/requests");
@@ -116,7 +116,7 @@ class AlertWorkerTest {
     verify(notifier).send(text.capture());
     assertThat(text.getValue())
         .isEqualTo(
-            "MBM Motors: новая заявка\n\n№12 — ТОО «Автосервис», позиций: 3, сумма: 45 000,50 ₸"
+            "MBM AutoMotors: новая заявка\n\n№12 — ТОО «Автосервис», позиций: 3, сумма: 45 000,50 ₸"
                 + "\n\nЗаявки: https://shop.example.kz/admin/requests");
     verify(repository).markAnnounced(List.of(order.orderId()), NOW);
   }
@@ -129,7 +129,7 @@ class AlertWorkerTest {
     var text = ArgumentCaptor.forClass(String.class);
     verify(notifier).send(text.capture());
     assertThat(text.getValue())
-        .startsWith("MBM Motors: новые заявки (2)")
+        .startsWith("MBM AutoMotors: новые заявки (2)")
         .contains("№12 — Партнёр 1, позиций: 3, сумма: 1 000 ₸")
         .contains("№13 — без партнёра, позиций: 3, сумма: 25 ₸");
   }

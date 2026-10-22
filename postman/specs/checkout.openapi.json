@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "MBM Motors Local Checkout API",
+    "title": "MBM AutoMotors Local Checkout API",
     "version": "1.0.0",
     "description": "Локальные заявки без внешней передачи. Точки выдачи требуют явной настройки после согласования."
   },

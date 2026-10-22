@@ -48,7 +48,7 @@ export function Staff() {
     if (blocked || loggingOut) document.getElementById('main')?.focus({ preventScroll: true });
   }, [blocked, loggingOut]);
   useEffect(() => {
-    document.title = location.pathname === '/admin/clients' ? 'Клиенты — MBM Motors' : location.pathname === '/admin/requests' ? 'Заявки — MBM Motors' : 'Заявка — MBM Motors';
+    document.title = location.pathname === '/admin/clients' ? 'Клиенты — MBM AutoMotors' : location.pathname === '/admin/requests' ? 'Заявки — MBM AutoMotors' : 'Заявка — MBM AutoMotors';
     const nextPath = location.pathname + location.search;
     if (previousPath.current !== nextPath) {
       document.getElementById('main')?.focus({ preventScroll: true });
@@ -107,14 +107,14 @@ export function Staff() {
   return <StaffAccess.Provider value={{ blocked, deny }}>
     <a href="#main" className="skip-link">Перейти к содержимому</a>
     <header className="site-header"><div className="page-width staff-header">
-      <Link to="/admin/requests" className="brand" aria-label="MBM Motors — служебные заявки"><Logo tagline={false} /></Link>
+      <Link to="/admin/requests" className="brand" aria-label="MBM AutoMotors — служебные заявки"><Logo tagline={false} /></Link>
       <span className="staff-tag">Администрирование</span><nav aria-label="Служебная навигация"><Link to="/admin/clients" aria-current={location.pathname === '/admin/clients' ? 'page' : undefined}>Клиенты</Link><Link to="/admin/requests" aria-current={location.pathname.startsWith('/admin/requests') ? 'page' : undefined}>Заявки</Link><a href="/">Каталог</a><form ref={form} action="/admin/logout" method="post"><input type="hidden" name="_csrf" value={logoutToken} /><Button type="button" disabled={loggingOut} onClick={() => void logout()}>{loggingOut ? 'Выходим…' : 'Выйти'}</Button></form></nav>
     </div></header>
     <main id="main" tabIndex={-1} className="page-width main-content staff-content">
       {logoutError && <Notice error>{logoutError}</Notice>}
       {loggingOut ? <><h1>Служебный раздел</h1><div className="loading-state" role="status">Завершаем служебную сессию…</div></> : blocked ? <><h1>Служебный раздел</h1><AccessDenied /></> : !visible ? <><h1>Служебный раздел</h1><div className="loading-state" role="status">При возвращении проверим доступ…</div></> : <Routes key={accessCheck}><Route path="/admin/clients" element={<Clients onDenied={deny} />} /><Route path="/admin/requests" element={<RequestList />} /><Route path="/admin/requests/:number" element={<RequestDetail />} /><Route path="*" element={<EmptyState title="Страница не найдена"><Link className="button" to="/admin/requests">К заявкам</Link></EmptyState>} /></Routes>}
     </main>
-    <footer className="page-width footer"><span>MBM Motors · Служебный раздел</span><span>Клиенты и заявки</span></footer>
+    <footer className="page-width footer"><span>MBM AutoMotors · Служебный раздел</span><span>Клиенты и заявки</span></footer>
   </StaffAccess.Provider>;
 }
 
