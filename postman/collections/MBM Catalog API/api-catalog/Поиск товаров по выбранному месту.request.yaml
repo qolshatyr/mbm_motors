@@ -21,6 +21,26 @@ queryParams:
   - key: page
     value: "0"
     disabled: false
+  - key: section
+    value: Ходовая часть
+    disabled: true
+    description: Раздел из метки CloudShop (facets.sections).
+  - key: subsection
+    value: Амортизаторы и опоры
+    disabled: true
+    description: Подраздел; только вместе с section, иначе 400.
+  - key: make
+    value: Hyundai
+    disabled: true
+    description: Марка автомобиля (facets.makes).
+  - key: model
+    value: Sonata
+    disabled: true
+    description: Модель; только вместе с make, иначе 400.
+  - key: brand
+    value: HPT
+    disabled: true
+    description: Бренд детали; параметр можно повторять (до 20).
 settings: {}
 examples: ./.resources/Поиск товаров по выбранному месту.resources/examples
 order: 2000
@@ -37,6 +57,10 @@ scripts:
         pm.expect(body.page).to.equal(0);
         pm.expect(body.totalProducts).to.be.a('number');
         pm.expect(body.storeId).to.equal('64feaaa51c9799143b532fcf');
+      });
+      pm.test("Фильтры по меткам CloudShop", () => {
+        ['sections', 'subsections', 'makes', 'models', 'brands'].forEach(k => pm.expect(body.facets[k]).to.be.an('array'));
+        pm.expect(body.filter.brands).to.be.an('array');
       });
       pm.test("Свежесть и серверное отображение", () => {
         pm.expect(body.stale).to.be.a('boolean');

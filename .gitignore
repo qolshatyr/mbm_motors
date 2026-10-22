@@ -35,3 +35,10 @@ prototype/
 
 # Playwright MCP browser artifacts
 .playwright-mcp/
+
+# CloudShop exports (contain costs) and generated catalog results
+docs/catalog-*.xlsx
+docs/catalog/*.xlsx
+.venv-catalog/
+docs/category format.xlsx
+.~lock.*#

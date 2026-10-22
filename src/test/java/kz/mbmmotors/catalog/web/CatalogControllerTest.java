@@ -36,6 +36,7 @@ class CatalogControllerTest {
             "3 000 ₸",
             "В наличии: 4",
             null,
+            null,
             false,
             null,
             null);
@@ -52,7 +53,10 @@ class CatalogControllerTest {
                 1,
                 1,
                 "05.10.2026 12:00",
-                false));
+                false,
+                CatalogViewService.CatalogFilter.NONE,
+                new CatalogViewService.Facets(
+                    List.of(), List.of(), List.of(), List.of(), List.of())));
     var result = mvc.get().uri("/catalog").exchange();
     assertThat(result).hasStatusOk().hasViewName("catalog/list");
     assertThat(result.getResponse().getContentAsString())
