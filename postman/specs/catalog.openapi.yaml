@@ -47,6 +47,30 @@ paths:
         - in: query
           name: page
           schema: {type: integer, minimum: 0, maximum: 1000000, default: 0}
+        - in: query
+          name: sort
+          schema: {type: string, enum: [name, price, stock], default: name}
+        - in: query
+          name: section
+          description: Раздел из метки CloudShop.
+          schema: {type: string, maxLength: 120}
+        - in: query
+          name: subsection
+          description: Подраздел; только вместе с section.
+          schema: {type: string, maxLength: 120}
+        - in: query
+          name: make
+          description: Марка автомобиля.
+          schema: {type: string, maxLength: 120}
+        - in: query
+          name: model
+          description: Модель; только вместе с make.
+          schema: {type: string, maxLength: 120}
+        - in: query
+          name: brand
+          description: Бренд детали; любой из перечисленных.
+          explode: true
+          schema: {type: array, maxItems: 20, items: {type: string, maxLength: 120}}
       responses:
         '200':
           description: Страница до 24 товаров; stale запрещает считать сохранённые остатки текущими.
@@ -112,9 +136,50 @@ components:
         priceText: {type: string}
         stockText: {type: string}
         imageUrl: {type: string, nullable: true, format: uri}
+        brand: {type: string, nullable: true, description: 'Бренды детали из меток «Бренд …» через запятую'}
+    CatalogFilter:
+      type: object
+      required: [brands]
+      properties:
+        section: {type: string, nullable: true}
+        subsection: {type: string, nullable: true}
+        make: {type: string, nullable: true}
+        model: {type: string, nullable: true}
+        brands: {type: array, items: {type: string}}
+    FacetValue:
+      type: object
+      required: [name, count]
+      properties:
+        name: {type: string}
+        count: {type: integer, format: int64, minimum: 0}
+    Facets:
+      type: object
+      description: Варианты каждого фильтра с числом товаров при остальных выбранных фильтрах. subsections — только при section, models — только при make.
+      required: [sections, subsections, makes, models, brands]
+      properties:
+        sections: {type: array, items: {$ref: '#/components/schemas/FacetValue'}}
+        subsections: {type: array, items: {$ref: '#/components/schemas/FacetValue'}}
+        makes: {type: array, items: {$ref: '#/components/schemas/FacetValue'}}
+        models: {type: array, items: {$ref: '#/components/schemas/FacetValue'}}
+        brands: {type: array, items: {$ref: '#/components/schemas/FacetValue'}}
+    Classification:
+      type: object
+      required: [brands, fitment]
+      properties:
+        section: {type: string, nullable: true}
+        subsection: {type: string, nullable: true}
+        brands: {type: array, items: {type: string}}
+        fitment:
+          type: array
+          items:
+            type: object
+            required: [make, models]
+            properties:
+              make: {type: string}
+              models: {type: array, items: {type: string}}
     CatalogPage:
       type: object
-      required: [products, query, storeId, storeName, stores, page, totalPages, totalProducts, stale]
+      required: [products, query, storeId, storeName, stores, page, totalPages, totalProducts, stale, filter, facets]
       properties:
         products:
           type: array
@@ -131,6 +196,8 @@ components:
         totalProducts: {type: integer, minimum: 0, format: int64}
         lastSyncText: {type: string, nullable: true, description: 'Время по Алматы, dd.MM.yyyy HH:mm'}
         stale: {type: boolean}
+        filter: {$ref: '#/components/schemas/CatalogFilter'}
+        facets: {$ref: '#/components/schemas/Facets'}
     Problem:
       type: object
       required: [type, title, status, detail]
@@ -142,7 +209,7 @@ components:
         instance: {type: string}
     Detail:
       type: object
-      required: [product, offers, selectedStore, stale]
+      required: [product, offers, selectedStore, stale, classification]
       properties:
         product: {$ref: '#/components/schemas/Product'}
         offers:
@@ -151,6 +218,7 @@ components:
         selectedStore: {type: string}
         lastSyncText: {type: string, nullable: true}
         stale: {type: boolean}
+        classification: {$ref: '#/components/schemas/Classification'}
     Offer:
       type: object
       required: [storeId, storeName, priceText, stockText, canAdd, unavailabilityReason]

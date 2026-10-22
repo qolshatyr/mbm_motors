@@ -63,3 +63,11 @@ class ClassifyTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class FillCategoriesTagsTest(unittest.TestCase):
+    def test_tags_with_models_and_makes_only(self):
+        from tools.catalog.fill_categories import tags
+        name = 'Г3-4 Радиатор кондиционера MBM-AG HY ACCENT/SOLARIS RIO 11-'
+        self.assertEqual(tags(name), 'Охлаждение и климат, Кондиционер и отопитель, Hyundai, Accent, Solaris, Kia, Rio, Бренд MBM-AG')
+        self.assertEqual(tags(name, models=False), 'Охлаждение и климат, Кондиционер и отопитель, Hyundai, Kia, Бренд MBM-AG')

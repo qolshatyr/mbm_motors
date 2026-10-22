@@ -9,8 +9,10 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.ResolverStyle;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -42,7 +44,8 @@ final class CloudShopProductParser {
                 numbers(node.get("store_prices"), true),
                 date(text(node.get("updated_at"))),
                 text(node.get("category_id")),
-                images(node.get("img"))));
+                images(node.get("img")),
+                tags(node.get("tags"))));
       }
       return List.copyOf(products);
     } catch (Exception exception) {
@@ -88,6 +91,18 @@ final class CloudShopProductParser {
     if (value.contains("T")) return OffsetDateTime.parse(value).toInstant();
     // Working integration policy based on verified API/UI observations; UTC is explicit.
     return LocalDateTime.parse(value, LEGACY_DATE).toInstant(ZoneOffset.UTC);
+  }
+
+  /** CloudShop tags in their stored order; blanks and repeats are dropped. */
+  private static List<String> tags(JsonNode node) {
+    if (node == null || node.isNull()) return List.of();
+    if (!node.isArray()) throw new IllegalArgumentException();
+    Set<String> values = new LinkedHashSet<>();
+    for (JsonNode tag : node) {
+      String value = text(tag);
+      if (value != null && !value.isBlank()) values.add(value.strip());
+    }
+    return List.copyOf(values);
   }
 
   private static List<String> images(JsonNode node) {

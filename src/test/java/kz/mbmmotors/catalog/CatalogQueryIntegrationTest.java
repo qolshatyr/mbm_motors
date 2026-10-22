@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.*;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import kz.mbmmotors.cart.Cart;
 import kz.mbmmotors.cart.CartService;
@@ -31,6 +32,7 @@ class CatalogQueryIntegrationTest {
 
   @BeforeEach
   void fixtures() {
+    jdbc.update("delete from product_tags");
     jdbc.update("delete from product_images");
     jdbc.update("delete from product_offers");
     jdbc.update("delete from products");
@@ -154,5 +156,96 @@ class CatalogQueryIntegrationTest {
     for (String store : new String[] {"64feaaa51c9799143b532fcf", "untrusted-store"})
       assertThatThrownBy(() -> service.list("", store, false, 0))
           .isInstanceOf(CatalogViewService.BadCatalogQuery.class);
+  }
+
+  @Test
+  void tagFiltersAndFacetsCountOtherFiltersOnly() {
+    // 0..9 Hyundai Sonata engine parts by NGP, 10..14 Kia Optima brakes by Mobis, rest untagged.
+    for (int i = 0; i < 15; i++) {
+      String id = String.format("%024x", i + 1);
+      boolean hyundai = i < 10;
+      tag(id, 0, hyundai ? "Двигатель" : "Тормозная система", "SECTION", null);
+      tag(
+          id,
+          1,
+          hyundai ? "Поршневая группа" : "Колодки",
+          "SUBSECTION",
+          hyundai ? "Двигатель" : "Тормозная система");
+      tag(id, 2, hyundai ? "Hyundai" : "Kia", "MAKE", null);
+      tag(id, 3, hyundai ? "Sonata" : "Optima", "MODEL", hyundai ? "Hyundai" : "Kia");
+      tag(id, 4, hyundai ? "NGP" : "Mobis", "BRAND", null);
+    }
+    var engine =
+        service.list(
+            "",
+            null,
+            false,
+            0,
+            null,
+            new CatalogViewService.CatalogFilter("Двигатель", null, null, null, List.of()));
+    assertThat(engine.totalProducts()).isEqualTo(10);
+    assertThat(engine.products().getFirst().brand()).isEqualTo("NGP");
+    assertThat(engine.facets().sections())
+        .containsExactly(
+            new CatalogViewService.FacetValue("Двигатель", 10),
+            new CatalogViewService.FacetValue("Тормозная система", 5));
+    assertThat(engine.facets().subsections())
+        .containsExactly(new CatalogViewService.FacetValue("Поршневая группа", 10));
+    assertThat(engine.facets().makes())
+        .containsExactly(new CatalogViewService.FacetValue("Hyundai", 10));
+    assertThat(engine.facets().models()).isEmpty();
+    var kia =
+        service.list(
+            "",
+            null,
+            false,
+            0,
+            null,
+            new CatalogViewService.CatalogFilter(
+                null, null, "Kia", "Optima", List.of("Mobis", "NGP")));
+    assertThat(kia.totalProducts()).isEqualTo(5);
+    assertThat(kia.facets().models())
+        .containsExactly(new CatalogViewService.FacetValue("Optima", 5));
+    assertThat(kia.facets().brands())
+        .containsExactly(new CatalogViewService.FacetValue("Mobis", 5));
+    assertThat(
+            service
+                .list(
+                    "",
+                    null,
+                    false,
+                    0,
+                    null,
+                    new CatalogViewService.CatalogFilter(
+                        null, null, "Hyundai", "Optima", List.of()))
+                .totalProducts())
+        .isZero();
+    assertThat(service.detail(String.format("%024x", 11), null).classification())
+        .isEqualTo(
+            new CatalogViewService.Classification(
+                "Тормозная система",
+                "Колодки",
+                List.of("Mobis"),
+                List.of(new CatalogViewService.Fitment("Kia", List.of("Optima")))));
+    assertThatThrownBy(
+            () ->
+                service.list(
+                    "",
+                    null,
+                    false,
+                    0,
+                    null,
+                    new CatalogViewService.CatalogFilter(null, null, null, "Optima", List.of())))
+        .isInstanceOf(CatalogViewService.BadCatalogQuery.class);
+  }
+
+  private void tag(String id, int position, String name, String kind, String parent) {
+    jdbc.update(
+        "insert into product_tags(product_id,position,name,kind,parent) values (?,?,?,?,?)",
+        id,
+        position,
+        name,
+        kind,
+        parent);
   }
 }
