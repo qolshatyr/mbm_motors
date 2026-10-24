@@ -57,10 +57,10 @@ python3 -m http.server 5185 --bind 127.0.0.1 --directory prototype/dist
 
 Сборщик при необходимости выполняет npm ci, затем отдельную `build:demo`. Результат — `prototype/dist/` и `prototype/mbm-motors-demo.zip`. Маршруты используют `/#/`, поэтому отдельная серверная настройка страниц не нужна. Демо включается только в mode demo + VITE_DEMO=true; обычная production-сборка сохраняет настоящий API и BrowserRouter. `.env.demo` содержит только этот публичный флаг.
 
-Для проверок, если Playwright установлен:
+Для проверок, если Playwright установлен (окружение — в [Браузерных проверках](Browser_Checks.md)):
 
 ```sh
-MBM_PROTOTYPE_URL=http://127.0.0.1:5185 python3 tests/browser/check_client_prototype.py
+MBM_PROTOTYPE_URL=http://127.0.0.1:5185 ~/.cache/mbm-browser-venv/bin/python tests/browser/check_client_prototype.py
 ```
 
 ## Публичная ссылка на другом хостинге — самостоятельно
