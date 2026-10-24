@@ -1,14 +1,23 @@
-"""Client demo QA. Run only against the isolated static prototype."""
+#!/usr/bin/env python3
+"""Client prototype (demo build, HashRouter, data in the tab). Run only against the static prototype:
+
+  python3 scripts/build_prototype.py
+  python3 -m http.server 5185 --bind 127.0.0.1 --directory prototype/dist
+  MBM_PROTOTYPE_URL=http://127.0.0.1:5185 python tests/browser/check_client_prototype.py
+"""
 import os
 import re
+import tempfile
 from pathlib import Path
 from urllib.parse import urlparse
-from playwright.sync_api import sync_playwright, expect
+
+from playwright.sync_api import expect, sync_playwright
 
 base = os.environ.get('MBM_PROTOTYPE_URL', 'http://127.0.0.1:5185').rstrip('/')
 assert urlparse(base).hostname in ('127.0.0.1', 'localhost'), 'Use the isolated prototype only'
-out = Path(os.environ.get('MBM_PROTOTYPE_SCREENSHOTS', '/tmp/mbm-prototype-shots'))
+out = Path(os.environ.get('MBM_PROTOTYPE_SCREENSHOTS', Path(tempfile.gettempdir()) / 'mbm-prototype-shots'))
 out.mkdir(parents=True, exist_ok=True)
+PRODUCTS = 14
 
 with sync_playwright() as p:
     browser = p.chromium.launch(headless=True)
@@ -17,63 +26,65 @@ with sync_playwright() as p:
         errors, api = [], []
         page.on('pageerror', lambda error: errors.append(str(error)))
         page.on('request', lambda request: api.append(request.url) if '/api/' in request.url else None)
+
         def capture(name):
             expect(page.locator('h1').first).to_be_visible()
-            assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), name
+            assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), (name, width)
             page.screenshot(path=str(out / f'{name}-{width}.png'), full_page=True)
-        page.goto(base + '/#/')
-        expect(page.locator('.product-card')).to_have_count(12)
-        route_before = page.url
-        page.keyboard.press('Tab')
-        page.get_by_role('link', name='Перейти к содержимому').click()
-        expect(page.locator('#main')).to_be_focused()
-        assert page.url == route_before, 'Skip link must preserve HashRouter route'
+
+        page.goto(base + '/#/search')
+        expect(page.get_by_text('Прототип MBM AutoMotors')).to_be_visible()
+        expect(page.get_by_role('heading', name='Вход для оптовых клиентов')).to_be_visible()
+        capture('login')
+        page.get_by_label('Логин', exact=True).fill('demo')
+        page.get_by_label('Пароль', exact=True).fill('demo')
+        page.get_by_role('button', name='Войти', exact=True).click()
+        expect(page.locator('#results-title')).to_have_text(f'Найдено: {PRODUCTS}')
+        assert page.url.endswith('/#/search'), page.url
         capture('catalog')
-        for category in ('filter', 'brake', 'suspension', 'light', 'oil', 'body'):
-            page.goto(base + '/#/?category=' + category)
-            expect(page.locator('.product-card')).to_have_count(4)
-        page.goto(base + '/#/?category=filter')
-        expect(page.locator('.product-card')).to_have_count(4)
-        page.locator('#query').fill('NOT-EXIST-DEMO')
-        page.get_by_role('button', name='Найти', exact=True).click()
-        expect(page.get_by_text('Товары не найдены', exact=True)).to_be_visible()
+        page.get_by_role('button', name='Тормозная система', exact=True).click()
+        expect(page.locator('.product-row')).to_have_count(2)
+        page.goto(base + '/#/search?q=2630035505')
+        expect(page.locator('.product-row')).to_have_count(1)
+        expect(page.locator('.product-row')).to_contain_text('26300-35505')
+        page.goto(base + '/#/search?q=NOT-EXIST-DEMO')
+        expect(page.get_by_role('heading', name='Товары не найдены')).to_be_visible()
         page.get_by_role('button', name='Показать весь каталог').click()
-        expect(page.locator('.product-card')).to_have_count(12)
-        if width == 375:
-            page.get_by_role('button', name='Фильтры', exact=True).click()
-            expect(page.get_by_role('dialog')).to_be_visible()
-            page.locator('#store').select_option('dddddddddddddddddddd0002')
-            expect(page.locator('#store')).to_have_value('dddddddddddddddddddd0002')
-            page.keyboard.press('Escape')
-            expect(page.get_by_role('dialog')).not_to_be_visible()
-        page.goto(base + '/#/products/000000000000000000000001')
+        expect(page.locator('.product-row')).to_have_count(PRODUCTS)
+        expect(page.locator('.product-row').filter(has_text='95670-D3000').locator('.price')).to_have_text('Цена уточняется')
+
+        page.goto(base + '/#/products/000000000000000000000005')
         expect(page.locator('#product-title')).to_have_text('Фильтр масляный')
         capture('product')
-        page.get_by_role('button', name=re.compile('Добавить из')).first.click()
-        expect(page.locator('.cart-count')).to_have_text('1')
-        page.get_by_role('link', name='Корзина', exact=False).first.click()
-        expect(page.get_by_role('heading', name='Корзина', exact=True)).to_be_visible()
+        page.get_by_role('button', name='В корзину', exact=True).click()
+        expect(page.locator('.header-cart-count')).to_have_text('1')
+        page.goto(base + '/#/basket')
+        expect(page.locator('.cart-line')).to_have_count(1)
         capture('basket')
-        page.get_by_role('link', name='Оформить заявку', exact=True).click()
-        expect(page.locator('#customerName')).to_be_visible()
-        capture('checkout')
-        page.locator('#customerName').fill('Пример клиента')
-        page.locator('#phone').fill('+77000000000')
+        page.get_by_label('Согласен на обработку', exact=False).check()
         page.locator('#comment').fill('Проверка прототипа')
-        page.locator('input[type=checkbox]').check()
-        page.get_by_role('button', name='Сохранить заявку').click()
-        expect(page.get_by_text('Демонстрация оформления завершена', exact=True)).to_be_visible()
-        expect(page.locator('.cart-count')).to_have_text('0')
+        page.get_by_role('button', name='Отправить заявку').click()
+        expect(page.get_by_role('heading', name='Демонстрация оформления завершена')).to_be_visible()
+        expect(page.locator('.header-cart-count')).to_have_text('0')
         capture('receipt')
-        saved = page.evaluate('JSON.stringify(sessionStorage)')
-        assert 'Пример клиента' not in saved and '+77000000000' not in saved and 'Проверка прототипа' not in saved
+        saved = page.evaluate('JSON.stringify(sessionStorage) + JSON.stringify(localStorage)')
+        assert '+77000000000' not in saved and 'Проверка прототипа' not in saved and 'Ерлан' not in saved
         page.reload()
-        expect(page.get_by_text('Демонстрация оформления завершена', exact=True)).to_be_visible()
-        for route in ('pickup', 'about', 'how-to-order'):
-            page.goto(base + '/#/' + route)
-            capture(route)
+        expect(page.get_by_role('heading', name='Демонстрация оформления завершена')).to_be_visible()
+
+        page.goto(base + '/#/account')
+        expect(page.locator('.order-row')).to_have_count(1)
+        expect(page.locator('.order-row')).to_contain_text(re.compile(r'DEMO-\d+'))
+        capture('account')
+        page.goto(base + '/#/quick-order')
+        page.get_by_label('Список артикулов').fill('54651-2T000 2\nNOPE-1')
+        expect(page.get_by_role('status').filter(has_text='Готово к добавлению')).to_have_text('Готово к добавлению: 1 из 2')
+        capture('quick-order')
+        page.goto(base + '/#/')
+        expect(page.locator('.category-tile').first).to_be_visible()
+        capture('home')
         assert not errors, errors
         assert not api, api
         page.close()
-        print(f'PASS {width}px: navigation/search/empty/filter/cart/checkout/receipt/reload/info; no overflow, JS or API requests')
+        print(f'PASS {width}px: login, catalog, search, empty, product, basket, checkout, receipt, account, quick order; no overflow, JS errors or API requests')
     browser.close()

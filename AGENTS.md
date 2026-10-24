@@ -41,7 +41,7 @@ python3 scripts/build_site.py
 python3 scripts/run_site.py
 ```
 
-Browser scenario checks live in `tests/browser/` and expect a running site. Use the `project-skills` skill to pick skills for a task and the `finish-task` skill to verify, update `PROJECT_CONTEXT.md`, commit, and open a pull request.
+Browser scenario checks live in `tests/browser/`; `tests/browser/run_checks.py` starts an isolated server on `mbm_test` with synthetic fixtures (see `docs/Browser_Checks.md`). Use the `project-skills` skill to pick skills for a task and the `finish-task` skill to verify, update `PROJECT_CONTEXT.md`, commit, and open a pull request.
 
 See `docs/Development_Guide.md` for PostgreSQL setup and import commands; `README.md` is the repository overview. The catalog launcher requests local credentials privately. Database tests require Docker or a separate `mbm_test` database; report skipped tests explicitly. Validate edited JSON:
 
