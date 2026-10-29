@@ -8,7 +8,7 @@ import { Button } from '../../shared/ui/Button';
 import { Notice } from '../../shared/ui/Feedback';
 import { useCartBusy } from '../cart/cartQueries';
 import { useMe } from '../auth/session';
-import { pickupText } from '../catalog/useStore';
+import { pickupText, warehouseMapUrl } from '../../shared/contacts';
 
 export function Checkout({ onLockChange }: { onLockChange?: (locked: boolean) => void }) {
   const navigate = useNavigate();
@@ -136,7 +136,7 @@ export function Checkout({ onLockChange }: { onLockChange?: (locked: boolean) =>
   const prefilled = Boolean(prefill.current && (prefill.current.customerName || prefill.current.phone));
   return <aside className="checkout-panel" aria-labelledby="checkout-title">
     <h2 id="checkout-title" tabIndex={-1}>Оформление заявки</h2>
-    <div className="pickup-box"><span className="pickup-dot" aria-hidden="true" /><div><p><strong>{pickupText}</strong></p><p className="muted">После подтверждения менеджером</p></div></div>
+    <div className="pickup-box"><span className="pickup-dot" aria-hidden="true" /><div><p><strong>{pickupText}</strong></p><p className="muted">После подтверждения менеджером · <a href={warehouseMapUrl} target="_blank" rel="noopener noreferrer">Склад на карте</a></p></div></div>
     {message && <div id="checkout-error" tabIndex={-1}><Notice error>{message}</Notice></div>}
     {uncertain ? <section className="recovery-panel" aria-labelledby="recovery-title" aria-busy={recovering || busy}><h3 id="recovery-title" tabIndex={-1}>Проверка результата</h3><p>Не создавайте новую заявку, пока не проверен результат предыдущей отправки.</p>{recovering || busy ? <p role="status">{mutation.isPending ? 'Сохраняем заявку…' : 'Проверяем сохранение заявки…'}</p> : <><Button onClick={() => void checkResult()}>Проверить результат</Button>{submitted.current && <Button onClick={() => send(submitted.current!)}>Повторить ту же отправку</Button>}{!submitted.current && <><p>Данные формы не сохраняются в браузере. После перезагрузки повторить прежнюю отправку невозможно. Проверьте результат или начните новое оформление с подтверждением.</p><Button onClick={() => setRestartConfirmation(true)}>Начать новое оформление</Button></>}</>}</section> : <>
       {preview.isPending ? <div className="loading-state loading-compact" role="status"><span className="spinner" aria-hidden="true" />Проверяем корзину…</div> : preview.isError ? <Notice error><p>Не удалось проверить корзину. Отправка временно недоступна.</p><Button onClick={() => void preview.refetch()}>Обновить данные</Button></Notice> : data && <form className="checkout-form" aria-busy={busy} onSubmit={(event) => { event.preventDefault(); if (!data.canSubmit || locked || !data.revision || submitted.current) return; send({ idempotencyKey: data.idempotencyKey, revision: data.revision, customerName: fields.customerName, phone: fields.phone, comment: fields.comment, consent: String(fields.consent) }); }}>

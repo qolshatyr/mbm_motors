@@ -11,7 +11,7 @@ import { Account } from '../features/account/Account';
 import { Login } from '../features/auth/Login';
 import { safeReturn, useMe } from '../features/auth/session';
 import { useCart } from '../features/cart/cartQueries';
-import { pickupText } from '../features/catalog/useStore';
+import { pickupText, salesPhone, warehouseMapUrl } from '../shared/contacts';
 import { EmptyState, Notice } from '../shared/ui/Feedback';
 import { Staff } from '../features/staff/Staff';
 import { StaffLogin } from '../features/staff/StaffLogin';
@@ -70,6 +70,7 @@ function PartnerApp() {
     <main id="main" tabIndex={-1} className="page-width main-content">{content}</main>
     <footer className="site-footer"><div className="page-width footer-grid">
       <div><div className="footer-brand"><Logo dark /></div><p>Оптовый портал для СТО и оптовых покупателей. {pickupText}.</p></div>
+      <address className="footer-contacts"><span>Отдел продаж</span><a href={salesPhone.tel}>{salesPhone.text}</a><a href={salesPhone.whatsapp} target="_blank" rel="noopener noreferrer">Написать в WhatsApp</a><a href={warehouseMapUrl} target="_blank" rel="noopener noreferrer">Склад на карте</a></address>
       {partner && <nav aria-label="Разделы портала"><Link to="/search">Каталог</Link><Link to="/quick-order">Быстрый заказ</Link><Link to="/basket">Корзина</Link><Link to="/account">Мои заявки</Link></nav>}
       <p>Цены оптовые, в тенге. Наличие — по данным склада, товар не резервируется до подтверждения заявки.</p>
     </div></footer>

@@ -8,4 +8,4 @@ export function useDefaultStore() {
   return { id, name: stores.data?.stores.find((store) => store.id === id)?.name ?? null, query: stores };
 }
 
-export const pickupText = 'Самовывоз со склада MBM, Алматы';
+export { pickupText } from '../../shared/contacts';
