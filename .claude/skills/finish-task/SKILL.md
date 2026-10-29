@@ -23,7 +23,7 @@ description: Порядок завершения задачи в MBM AutoMotors 
 | Java, ресурсы, миграции, `pom.xml` | `./mvnw verify` (Spotless, тесты, JaCoCo). Если формат не прошёл, `./mvnw spotless:apply` и повтор |
 | Python в `tools/`, `scripts/` | `python3 -m unittest discover -s tests -v` |
 | `frontend/` | `(cd frontend && npm ci && npm run build)` |
-| Поведение в браузере | Нужный сценарий из `tests/browser/` на запущенном сайте (`webapp-testing`) |
+| Поведение в браузере | `tests/browser/run_checks.py` на синтетической `mbm_test` (`docs/Browser_Checks.md`, `webapp-testing`) |
 | JSON в `postman/assets/` | `python3 -m json.tool <файл> > /dev/null` |
 | Только документы | Проверь ссылки и пути; сборку можно не запускать, но так и напиши |
 

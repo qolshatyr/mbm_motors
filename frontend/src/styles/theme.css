@@ -151,9 +151,11 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--red); flex
 .footer-grid p { line-height: 1.55; max-width: 44ch; }
 .footer-brand { margin-bottom: 14px; }
 .footer-brand .logo-word { font-size: 30px; }
-.footer-grid nav { display: flex; flex-direction: column; gap: 4px; }
-.footer-grid nav a { color: #fcfcfd; text-decoration: none; min-height: 32px; display: inline-flex; align-items: center; width: fit-content; }
-.footer-grid nav a:hover { color: var(--red-300); text-decoration: underline; }
+.footer-grid nav, .footer-contacts { display: flex; flex-direction: column; gap: 4px; }
+.footer-contacts { font-style: normal; }
+.footer-contacts span { color: #fcfcfd; font-weight: 600; }
+.footer-grid nav a, .footer-contacts a { color: #fcfcfd; text-decoration: none; min-height: 32px; display: inline-flex; align-items: center; width: fit-content; }
+.footer-grid nav a:hover, .footer-contacts a:hover { color: var(--red-300); text-decoration: underline; }
 .site-footer :focus-visible { outline-color: var(--red-300); }
 
 /* Page parts */
@@ -214,6 +216,10 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--red); flex
 .login-aside p { font-size: 16px; line-height: 1.5; }
 .login-aside ul { list-style: disc; padding-left: 20px; display: grid; gap: 8px; font-size: 15px; }
 .login-aside li::marker { color: var(--green-300); }
+.login-aside a { color: #fcfcfd; text-decoration: underline; text-underline-offset: 3px; }
+.login-aside a[href^="tel:"], .footer-contacts a[href^="tel:"] { white-space: nowrap; }
+.login-aside a:hover { color: var(--red-300); }
+.login-aside :focus-visible { outline-color: var(--red-300); }
 
 /* Home */
 .home-hero { padding-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 32px 40px; align-items: end; }

@@ -81,17 +81,7 @@ MBM_BACKEND_URL=http://127.0.0.1:8081 npm run dev -- --port 5175
 - Перед проверкой выполнена разрешённая INCREMENTAL GET-синхронизация: SUCCESS 06.10.2026 18:47:56 UTC, 0 изменений; в каталоге 8 797 товаров. Продажи/карточки покупателей не создавались.
 - Независимое ревью существенных ошибок не выявило. Подробный отчёт: [React-карточка и корзина](React_Product_Cart_Verification.md).
 
-Повторение браузерных проверок требует импортированного каталога и успешной синхронизации не старше 15 минут:
-
-```sh
-python3 -m venv /tmp/mbm-browser-venv
-/tmp/mbm-browser-venv/bin/pip install playwright
-/tmp/mbm-browser-venv/bin/python -m playwright install chromium
-/tmp/mbm-browser-venv/bin/python tests/browser/check_frontend.py
-/tmp/mbm-browser-venv/bin/python tests/browser/check_product_cart.py
-```
-
-Проверки работают в собственных сессиях и сохраняют снимки под `/tmp/mbm-react-*`; заказов и CloudShop POST не выполняют. Для тестового frontend используется `MBM_FRONTEND_URL` в `check_product_cart.py`.
+Браузерные сценарии того времени заменены проверками интерфейса v4 на синтетической `mbm_test` — см. [Браузерные проверки](Browser_Checks.md).
 
 ## Локальное оформление и единая сборка, 11.10.2026
 
