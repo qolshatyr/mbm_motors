@@ -123,6 +123,35 @@ Healthchecks.io. Платным остаётся только домен, есл
 
 Проще и без карты — Google Drive владельца: раздел «Копии вне сервера» ниже.
 
+## Подготовка сервера
+
+Проверено на hoster.kz 30.10.2026 (Ubuntu 24.04, Cloud 2-4-50). Вход по ключу настраивается
+с машины разработчика, остальное выполняется на сервере под root.
+
+```sh
+ssh-keygen -t ed25519 -C "mbm-server"      # если ключа ещё нет
+ssh-copy-id root@<IP>                       # один раз вводится root-пароль
+```
+
+IP пишется без угловых скобок: в zsh `<…>` — перенаправление ввода.
+
+```sh
+ufw allow 22/tcp && ufw allow 80/tcp && ufw allow 443/tcp && ufw --force enable
+printf "PasswordAuthentication no\nKbdInteractiveAuthentication no\nPermitRootLogin prohibit-password\n" \
+  > /etc/ssh/sshd_config.d/00-hardening.conf
+sshd -t && systemctl restart ssh            # не закрывая сессию, проверить вход во втором окне
+echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
+apt update && DEBIAN_FRONTEND=noninteractive apt -y upgrade
+curl -fsSL https://get.docker.com | sh
+fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+echo '/swapfile none swap sw 0 0' >> /etc/fstab
+mkdir -p /opt/mbm
+```
+
+У сервера hoster.kz нет IPv6, а DNS отдаёт для `security.ubuntu.com` и IPv6-адреса: без
+`ForceIPv4` apt пишет «no longer has a Release file». Разовое «Could not resolve» — сбой DNS
+хостера, `apt update` достаточно повторить. Swap нужен, потому что в образе его нет.
+
 ## Первая установка
 
 На своей машине соберите JAR с интерфейсом:
@@ -133,7 +162,7 @@ scp target/mbm-motors-0.0.1-SNAPSHOT.jar user@server:/opt/mbm/app.jar
 scp deploy/production/{compose.yml,Caddyfile,backup.sh,restore_check.sh,env.example} user@server:/opt/mbm/
 ```
 
-На сервере (Docker Engine с плагином Compose установлен по официальной инструкции Docker):
+На сервере:
 
 ```sh
 cd /opt/mbm
@@ -143,13 +172,38 @@ docker compose logs -f app              # дождаться «Started Applicati
 ```
 
 Проверьте `https://<SITE_ADDRESS>/login`: должна открыться страница входа партнёра.
+После исправления `.env` выполняйте `docker compose up -d`: `restart` не перечитывает переменные.
+
+Сразу после выдачи сертификата в журнале Caddy появляются запросы сканеров (`/.env`, `/.git/HEAD`,
+`/wp-config.php`, `/actuator/heapdump`). Это фон интернета; пока приложение запускается, они
+получают 502, затем — перенаправление на вход. Ошибки сайта смотрите в `docker compose logs app`.
 
 ## Каталог
 
 Заполните `CLOUDSHOP_TOKEN` и `CATALOG_SYNC_ENABLED=true`, затем
 `docker compose up -d app`. Приложение импортирует товары и обновляет их каждые 5 минут
-только запросами GET. На сайте видны только товары СКЛАДА; позиции с ценой 0 ₸
+только запросами GET. Успешная синхронизация в журнал не пишет (только ошибка —
+«Catalog synchronization failed»); результат виден в таблице `sync_runs`:
+
+```sh
+docker compose exec -T db psql -U mbm -d mbm_motors \
+  -c "select status, started_at, product_count, error_code from sync_runs order by started_at desc limit 3"
+```
+
+ На сайте видны только товары СКЛАДА; позиции с ценой 0 ₸
 показываются как «Цена уточняется» и не заказываются.
+
+## Служебный раздел
+
+Хэш пароля сотрудника (не менее 12 символов) даёт сам Caddy, пароль вводится скрыто:
+
+```sh
+docker compose run --rm caddy caddy hash-password
+```
+
+В `.env` — `MBM_ADMIN_ENABLED=true`, `MBM_ADMIN_USERNAME` и хэш **в одинарных кавычках**:
+`MBM_ADMIN_PASSWORD_HASH='$2a$14$…'`. Без кавычек Compose принимает `$…` за переменные и портит
+хэш. Затем `docker compose up -d app` и вход на `/admin/requests`.
 
 ## Партнёры
 
@@ -177,14 +231,20 @@ docker compose run --rm -e MBM_PARTNER_LOGIN=turbo \
 
 Либо создайте карточку через API один раз — `--partner-create-customer` вместо
 `--partner-link-customer`, без `MBM_CLOUDSHOP_CUSTOMER_ID`. Если команда сообщила о неясном
-ответе, не повторяйте её: найдите карточку в CloudShop и привяжите вручную.
+ответе, не повторяйте её: найдите карточку в CloudShop и привяжите вручную. Если команда пишет
+«CloudShop отказал, карточка не создана» (ответ 4xx, например нет прав у токена), карточки нет:
+устраните причину и повторите.
 
 На машине разработчика те же команды выполняют `scripts/partner_add.py` и
 `scripts/partner_customer.py`.
 
 ## Включение передачи заявок
 
-1. Проверьте, что токен CloudShop разрешает создавать продажи.
+1. Проверьте, что токен CloudShop разрешает запись: создание продаж (`/sales`) и, для карточек
+   из «Клиентов», покупателей (`/customers`). Токен только для чтения загружает каталог, но заявка
+   получает UNKNOWN с причиной «HTTP 403: API key does not have permission for this route»
+   (так было при запуске 30.10.2026). Продажа при 403 не создана; после замены токена оформите
+   новую заявку, а прежнюю отметьте сверенной.
 2. **С разрешения владельца** проведите одну контрольную заявку: включите
    `MBM_DELIVERY_ENABLED=true`, `docker compose up -d app`, оформите заявку тестовым
    партнёром на дешёвую позицию.

@@ -1,36 +1,30 @@
 package kz.mbmmotors.partner;
 
-import java.net.URI;
-import kz.mbmmotors.cloudshop.CloudShopProperties;
-import kz.mbmmotors.delivery.CloudShopDeliveryGateway;
+import kz.mbmmotors.cloudshop.CloudShopException;
+import kz.mbmmotors.cloudshop.CloudShopRejectedException;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
 
 /**
  * Staff commands that give a partner a CloudShop customer card, required before their orders can be
  * sent. {@code --partner-link-customer} stores an existing card ID from {@code
  * MBM_CLOUDSHOP_CUSTOMER_ID}; {@code --partner-create-customer} creates the card once through the
  * API. The partner is chosen by {@code MBM_PARTNER_LOGIN}. Creation is never retried: after an
- * uncertain response staff check CloudShop and link the card manually.
+ * uncertain response staff check CloudShop and link the card manually. A 4xx refusal creates
+ * nothing, so its reason is shown and the command may be run again once the cause is fixed.
  */
 @Component
 class PartnerCustomerCommand implements ApplicationRunner {
   private final PartnerRepository partners;
-  private final RestClient.Builder builder;
-  private final CloudShopProperties cloudshop;
+  private final CustomerCards cards;
   private final ConfigurableApplicationContext context;
 
   PartnerCustomerCommand(
-      PartnerRepository partners,
-      RestClient.Builder builder,
-      CloudShopProperties cloudshop,
-      ConfigurableApplicationContext context) {
+      PartnerRepository partners, CustomerCards cards, ConfigurableApplicationContext context) {
     this.partners = partners;
-    this.builder = builder;
-    this.cloudshop = cloudshop;
+    this.cards = cards;
     this.context = context;
   }
 
@@ -55,14 +49,21 @@ class PartnerCustomerCommand implements ApplicationRunner {
           throw new IllegalArgumentException("ID карточки CloudShop: 24 символа 0-9, a-f.");
         customerId = customerId.strip();
       } else {
-        var gateway =
-            new CloudShopDeliveryGateway(
-                builder, URI.create(cloudshop.baseUrl()), cloudshop.token(), cloudshop.timeout());
         try {
-          customerId = gateway.createCompany(partner.company(), partner.phone()).id();
-        } catch (RuntimeException uncertain) {
+          customerId = cards.create(partner.company(), partner.phone());
+        } catch (CloudShopRejectedException refused) {
           throw new IllegalStateException(
-              "Ответ CloudShop не получен или неясен. Не повторяйте команду: проверьте покупателей в CloudShop и привяжите карточку через --partner-link-customer.");
+              "CloudShop отказал, карточка не создана: "
+                  + refused.getMessage()
+                  + ". Устраните причину (например, права токена на /customers) и повторите команду.");
+        } catch (RuntimeException uncertain) {
+          // Gateway messages are sanitized; other exceptions may carry partner data.
+          String reason =
+              uncertain instanceof CloudShopException ? " (" + uncertain.getMessage() + ")" : "";
+          throw new IllegalStateException(
+              "Ответ CloudShop не получен или неясен"
+                  + reason
+                  + ". Не повторяйте команду: проверьте покупателей в CloudShop и привяжите карточку через --partner-link-customer.");
         }
       }
       if (!partners.linkCustomer(partner.login(), customerId))

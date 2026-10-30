@@ -8,6 +8,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import kz.mbmmotors.cloudshop.CloudShopException;
+import kz.mbmmotors.cloudshop.CloudShopRejectedException;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
@@ -173,13 +174,13 @@ public final class CloudShopDeliveryGateway implements DeliveryGateway {
                 int status = response.getStatusCode().value();
                 // Documented as 201; the live API answered 200 to a sale and, in the control
                 // test of 21.10.2026, a created customer card was not accepted with strict 201.
-                if (status != 201 && status != 200)
-                  throw new CloudShopException(
+                if (status >= 400 && status < 500)
+                  throw new CloudShopRejectedException(
                       "CloudShop delivery failed with HTTP "
                           + status
-                          + (status >= 400 && status < 500
-                              ? apiError(response.getBody().readNBytes(MAX_ERROR_BYTES))
-                              : ""));
+                          + apiError(response.getBody().readNBytes(MAX_ERROR_BYTES)));
+                if (status != 201 && status != 200)
+                  throw new CloudShopException("CloudShop delivery failed with HTTP " + status);
                 byte[] bytes = response.getBody().readNBytes(MAX_RESPONSE_BYTES + 1);
                 if (bytes.length > MAX_RESPONSE_BYTES)
                   throw new CloudShopException("CloudShop delivery response exceeds size limit");
