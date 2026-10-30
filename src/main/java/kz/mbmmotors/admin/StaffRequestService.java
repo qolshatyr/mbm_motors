@@ -26,7 +26,8 @@ public class StaffRequestService {
         jdbc.query(
             """
         select o.number,o.status,o.created_at,o.store_name,o.item_count,o.total_text,d.state delivery_state,
-        d.failure_reason,d.reconciled_result,d.reconciled_sale_number,d.reconciled_by,d.reconciled_at
+        d.failure_reason,d.reconciled_result,d.reconciled_sale_number,d.reconciled_by,d.reconciled_at,
+        o.cancel_requested_at,o.cancel_reason,o.cancelled_at,o.cancelled_by
         from local_orders o left join delivery_outbox d on d.order_id=o.id
         order by o.created_at desc,o.number desc limit 20 offset ?
         """,
@@ -38,7 +39,8 @@ public class StaffRequestService {
                     rs.getString("store_name"),
                     rs.getInt("item_count"),
                     rs.getString("total_text"),
-                    delivery(rs)),
+                    delivery(rs),
+                    cancellation(rs)),
             page * 20L);
     return new Page(items, page, 20, count, (int) Math.min(Integer.MAX_VALUE, (count + 19) / 20));
   }
@@ -50,7 +52,8 @@ public class StaffRequestService {
             """
         select o.number,o.status,o.created_at,o.store_name,o.item_count,o.total_text,
         o.customer_name,o.phone,o.comment,d.state delivery_state,
-        d.failure_reason,d.reconciled_result,d.reconciled_sale_number,d.reconciled_by,d.reconciled_at
+        d.failure_reason,d.reconciled_result,d.reconciled_sale_number,d.reconciled_by,d.reconciled_at,
+        o.cancel_requested_at,o.cancel_reason,o.cancelled_at,o.cancelled_by
         from local_orders o left join delivery_outbox d on d.order_id=o.id where o.number = ?
         """,
             (rs, row) ->
@@ -65,7 +68,8 @@ public class StaffRequestService {
                     rs.getString("phone"),
                     rs.getString("comment"),
                     List.of(),
-                    delivery(rs)),
+                    delivery(rs),
+                    cancellation(rs)),
             number)
         .stream()
         .findFirst()
@@ -98,7 +102,8 @@ public class StaffRequestService {
                   detail.phone(),
                   detail.comment(),
                   items,
-                  detail.delivery());
+                  detail.delivery(),
+                  detail.cancellation());
             });
   }
 
@@ -146,6 +151,40 @@ public class StaffRequestService {
     return detail(number);
   }
 
+  /**
+   * Records that staff cancelled the order after removing its sale in CloudShop by hand. Only for
+   * orders whose delivery has finished (SENT or UNKNOWN), so the worker can no longer send them.
+   */
+  @Transactional
+  public Optional<Detail> cancel(long number, String staff) {
+    if (staff == null || staff.isBlank() || staff.length() > 64)
+      throw new Problem(400, "Не удалось определить сотрудника.");
+    int updated =
+        jdbc.update(
+            """
+            update local_orders o set cancelled_at=now(),cancelled_by=?
+            where o.number=? and o.cancelled_at is null
+              and not exists (select 1 from delivery_outbox d where d.order_id=o.id
+                and d.state not in ('SENT','UNKNOWN'))
+            """,
+            staff,
+            number);
+    if (updated == 0) {
+      // The guarded update is atomic; this read only explains why nothing changed.
+      var cancelled =
+          jdbc.query(
+              "select cancelled_at is not null from local_orders where number=?",
+              (rs, row) -> rs.getBoolean(1),
+              number);
+      if (cancelled.isEmpty()) return Optional.empty();
+      if (cancelled.getFirst()) throw new Problem(409, "Заявка уже отмечена отменённой.");
+      throw new Problem(
+          409,
+          "Заявка ещё передаётся в CloudShop. Отметить отмену можно после передачи или сверки.");
+    }
+    return detail(number);
+  }
+
   public static class Problem extends RuntimeException {
     private final int status;
 
@@ -181,6 +220,17 @@ public class StaffRequestService {
     return new Delivery(base.state(), message, rs.getString("failure_reason"), reconciliation);
   }
 
+  private static Cancellation cancellation(java.sql.ResultSet rs) throws java.sql.SQLException {
+    var requested = rs.getTimestamp("cancel_requested_at");
+    var cancelled = rs.getTimestamp("cancelled_at");
+    if (requested == null && cancelled == null) return null;
+    return new Cancellation(
+        requested == null ? null : requested.toInstant(),
+        rs.getString("cancel_reason"),
+        cancelled == null ? null : cancelled.toInstant(),
+        rs.getString("cancelled_by"));
+  }
+
   static Delivery delivery(String state) {
     if (state == null) {
       return new Delivery(
@@ -210,6 +260,12 @@ public class StaffRequestService {
   public record Delivery(
       String state, String message, String reason, Reconciliation reconciliation) {}
 
+  /**
+   * {@code requestedAt}/{@code reason}: the partner's request; {@code cancelledAt}/{@code by}: the
+   * staff mark after removing the sale in CloudShop.
+   */
+  public record Cancellation(Instant requestedAt, String reason, Instant cancelledAt, String by) {}
+
   /** {@code result}: FOUND (sale number given) or NOT_CREATED. */
   public record Reconciliation(String result, Long saleNumber, String by, Instant at) {}
 
@@ -227,7 +283,8 @@ public class StaffRequestService {
       String storeName,
       int itemCount,
       String totalText,
-      Delivery delivery) {}
+      Delivery delivery,
+      Cancellation cancellation) {}
 
   public record Item(
       int position,
@@ -249,7 +306,8 @@ public class StaffRequestService {
       String phone,
       String comment,
       List<Item> items,
-      Delivery delivery) {}
+      Delivery delivery,
+      Cancellation cancellation) {}
 
   public record Page(
       List<Summary> items, int page, int pageSize, long totalItems, int totalPages) {}

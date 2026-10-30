@@ -281,7 +281,40 @@ class OrderIntegrationTest {
     mvc.perform(get("/api/account/orders/" + number).with(SIGNED_IN))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.items[0].productId").value(PRODUCT))
-        .andExpect(jsonPath("$.items[0].quantity").value(2));
+        .andExpect(jsonPath("$.items[0].quantity").value(2))
+        .andExpect(jsonPath("$.items[0].priceText").value("2\u00a0500,01 ₸"))
+        .andExpect(jsonPath("$.items[0].lineTotalText").value("5\u00a0000,02 ₸"))
+        .andExpect(jsonPath("$.cancellable").value(true));
+    var cancel =
+        post("/api/account/orders/" + number + "/cancel-request")
+            .with(SIGNED_IN)
+            .with(csrf())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"reason\":\"Ошибся\\nв количестве\"}");
+    mvc.perform(
+            post("/api/account/orders/" + number + "/cancel-request")
+                .with(SIGNED_IN)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+        .andExpect(status().isForbidden());
+    mvc.perform(
+            post("/api/account/orders/MBM-999999/cancel-request")
+                .with(SIGNED_IN)
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+        .andExpect(status().isNotFound());
+    mvc.perform(cancel)
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("CANCEL_REQUESTED"))
+        .andExpect(jsonPath("$.statusText").value("Запрошена отмена"))
+        .andExpect(jsonPath("$.cancelReason").value("Ошибся в количестве"))
+        .andExpect(jsonPath("$.cancellable").value(false));
+    mvc.perform(cancel)
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.detail").value("Отмена по этой заявке уже запрошена."));
+    mvc.perform(get("/api/account/orders").with(SIGNED_IN))
+        .andExpect(jsonPath("$.orders[0].status").value("CANCEL_REQUESTED"));
     mvc.perform(get("/api/orders/by-key/" + issuedKey).session(session).with(SIGNED_IN))
         .andExpect(status().isOk());
     mvc.perform(

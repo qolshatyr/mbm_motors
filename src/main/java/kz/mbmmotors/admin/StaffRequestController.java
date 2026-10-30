@@ -64,6 +64,19 @@ public class StaffRequestController {
 
   record Reconciliation(String result, Long saleNumber) {}
 
+  /** Staff confirm they removed the order's sale in CloudShop; the site changes nothing there. */
+  @PostMapping("/admin/api/requests/{number}/cancellation")
+  StaffRequestService.Detail cancel(@PathVariable String number, Principal staff) {
+    long parsed = number(number);
+    try {
+      return service
+          .cancel(parsed, staff.getName())
+          .orElseThrow(() -> problem(HttpStatus.NOT_FOUND, "Заявка не найдена."));
+    } catch (StaffRequestService.Problem error) {
+      throw problem(HttpStatus.valueOf(error.status()), error.getMessage());
+    }
+  }
+
   @ExceptionHandler(ErrorResponseException.class)
   ResponseEntity<ProblemDetail> error(ErrorResponseException exception) {
     return ResponseEntity.status(exception.getStatusCode()).body(exception.getBody());

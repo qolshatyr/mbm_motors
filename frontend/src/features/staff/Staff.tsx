@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, Route, Routes, useLocation, useParams, useSearchParams } from 'react-router-dom';
-import { fetchStaffDetail, fetchStaffPage, reconcileRequest } from '../../shared/api/staff';
+import { cancelStaffRequest, fetchStaffDetail, fetchStaffPage, reconcileRequest } from '../../shared/api/staff';
 import type { StaffDetail } from '../../shared/api/staff';
 import { ApiError, request } from '../../shared/api/http';
 import { Button } from '../../shared/ui/Button';
@@ -130,7 +130,7 @@ function RequestList() {
   return <><div className="heading-row staff-heading"><div><h1>Заявки</h1><p>Новые сначала. По 20 заявок на странице.</p></div><Button disabled={!validPage || result.isFetching || denied} onClick={() => void result.refetch()}>Обновить</Button></div><ScopeNote />
     {!validPage ? <Notice error><p>Номер страницы должен быть от 0 до 100000.</p><Link className="button" to="/admin/requests">К первой странице</Link></Notice> : denied ? <AccessDenied /> : result.isFetching || result.isPending ? <div className="loading-state" role="status">Загружаем заявки…</div> : result.isError ? <Notice error>Не удалось загрузить заявки. Проверьте соединение и нажмите «Обновить».</Notice> : <>
       <p className="staff-result-count">Всего заявок: {result.data.totalItems}</p>
-      {result.data.items.length === 0 ? <EmptyState title={page === 0 ? 'Заявок пока нет' : 'На этой странице нет заявок'}><p>{page === 0 ? 'Здесь появятся заявки, сохранённые покупателями на сайте.' : 'Вернитесь на предыдущую или первую страницу.'}</p>{page > 0 && <Link className="button" to="/admin/requests">К первой странице</Link>}</EmptyState> : <ol className="staff-request-list">{result.data.items.map(item => <li key={item.number}><div className="staff-request-main"><Link to={`/admin/requests/${item.number}`} className="staff-number">Заявка №{item.number}</Link><span className="staff-status">Сохранена на сайте</span><span className="muted">{item.delivery?.message || 'Передача ещё не подключена.'}</span><CreatedAt value={item.createdAt} /></div><div className="staff-request-store"><span className="muted">Точка</span><span>{item.storeName}</span><span className="muted">Товаров: {item.itemCount}</span></div><strong className="staff-request-total">{item.totalText}</strong></li>)}</ol>}
+      {result.data.items.length === 0 ? <EmptyState title={page === 0 ? 'Заявок пока нет' : 'На этой странице нет заявок'}><p>{page === 0 ? 'Здесь появятся заявки, сохранённые покупателями на сайте.' : 'Вернитесь на предыдущую или первую страницу.'}</p>{page > 0 && <Link className="button" to="/admin/requests">К первой странице</Link>}</EmptyState> : <ol className="staff-request-list">{result.data.items.map(item => <li key={item.number}><div className="staff-request-main"><Link to={`/admin/requests/${item.number}`} className="staff-number">Заявка №{item.number}</Link><span className="staff-status">Сохранена на сайте</span>{item.cancellation && <CancellationTag cancellation={item.cancellation} />}<span className="muted">{item.delivery?.message || 'Передача ещё не подключена.'}</span><CreatedAt value={item.createdAt} /></div><div className="staff-request-store"><span className="muted">Точка</span><span>{item.storeName}</span><span className="muted">Товаров: {item.itemCount}</span></div><strong className="staff-request-total">{item.totalText}</strong></li>)}</ol>}
       <nav className="pagination staff-pagination" aria-label="Страницы заявок"><Button disabled={page === 0} onClick={() => move(Math.max(0, page - 1))} aria-label="Предыдущая страница заявок">Назад</Button><span>Страница {page + 1}{result.data.totalPages > 0 ? ` из ${result.data.totalPages}` : ''}</span><Button disabled={page >= result.data.totalPages - 1 || page >= 100000} onClick={() => move(page + 1)} aria-label="Следующая страница заявок">Далее</Button></nav>
     </>}
   </>;
@@ -145,6 +145,7 @@ function RequestDetail() {
   return <><div className="back-nav"><Link to="/admin/requests">Все заявки</Link></div><div className="heading-row staff-heading"><h1>Заявка №{number}</h1><Button disabled={!valid || result.isFetching || denied} onClick={() => void result.refetch()}>Обновить</Button></div><ScopeNote />
     {!valid ? <Notice error>Некорректный номер заявки.</Notice> : denied ? <AccessDenied /> : result.isFetching || result.isPending ? <div className="loading-state" role="status">Загружаем заявку…</div> : result.isError ? <Notice error>{result.error instanceof ApiError && result.error.status === 404 ? 'Заявка не найдена. Проверьте номер или вернитесь к списку заявок.' : 'Не удалось загрузить заявку. Проверьте соединение и нажмите «Обновить».'}</Notice> : <>
       <section className="staff-overview" aria-labelledby="request-summary"><h2 id="request-summary">Сохранена на сайте</h2><dl className="staff-facts"><div><dt>Дата и время</dt><dd><CreatedAt value={result.data.createdAt} /></dd></div><div><dt>Точка</dt><dd>{result.data.storeName}</dd></div><div><dt>Передача</dt><dd>{result.data.delivery?.message || 'Передача ещё не подключена.'}</dd></div>{result.data.delivery?.reason && <div><dt>Причина</dt><dd className="code">{result.data.delivery.reason}</dd></div>}{result.data.delivery?.reconciliation && <div><dt>Сверка</dt><dd>{result.data.delivery.reconciliation.by}, <CreatedAt value={result.data.delivery.reconciliation.at} /></dd></div>}<div><dt>Товаров</dt><dd>{result.data.itemCount}</dd></div><div><dt>Сумма</dt><dd>{result.data.totalText}</dd></div></dl>{result.data.delivery?.state === 'UNKNOWN' && !result.data.delivery.reconciliation && <Reconciliation number={number} />}</section>
+      <Cancellation number={number} detail={result.data} />
       <section className="staff-contact" aria-labelledby="request-contact"><h2 id="request-contact">Покупатель</h2><dl className="staff-facts"><div><dt>Имя</dt><dd>{result.data.customerName}</dd></div><div><dt>Телефон</dt><dd>{result.data.phone}</dd></div><div><dt>Комментарий</dt><dd className="staff-comment">{result.data.comment || 'Не указан'}</dd></div></dl></section>
       <section aria-labelledby="request-items"><h2 id="request-items">Состав заявки</h2><p className="flow-note">Цены, названия и количество сохранены в момент оформления.</p><ol className="staff-items">{result.data.items.map(item => <li key={item.position}><div><h3>{item.productName}</h3>{item.sku && <p className="sku">Артикул: {item.sku}</p>}<p className="muted">{item.quantity} {item.unit} × {item.priceText}</p></div><strong>{item.lineTotalText}</strong></li>)}</ol><div className="checkout-total"><span>Итого</span><strong>{result.data.totalText}</strong></div></section>
     </>}
@@ -178,4 +179,38 @@ function Reconciliation({ number }: { number: string }) {
     {save.isError && <p className="form-error" role="alert">{save.error instanceof ApiError ? save.error.message : 'Не удалось записать сверку. Проверьте соединение и повторите.'}</p>}
     <Button type="submit" primary disabled={!ready || save.isPending}>{save.isPending ? 'Сохраняем…' : 'Записать сверку'}</Button>
   </form>;
+}
+
+function CancellationTag({ cancellation }: { cancellation: NonNullable<StaffDetail['cancellation']> }) {
+  return cancellation.cancelledAt ? <span className="tag tag-muted">Отменена</span> : <span className="tag tag-warn">Клиент просит отменить</span>;
+}
+
+/**
+ * The partner's request to cancel and the staff mark. The site changes nothing in CloudShop: staff
+ * remove the sale there first. Allowed once delivery has finished, so the order cannot be sent later.
+ */
+function Cancellation({ number, detail }: { number: string; detail: StaffDetail }) {
+  const client = useQueryClient();
+  const access = useContext(StaffAccess);
+  const [confirming, setConfirming] = useState(false);
+  const save = useMutation({
+    mutationFn: () => cancelStaffRequest(number),
+    onSuccess: (updated: StaffDetail) => { client.setQueryData(['staff', 'request', number], updated); void client.invalidateQueries({ queryKey: ['staff', 'requests'] }); },
+    onError: (error) => { if (error instanceof ApiError && (error.status === 401 || error.status === 403)) access.deny(); },
+  });
+  const cancellation = detail.cancellation;
+  const finished = !detail.delivery || detail.delivery.state === 'SENT' || detail.delivery.state === 'UNKNOWN' || detail.delivery.state === 'NOT_PREPARED';
+  if (!cancellation && !confirming) return <section aria-labelledby="request-cancel"><h2 id="request-cancel">Отмена</h2><p className="muted">Клиент не просил отменить заявку.</p>{finished && <Button onClick={() => setConfirming(true)}>Отметить отменённой</Button>}</section>;
+  return <section aria-labelledby="request-cancel"><h2 id="request-cancel">Отмена</h2>
+    <dl className="staff-facts">
+      {cancellation?.requestedAt && <div><dt>Клиент попросил</dt><dd><CreatedAt value={cancellation.requestedAt} /></dd></div>}
+      {cancellation?.requestedAt && <div><dt>Причина</dt><dd className="staff-comment">{cancellation.reason || 'Не указана'}</dd></div>}
+      {cancellation?.cancelledAt && <div><dt>Отменена</dt><dd>{cancellation.by}, <CreatedAt value={cancellation.cancelledAt} /></dd></div>}
+    </dl>
+    {!cancellation?.cancelledAt && (finished ? <div className="staff-reconcile">
+      <p className="muted">Сначала удалите продажу с комментарием «Заявка MBM-{number}» в CloudShop. Сайт сам в CloudShop ничего не удаляет — отметка только сообщает клиенту, что заявка отменена.</p>
+      {save.isError && <p className="form-error" role="alert">{save.error instanceof ApiError ? save.error.message : 'Не удалось записать отмену. Проверьте соединение и повторите.'}</p>}
+      <div className="actions"><Button primary disabled={save.isPending} onClick={() => save.mutate()}>{save.isPending ? 'Сохраняем…' : 'Продажа удалена — отметить отменённой'}</Button>{!cancellation && <Button disabled={save.isPending} onClick={() => setConfirming(false)}>Не отменять</Button>}</div>
+    </div> : <p className="muted">Заявка ещё передаётся в CloudShop. Отметить отмену можно после передачи или сверки.</p>)}
+  </section>;
 }

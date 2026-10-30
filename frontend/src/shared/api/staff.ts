@@ -9,7 +9,10 @@ export interface StaffSummary {
   itemCount: number;
   totalText: string;
   delivery: StaffDelivery;
+  cancellation: StaffCancellation | null;
 }
+/** requestedAt/reason — the partner's request; cancelledAt/by — staff removed the CloudShop sale. */
+export interface StaffCancellation { requestedAt: string | null; reason: string | null; cancelledAt: string | null; by: string | null }
 /** reason — why the attempt became UNKNOWN; reconciliation — the staff check in CloudShop. */
 export interface StaffDelivery {
   state: 'WAITING_CONFIGURATION' | 'READY' | 'CUSTOMER_IN_FLIGHT' | 'CUSTOMER_CREATED' | 'SALE_IN_FLIGHT' | 'SENT' | 'UNKNOWN' | 'NOT_PREPARED';
@@ -32,6 +35,7 @@ export interface StaffDetail extends StaffSummary {
 }
 export const fetchStaffPage = (page: number, signal: AbortSignal) => request<StaffPage>(`/admin/api/requests?page=${page}`, { signal });
 export const fetchStaffDetail = (number: string, signal: AbortSignal) => request<StaffDetail>(`/admin/api/requests/${encodeURIComponent(number)}`, { signal });
+export const cancelStaffRequest = (number: string) => postJson<StaffDetail>(`/admin/api/requests/${encodeURIComponent(number)}/cancellation`, {});
 export const reconcileRequest = (number: string, result: 'FOUND' | 'NOT_CREATED', saleNumber: number | null) =>
   postJson<StaffDetail>(`/admin/api/requests/${encodeURIComponent(number)}/reconciliation`, { result, saleNumber });
 

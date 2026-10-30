@@ -152,7 +152,8 @@ public class WebSecurityConfiguration {
                         "/api/cart/remove",
                         "/api/cart/clear",
                         "/api/cart/confirm-price",
-                        "/api/orders")
+                        "/api/orders",
+                        "/api/account/orders/{number}/cancel-request")
                     .hasRole(Partner.ROLE)
                     .anyRequest()
                     .denyAll())

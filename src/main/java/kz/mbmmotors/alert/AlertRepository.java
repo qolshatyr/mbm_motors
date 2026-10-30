@@ -89,6 +89,45 @@ public class AlertRepository {
         });
   }
 
+  /**
+   * Partner requests to cancel not yet announced, oldest first; orders staff already cancelled are
+   * skipped. The partner's reason stays on the site and is not sent to Telegram.
+   */
+  public List<NewOrder> cancelRequests(int limit) {
+    return jdbc.query(
+        """
+        select o.id, o.number, p.company, o.item_count, o.total
+        from local_orders o
+        left join partners p on p.id = o.partner_id
+        where o.cancel_requested_at is not null and o.cancel_announced_at is null
+          and o.cancelled_at is null
+        order by o.cancel_requested_at
+        limit ?
+        """,
+        (rs, row) ->
+            new NewOrder(
+                rs.getObject("id", UUID.class),
+                rs.getLong("number"),
+                rs.getString("company"),
+                rs.getInt("item_count"),
+                rs.getBigDecimal("total")),
+        limit);
+  }
+
+  /** Marks cancel requests announced; a request already marked keeps its first time. */
+  public int markCancelAnnounced(List<UUID> orderIds, Instant now) {
+    if (orderIds.isEmpty()) return 0;
+    return jdbc.update(
+        """
+        update local_orders set cancel_announced_at = ?
+        where id = any(?) and cancel_requested_at is not null and cancel_announced_at is null
+        """,
+        ps -> {
+          ps.setTimestamp(1, Timestamp.from(now));
+          ps.setArray(2, ps.getConnection().createArrayOf("uuid", orderIds.toArray()));
+        });
+  }
+
   /** Marks orders alerted; an order already marked keeps its first time. */
   public int markAlerted(List<UUID> orderIds, Instant now) {
     if (orderIds.isEmpty()) return 0;

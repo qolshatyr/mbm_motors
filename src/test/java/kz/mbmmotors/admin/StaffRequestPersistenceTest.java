@@ -121,4 +121,48 @@ class StaffRequestPersistenceTest {
         .hasMessageContaining("уже записана");
     assertThat(service.reconcile(Long.MAX_VALUE, "NOT_CREATED", null, "staff")).isEmpty();
   }
+
+  @Test
+  void cancellationIsRecordedOnceAndOnlyAfterDeliveryFinished() {
+    var id = UUID.randomUUID();
+    long number =
+        jdbc.queryForObject(
+            """
+        insert into local_orders(id,idempotency_key,owner_id,request_hash,revision,status,
+        store_id,store_name,customer_name,phone,comment,consent_at,created_at,total,total_text,item_count)
+        values (?,?,?,?,?,'RECEIVED','aaaaaaaaaaaaaaaaaaaaaaaa','Synthetic store',
+        'Synthetic buyer','+77000000000','',now(),now(),500,'500 ₸',1) returning number
+        """,
+            Long.class,
+            id,
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            "a".repeat(64),
+            "b".repeat(64));
+    jdbc.update(
+        "insert into delivery_outbox(order_id,state,created_at) values (?,'WAITING_CONFIGURATION',now())",
+        id);
+    jdbc.update(
+        "update local_orders set cancel_requested_at=now(),cancel_reason='Ошибся в количестве' where id=?",
+        id);
+    assertThat(service.detail(number).orElseThrow().cancellation().reason())
+        .isEqualTo("Ошибся в количестве");
+    assertThatThrownBy(() -> service.cancel(number, "staff"))
+        .isInstanceOf(StaffRequestService.Problem.class)
+        .hasMessageContaining("ещё передаётся");
+    jdbc.update(
+        """
+        update delivery_outbox set state='SENT',customer_id='cccccccccccccccccccccccc',
+        sale_id='dddddddddddddddddddddddd',sale_number=36131 where order_id=?
+        """,
+        id);
+    var cancellation = service.cancel(number, "staff").orElseThrow().cancellation();
+    assertThat(cancellation.by()).isEqualTo("staff");
+    assertThat(cancellation.cancelledAt()).isNotNull();
+    assertThat(cancellation.requestedAt()).isNotNull();
+    assertThatThrownBy(() -> service.cancel(number, "other"))
+        .isInstanceOf(StaffRequestService.Problem.class)
+        .hasMessageContaining("уже отмечена");
+    assertThat(service.cancel(Long.MAX_VALUE, "staff")).isEmpty();
+  }
 }
