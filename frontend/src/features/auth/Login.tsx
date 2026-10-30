@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../../shared/api/http';
-import { salesPhone } from '../../shared/contacts';
+import { salesContacts } from '../../shared/contacts';
 import { safeReturn, useLogin } from './session';
 
 export function Login() {
@@ -38,7 +38,7 @@ export function Login() {
         <li>заказ списком артикулов из Excel или мессенджера</li>
         <li>история заявок и повтор заказа в один клик</li>
       </ul>
-      <p className="login-aside-contact">Стать клиентом: позвоните в отдел продаж MBM по номеру <a href={salesPhone.tel}>{salesPhone.text}</a> или <a href={salesPhone.whatsapp} target="_blank" rel="noopener noreferrer">напишите в WhatsApp</a>.</p>
+      <p className="login-aside-contact">Чтобы получить доступ к сайту, напишите или позвоните:</p><ul className="login-aside-contacts">{salesContacts.map(c => <li key={c.tel}>{c.name}: <a href={c.tel}>{c.text}</a> · <a href={c.whatsapp} target="_blank" rel="noopener noreferrer" aria-label={`${c.name} в WhatsApp`}>WhatsApp</a></li>)}</ul>
     </section>
   </div>;
 }
