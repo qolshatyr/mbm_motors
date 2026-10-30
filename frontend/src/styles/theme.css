@@ -154,6 +154,7 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--red); flex
 .footer-grid nav, .footer-contacts { display: flex; flex-direction: column; gap: 4px; }
 .footer-contacts { font-style: normal; }
 .footer-contacts span { color: #fcfcfd; font-weight: 600; }
+.footer-contact { color: #fcfcfd; display: flex; flex-wrap: wrap; align-items: center; column-gap: 6px; }
 .footer-grid nav a, .footer-contacts a { color: #fcfcfd; text-decoration: none; min-height: 32px; display: inline-flex; align-items: center; width: fit-content; }
 .footer-grid nav a:hover, .footer-contacts a:hover { color: var(--red-300); text-decoration: underline; }
 .site-footer :focus-visible { outline-color: var(--red-300); }
@@ -571,6 +572,7 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--red); flex
 .make-button:hover { background: var(--n800); color: var(--bg); }
 .make-button span { font-family: var(--font-sans); font-size: var(--text-caption); opacity: .7; }
 .login-aside-contact { margin-top: 18px; font-size: var(--text-body-small); }
+.login-aside-contacts { margin: 8px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: var(--text-body-small); }
 
 /* Staff: clients (v4) */
 .staff-content:has(.clients-layout) { max-width: var(--content-width); }

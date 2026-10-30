@@ -17,7 +17,10 @@ public class CustomerCards {
     this.cloudshop = cloudshop;
   }
 
-  /** Returns the new card ID; any failure means the outcome is unknown. */
+  /**
+   * Returns the new card ID. {@link kz.mbmmotors.cloudshop.CloudShopRejectedException} means
+   * CloudShop refused and nothing was created; any other failure means the outcome is unknown.
+   */
   public String create(String company, String phone) {
     var gateway =
         new CloudShopDeliveryGateway(

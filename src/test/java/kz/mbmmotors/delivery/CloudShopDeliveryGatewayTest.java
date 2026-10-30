@@ -17,6 +17,7 @@ import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import kz.mbmmotors.cloudshop.CloudShopException;
+import kz.mbmmotors.cloudshop.CloudShopRejectedException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -178,6 +179,27 @@ class CloudShopDeliveryGatewayTest {
     reply = TOKEN + snapshot().phone() + "x".repeat(100_000);
     assertSanitized(() -> gateway(Duration.ofSeconds(2)).createCustomer(snapshot()));
     assertThat(calls.get()).isEqualTo(1);
+  }
+
+  @Test
+  void onlyClientErrorsAreRefusalsThatCreatedNothing() {
+    status = 403;
+    reply = "{\"status\":false,\"error\":\"API key does not have permission for this route.\"}";
+    assertThatThrownBy(
+            () -> gateway(Duration.ofSeconds(2)).createCompany("ТОО «Тест»", snapshot().phone()))
+        .isInstanceOf(CloudShopRejectedException.class)
+        .hasMessage(
+            "CloudShop delivery failed with HTTP 403: API key does not have permission for this route.");
+    status = 500;
+    assertThatThrownBy(
+            () -> gateway(Duration.ofSeconds(2)).createCompany("ТОО «Тест»", snapshot().phone()))
+        .isInstanceOf(CloudShopException.class)
+        .isNotInstanceOf(CloudShopRejectedException.class);
+    status = 201;
+    reply = "broken";
+    assertThatThrownBy(
+            () -> gateway(Duration.ofSeconds(2)).createCompany("ТОО «Тест»", snapshot().phone()))
+        .isNotInstanceOf(CloudShopRejectedException.class);
   }
 
   @Test

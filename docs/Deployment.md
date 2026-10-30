@@ -52,8 +52,14 @@
    шифрования копий хранит владелец; разработчику нужен только SSH-доступ к серверу.
 2. Домен `mbmautomotors.kz` — проверить, свободен ли он, и зарегистрировать на компанию.
 3. Сервер Cloud 2-4-50, Ubuntu 24.04, вход по SSH-ключу.
-4. В DNS домена — A-запись `mbmautomotors.kz` на IP сервера. `SITE_ADDRESS` в `.env` —
-   `mbmautomotors.kz`. Пока запись не распространилась, можно начать с адреса `sslip.io` ниже.
+4. DNS домена. В карточке домена hoster.kz включите «Управление ресурсными записями
+   (DNS хостинг)» — пока он выключен, серверы `ns1–3.hoster.kz` отвечают REFUSED. Хостер
+   создаёт записи по умолчанию на свой IP: измените A-записи `mbmautomotors.kz.` и
+   `www.mbmautomotors.kz.` на IP сервера, MX, TXT (SPF) и `mail` оставьте для почты.
+   Проверка: `dig +short @8.8.8.8 mbmautomotors.kz`. Затем `SITE_ADDRESS=mbmautomotors.kz`
+   в `.env` и `docker compose up -d`; Caddy получает сертификаты для домена и `www`, а `www`
+   перенаправляет на основной адрес. Пока записи нет, можно начать с адреса `sslip.io` ниже.
+   Автопродление домена в hoster.kz по умолчанию выключено — решение владельца.
 5. Дальше — раздел «Первая установка».
 
 ## Адрес сайта без домена
@@ -123,6 +129,35 @@ Healthchecks.io. Платным остаётся только домен, есл
 
 Проще и без карты — Google Drive владельца: раздел «Копии вне сервера» ниже.
 
+## Подготовка сервера
+
+Проверено на hoster.kz 30.10.2026 (Ubuntu 24.04, Cloud 2-4-50). Вход по ключу настраивается
+с машины разработчика, остальное выполняется на сервере под root.
+
+```sh
+ssh-keygen -t ed25519 -C "mbm-server"      # если ключа ещё нет
+ssh-copy-id root@<IP>                       # один раз вводится root-пароль
+```
+
+IP пишется без угловых скобок: в zsh `<…>` — перенаправление ввода.
+
+```sh
+ufw allow 22/tcp && ufw allow 80/tcp && ufw allow 443/tcp && ufw --force enable
+printf "PasswordAuthentication no\nKbdInteractiveAuthentication no\nPermitRootLogin prohibit-password\n" \
+  > /etc/ssh/sshd_config.d/00-hardening.conf
+sshd -t && systemctl restart ssh            # не закрывая сессию, проверить вход во втором окне
+echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
+apt update && DEBIAN_FRONTEND=noninteractive apt -y upgrade
+curl -fsSL https://get.docker.com | sh
+fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+echo '/swapfile none swap sw 0 0' >> /etc/fstab
+mkdir -p /opt/mbm
+```
+
+У сервера hoster.kz нет IPv6, а DNS отдаёт для `security.ubuntu.com` и IPv6-адреса: без
+`ForceIPv4` apt пишет «no longer has a Release file». Разовое «Could not resolve» — сбой DNS
+хостера, `apt update` достаточно повторить. Swap нужен, потому что в образе его нет.
+
 ## Первая установка
 
 На своей машине соберите JAR с интерфейсом:
@@ -130,10 +165,10 @@ Healthchecks.io. Платным остаётся только домен, есл
 ```sh
 python3 scripts/build_site.py
 scp target/mbm-motors-0.0.1-SNAPSHOT.jar user@server:/opt/mbm/app.jar
-scp deploy/production/{compose.yml,Caddyfile,backup.sh,restore_check.sh,env.example} user@server:/opt/mbm/
+scp deploy/production/{compose.yml,Caddyfile,privacy.html,backup.sh,restore_check.sh,env.example} user@server:/opt/mbm/
 ```
 
-На сервере (Docker Engine с плагином Compose установлен по официальной инструкции Docker):
+На сервере:
 
 ```sh
 cd /opt/mbm
@@ -143,13 +178,38 @@ docker compose logs -f app              # дождаться «Started Applicati
 ```
 
 Проверьте `https://<SITE_ADDRESS>/login`: должна открыться страница входа партнёра.
+После исправления `.env` выполняйте `docker compose up -d`: `restart` не перечитывает переменные.
+
+Сразу после выдачи сертификата в журнале Caddy появляются запросы сканеров (`/.env`, `/.git/HEAD`,
+`/wp-config.php`, `/actuator/heapdump`). Это фон интернета; пока приложение запускается, они
+получают 502, затем — перенаправление на вход. Ошибки сайта смотрите в `docker compose logs app`.
 
 ## Каталог
 
 Заполните `CLOUDSHOP_TOKEN` и `CATALOG_SYNC_ENABLED=true`, затем
 `docker compose up -d app`. Приложение импортирует товары и обновляет их каждые 5 минут
-только запросами GET. На сайте видны только товары СКЛАДА; позиции с ценой 0 ₸
+только запросами GET. Успешная синхронизация в журнал не пишет (только ошибка —
+«Catalog synchronization failed»); результат виден в таблице `sync_runs`:
+
+```sh
+docker compose exec -T db psql -U mbm -d mbm_motors \
+  -c "select status, started_at, product_count, error_code from sync_runs order by started_at desc limit 3"
+```
+
+ На сайте видны только товары СКЛАДА; позиции с ценой 0 ₸
 показываются как «Цена уточняется» и не заказываются.
+
+## Служебный раздел
+
+Хэш пароля сотрудника (не менее 12 символов) даёт сам Caddy, пароль вводится скрыто:
+
+```sh
+docker compose run --rm caddy caddy hash-password
+```
+
+В `.env` — `MBM_ADMIN_ENABLED=true`, `MBM_ADMIN_USERNAME` и хэш **в одинарных кавычках**:
+`MBM_ADMIN_PASSWORD_HASH='$2a$14$…'`. Без кавычек Compose принимает `$…` за переменные и портит
+хэш. Затем `docker compose up -d app` и вход на `/admin/requests`.
 
 ## Партнёры
 
@@ -177,14 +237,20 @@ docker compose run --rm -e MBM_PARTNER_LOGIN=turbo \
 
 Либо создайте карточку через API один раз — `--partner-create-customer` вместо
 `--partner-link-customer`, без `MBM_CLOUDSHOP_CUSTOMER_ID`. Если команда сообщила о неясном
-ответе, не повторяйте её: найдите карточку в CloudShop и привяжите вручную.
+ответе, не повторяйте её: найдите карточку в CloudShop и привяжите вручную. Если команда пишет
+«CloudShop отказал, карточка не создана» (ответ 4xx, например нет прав у токена), карточки нет:
+устраните причину и повторите.
 
 На машине разработчика те же команды выполняют `scripts/partner_add.py` и
 `scripts/partner_customer.py`.
 
 ## Включение передачи заявок
 
-1. Проверьте, что токен CloudShop разрешает создавать продажи.
+1. Проверьте, что токен CloudShop разрешает запись: создание продаж (`/sales`) и, для карточек
+   из «Клиентов», покупателей (`/customers`). Токен только для чтения загружает каталог, но заявка
+   получает UNKNOWN с причиной «HTTP 403: API key does not have permission for this route»
+   (так было при запуске 30.10.2026). Продажа при 403 не создана; после замены токена оформите
+   новую заявку, а прежнюю отметьте сверенной.
 2. **С разрешения владельца** проведите одну контрольную заявку: включите
    `MBM_DELIVERY_ENABLED=true`, `docker compose up -d app`, оформите заявку тестовым
    партнёром на дешёвую позицию.
@@ -202,7 +268,9 @@ docker compose run --rm -e MBM_PARTNER_LOGIN=turbo \
 Сайт пишет в чат сотрудников:
 
 - **о каждой новой заявке** — номер, компания партнёра, число позиций и сумма (выключается
-  `MBM_ALERT_NEW_ORDERS=false`); заявки, оформленные до включения, не присылаются;
+  `MBM_ALERT_NEW_ORDERS=false`); заявки, которые ещё не объявлялись, приходят и после
+  подключения бота (при запуске 31.10.2026 пришли обе прежние заявки). Не присылаются только
+  заявки, оформленные до обновления с этой функцией (миграция V11);
 - **неясен результат передачи** (UNKNOWN) — нужно сверить с CloudShop и отметить сверку в
   служебном разделе;
 - **заявка не передана за 15 минут** (только при `MBM_DELIVERY_ENABLED=true`) — у партнёра нет
@@ -243,16 +311,25 @@ docker compose run --rm -e MBM_PARTNER_LOGIN=turbo \
 ## Мониторинг
 
 Сам сайт пишет в Telegram о заявках и о каталоге (раздел выше). Если же упал весь сервер,
-написать он уже не сможет; для этого нужны внешние сервисы. Оба бесплатны для такого объёма
-и умеют слать уведомления в Telegram.
+написать он уже не сможет; для этого нужен внешний сервис. Healthchecks.io бесплатен для
+такого объёма (до 20 проверок) и шлёт уведомления на почту и в Telegram.
 
-**Доступность сайта — [UptimeRobot](https://uptimerobot.com).** Монитор типа *Keyword*, адрес
-`https://<SITE_ADDRESS>/actuator/health`, ключевое слово `UP`, интервал 5 минут. Адрес открыт
-без входа и отвечает только `{"status":"UP"}` (или ошибкой, если недоступна база); другие
-служебные адреса закрыты. В *Alert Contacts* подключите Telegram.
+**Доступность сайта — тот же [Healthchecks.io](https://healthchecks.io)** (решение 31.10.2026,
+вместо UptimeRobot). Отдельная проверка `MBM site`, Simple: период 5 минут, запас 5 минут.
+Сервер раз в 5 минут открывает свой публичный `/actuator/health` (через DNS и Caddy) и
+отмечается: `UP` — обычная отметка, иначе — `/fail`, уведомление сразу. Если сервер выключен
+или без сети, отметок нет, и Healthchecks сообщит через 10 минут. Недоступность сайта только
+извне (при работающем сервере) так не видна.
 
-**Резервные копии — [Healthchecks.io](https://healthchecks.io).** Создайте проверку с периодом
-1 день и запасом 2 часа, подключите Telegram и впишите её адрес в `.env`:
+```sh
+(crontab -l; echo '*/5 * * * * curl -fsS -m 20 https://<SITE_ADDRESS>/actuator/health | grep -q "\"UP\"" && curl -fsS -m 10 -o /dev/null https://hc-ping.com/<uuid> || curl -fsS -m 10 -o /dev/null https://hc-ping.com/<uuid>/fail') | crontab -
+```
+
+`/actuator/health` открыт без входа и отвечает только `{"status":"UP"}` (или ошибкой, если
+недоступна база); другие служебные адреса закрыты.
+
+**Резервные копии — [Healthchecks.io](https://healthchecks.io).** Создайте проверку `MBM backup`:
+Cron `30 21 * * *`, часовой пояс UTC, запас 2 часа, подключите Telegram и впишите её адрес в `.env`:
 `BACKUP_HEARTBEAT_URL=https://hc-ping.com/<uuid>`. После каждой удачной копии `backup.sh`
 отмечается по этому адресу, после ошибки — по адресу с `/fail`. Сервис сообщит и об ошибке,
 и о том, что копия вовремя не сделалась вовсе (cron не запустился, сервер выключен).
@@ -261,7 +338,8 @@ docker compose run --rm -e MBM_PARTNER_LOGIN=turbo \
 
 ```sh
 chmod +x /opt/mbm/backup.sh /opt/mbm/restore_check.sh
-crontab -e   # 30 3 * * * /opt/mbm/backup.sh >> /opt/mbm/backup.log 2>&1
+echo '30 21 * * * /opt/mbm/backup.sh >> /opt/mbm/backup.log 2>&1' | crontab -
+# часы сервера в UTC: 21:30 UTC = 02:30 по Алматы
 ```
 
 `backup.sh` делает дамп, проверяет, что архив цел и дамп дописан до конца, и хранит копии
@@ -283,20 +361,34 @@ crontab -e   # 30 3 * * * /opt/mbm/backup.sh >> /opt/mbm/backup.log 2>&1
 Все команды на сервере выполняйте под тем же пользователем, от имени которого cron
 запускает `backup.sh`: настройки rclone у каждого пользователя свои.
 
-**1. rclone на компьютере с браузером.** Он нужен один раз — чтобы войти в Google: у сервера
-браузера нет. Linux: `sudo apt install rclone`; Windows и macOS — с
-[rclone.org/downloads](https://rclone.org/downloads/).
+**1. rclone одной версии на компьютере с браузером и на сервере.** Компьютер нужен один раз —
+чтобы войти в Google: у сервера браузера нет. В apt Ubuntu 24.04 — старая 1.60, поэтому
+ставьте официальным установщиком в обоих местах: `curl https://rclone.org/install.sh | sudo bash`
+(на сервере нужен `unzip`); версии сравните `rclone version`.
 
-**2. Подключение Google Drive на сервере.** `sudo apt install rclone`, затем `rclone config`
-и ответы по порядку:
+**Свой client_id Google.** Общий client_id rclone для Drive отключается в 2026 году, поэтому
+нужен свой (бесплатно, в том же аккаунте Google):
+
+1. [console.cloud.google.com](https://console.cloud.google.com/): новый проект `MBM Backups`,
+   APIs & Services → включить **Google Drive API**.
+2. Google Auth Platform: Branding — имя, почта поддержки и разработчика, домашняя страница
+   `https://mbmautomotors.kz`, политика `https://mbmautomotors.kz/privacy`, authorized domain
+   `mbmautomotors.kz`. Data Access — один scope `https://www.googleapis.com/auth/drive.file`.
+3. Clients → Create OAuth client → **Desktop app**; Client ID и secret — в менеджер паролей.
+4. Audience: **External** и **In production**. Internal работает только для Google Workspace
+   (с `@gmail.com` — «Ошибка 403: org_internal»), а в Testing вход сбрасывается через 7 дней.
+   In production требует домашнюю страницу и политику (`privacy.html`, отдаёт Caddy).
+   При входе Google предупредит, что приложение не проверено: «Дополнительно» → перейти.
+   Для `drive.file` проверка Google не нужна.
+
+**2. Подключение Google Drive на сервере.** `rclone config` и ответы по порядку:
 
 | Вопрос rclone | Ответ |
 |---|---|
 | `n/s/q>` | `n` (новое подключение) |
 | `name>` | `gdrive` |
 | `Storage>` | `drive` |
-| `client_id>`, `client_secret>` | Enter (пусто) |
-| `Continue using the shared client_id anyway?` (если спросит) | `y` |
+| `client_id>`, `client_secret>` | свои Client ID и secret |
 | `scope>` | `drive.file` — rclone видит только свои файлы, остальной диск владельца ему недоступен |
 | `service_account_file>` | Enter |
 | `Edit advanced config?` (если спросит) | `n` |
@@ -306,7 +398,8 @@ rclone покажет команду вида `rclone authorize "drive" "eyJ…"
 из шага 1: откроется браузер — войдите в аккаунт Google владельца и разрешите доступ.
 В терминале компьютера появится ответ между `--->` и `<---End paste`; скопируйте его
 и вставьте на сервере в `config_token>`. Затем `Configure this as a Shared Drive?` → `n`
-и `y` (`Yes this is OK`), чтобы сохранить.
+и `y` (`Yes this is OK`), чтобы сохранить. Если вход прервался, подключение остаётся без
+`token`: повторите вход командой `rclone config reconnect gdrive:` (с двоеточием).
 
 Если `rclone authorize` ругается на формат, версии rclone на компьютере и сервере слишком
 разные: поставьте на компьютер ту же версию (`rclone version` на сервере) с rclone.org.
