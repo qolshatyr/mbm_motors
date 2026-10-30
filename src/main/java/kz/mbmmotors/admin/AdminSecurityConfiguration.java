@@ -66,7 +66,8 @@ public class AdminSecurityConfiguration {
                         "/admin/api/clients/{login}/enabled",
                         "/admin/api/clients/{login}/customer",
                         "/admin/api/clients/{login}/customer/create",
-                        "/admin/api/requests/{number}/reconciliation")
+                        "/admin/api/requests/{number}/reconciliation",
+                        "/admin/api/requests/{number}/cancellation")
                     .hasRole("STAFF")
                     .anyRequest()
                     .denyAll())

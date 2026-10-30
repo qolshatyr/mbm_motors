@@ -17,10 +17,10 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * Tells staff in Telegram about new orders and about orders that need attention: an UNKNOWN
- * delivery to reconcile, or a partner order that has not started delivery. Each order is reported
- * once per kind, after Telegram accepts the message; a failed send is retried on the next run. Off
- * while the bot token is empty.
+ * Tells staff in Telegram about new orders, partner requests to cancel, and orders that need
+ * attention: an UNKNOWN delivery to reconcile, or a partner order that has not started delivery.
+ * Each order is reported once per kind, after Telegram accepts the message; a failed send is
+ * retried on the next run. Off while the bot token is empty.
  */
 @Component
 @ConditionalOnExpression(AlertConfiguration.ENABLED)
@@ -89,6 +89,7 @@ class AlertWorker {
   @Scheduled(fixedDelayString = "${alerts.interval:1m}", initialDelayString = "30s")
   void tick() {
     if (newOrders) announceNewOrders();
+    announceCancelRequests();
     alertAttention();
   }
 
@@ -107,6 +108,23 @@ class AlertWorker {
     repository.markAnnounced(
         orders.stream().map(AlertRepository.NewOrder::orderId).toList(), clock.instant());
     LOG.info("Staff told about new orders: count={}", orders.size());
+  }
+
+  private void announceCancelRequests() {
+    var orders = repository.cancelRequests(BATCH);
+    if (orders.isEmpty()) return;
+    try {
+      notifier.send(cancelRequestsMessage(orders));
+    } catch (AlertException failure) {
+      LOG.warn(
+          "Cancel request alert not sent, retrying next run: orders={}, reason={}",
+          orders.size(),
+          failure.getMessage());
+      return;
+    }
+    repository.markCancelAnnounced(
+        orders.stream().map(AlertRepository.NewOrder::orderId).toList(), clock.instant());
+    LOG.info("Staff told about cancel requests: count={}", orders.size());
   }
 
   private void alertAttention() {
@@ -129,11 +147,26 @@ class AlertWorker {
   }
 
   String newOrdersMessage(List<AlertRepository.NewOrder> orders) {
-    var text =
-        new StringBuilder(
-            orders.size() == 1
-                ? "MBM AutoMotors: новая заявка\n"
-                : "MBM AutoMotors: новые заявки (" + orders.size() + ")\n");
+    return ordersMessage(
+        orders.size() == 1
+            ? "MBM AutoMotors: новая заявка\n"
+            : "MBM AutoMotors: новые заявки (" + orders.size() + ")\n",
+        orders,
+        "");
+  }
+
+  String cancelRequestsMessage(List<AlertRepository.NewOrder> orders) {
+    return ordersMessage(
+        orders.size() == 1
+            ? "MBM AutoMotors: клиент просит отменить заявку\n"
+            : "MBM AutoMotors: клиенты просят отменить заявки (" + orders.size() + ")\n",
+        orders,
+        "\n\nУдалите продажу в CloudShop и отметьте отмену в заявке на сайте.");
+  }
+
+  private String ordersMessage(
+      String heading, List<AlertRepository.NewOrder> orders, String instruction) {
+    var text = new StringBuilder(heading);
     for (var order : orders) {
       String company =
           order.company() == null
@@ -150,6 +183,7 @@ class AlertWorker {
           .append(money(order.total()))
           .append(" ₸");
     }
+    text.append(instruction);
     if (requestsUrl != null) text.append("\n\nЗаявки: ").append(requestsUrl);
     return text.toString();
   }

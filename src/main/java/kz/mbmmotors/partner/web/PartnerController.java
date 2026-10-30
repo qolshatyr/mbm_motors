@@ -11,6 +11,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -33,10 +35,23 @@ public class PartnerController {
   }
 
   @GetMapping("/api/account/orders/{number}")
-  ResponseEntity<PartnerAccountService.OrderItems> order(
+  ResponseEntity<PartnerAccountService.OrderDetail> order(
       @PathVariable String number, Authentication authentication) {
-    return noStore(accounts.items(accounts.current(authentication), number));
+    return noStore(accounts.detail(accounts.current(authentication), number));
   }
+
+  /** The partner asks staff to cancel; nothing is removed from CloudShop automatically. */
+  @PostMapping("/api/account/orders/{number}/cancel-request")
+  ResponseEntity<PartnerAccountService.OrderDetail> requestCancel(
+      @PathVariable String number,
+      @RequestBody(required = false) CancelRequest request,
+      Authentication authentication) {
+    return noStore(
+        accounts.requestCancel(
+            accounts.current(authentication), number, request == null ? null : request.reason()));
+  }
+
+  record CancelRequest(String reason) {}
 
   @ExceptionHandler(PartnerAccountService.AccountProblem.class)
   ResponseEntity<ProblemDetail> problem(PartnerAccountService.AccountProblem error) {

@@ -148,6 +148,34 @@ class AlertWorkerTest {
   }
 
   @Test
+  void cancelRequestIsAnnouncedOnceWithInstructionAndWithoutReason() {
+    var order = newOrder(12, "ТОО «Автосервис»", "45000");
+    when(repository.cancelRequests(AlertWorker.BATCH)).thenReturn(List.of(order));
+    worker(true, "https://shop.example.kz").tick();
+    var text = ArgumentCaptor.forClass(String.class);
+    verify(notifier).send(text.capture());
+    assertThat(text.getValue())
+        .isEqualTo(
+            "MBM AutoMotors: клиент просит отменить заявку\n\n№12 — ТОО «Автосервис», позиций: 3,"
+                + " сумма: 45 000 ₸\n\nУдалите продажу в CloudShop и отметьте отмену в заявке на"
+                + " сайте.\n\nЗаявки: https://shop.example.kz/admin/requests");
+    verify(repository).markCancelAnnounced(List.of(order.orderId()), NOW);
+  }
+
+  @Test
+  void failedCancelRequestAlertIsRetriedAndDoesNotBlockAttentionAlerts() {
+    when(repository.cancelRequests(anyInt())).thenReturn(List.of(newOrder(12, "Партнёр", "10")));
+    when(repository.pending(any(), anyInt())).thenReturn(List.of(unknown(7, "reason")));
+    doThrow(new AlertException("Telegram answered HTTP 502"))
+        .doNothing()
+        .when(notifier)
+        .send(any());
+    worker(true, null).tick();
+    verify(repository, never()).markCancelAnnounced(anyList(), any());
+    verify(repository).markAlerted(anyList(), any());
+  }
+
+  @Test
   void newOrderAlertsCanBeSwitchedOff() {
     new AlertWorker(repository, notifier, clock, Duration.ofMinutes(15), true, false, null).tick();
     verify(repository, never()).newOrders(anyInt());

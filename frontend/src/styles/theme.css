@@ -450,6 +450,15 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--red); flex
 .order-main > p:first-child { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 16px; }
 .order-main .muted { font-size: var(--text-small); margin-top: 4px; }
 .order-total { font-weight: 700; font-size: 17px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.order-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.order-details { flex: 1 1 100%; display: grid; gap: 12px; border-top: 1px solid var(--divider); padding-top: 14px; }
+.order-items { list-style: none; margin: 0; padding: 0; }
+.order-items li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; padding-block: 10px; border-bottom: 1px solid var(--divider); }
+.order-items li > strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.order-item-name { font-weight: 600; overflow-wrap: anywhere; }
+.order-items .sku, .order-items .muted { font-size: var(--text-small); margin-top: 2px; }
+.order-cancel { justify-self: start; }
+.order-cancel-form { display: grid; gap: 12px; }
 
 /* Staff app: shared shell pieces */
 .site-header { background: var(--card); border-bottom: 1px solid var(--divider); }
@@ -560,6 +569,7 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--red); flex
   .quick-footer .button { width: 100%; white-space: normal; }
   .order-row { padding: 16px; }
   .order-row .button { width: 100%; }
+  .order-actions { width: 100%; }
   .toast-region { bottom: 12px; width: calc(100% - 24px); }
   .toast { flex-wrap: wrap; }
   .demo-banner > div { font-size: 12px; }

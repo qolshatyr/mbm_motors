@@ -38,6 +38,11 @@ function demoOrder(number: string, createdAt: string, items: Line[]): AccountOrd
   const total = items.reduce((sum, line) => sum + findProduct(line.id)!.price * line.quantity, 0);
   return { number, createdAt, itemCount: items.reduce((sum, line) => sum + line.quantity, 0), totalText: money(total), status: 'RECEIVED', statusText: 'Сохранена, ждёт передачи' };
 }
+/** The demo keeps no reason: nothing leaves the browser tab. */
+function demoDetail(entry: DemoOrder): AccountOrderDetail {
+  const items = entry.items.map((line) => { const product = productById(line.id); return { productId: product.id, name: product.name, sku: product.sku, unit: product.unit ?? 'шт.', quantity: line.quantity, priceText: money(product.price), lineTotalText: money(product.price * line.quantity) }; });
+  return { ...entry.order, cancelReason: null, cancellable: entry.order.status !== 'CANCEL_REQUESTED', items };
+}
 let state = restore();
 let previewKey = crypto.randomUUID();
 function save() {
@@ -210,7 +215,14 @@ export async function demoRequest<T>(url: string, options: RequestInit = {}): Pr
     const number = decodeURIComponent(path.slice('/api/account/orders/'.length));
     const entry = state.orders.find((item) => item.order.number === number);
     if (!entry) throw new ApiError(404, 'Заявка не найдена.');
-    response = { number, items: entry.items.map((line) => { const product = productById(line.id); return { productId: product.id, name: product.name, sku: product.sku, quantity: line.quantity }; }) } satisfies AccountOrderDetail;
+    response = demoDetail(entry);
+  } else if (method === 'POST' && /^\/api\/account\/orders\/[^/]+\/cancel-request$/.test(path)) {
+    const number = decodeURIComponent(path.split('/')[4]);
+    const entry = state.orders.find((item) => item.order.number === number);
+    if (!entry) throw new ApiError(404, 'Заявка не найдена.');
+    if (entry.order.status === 'CANCEL_REQUESTED') throw new ApiError(409, 'Отмена по этой заявке уже запрошена.');
+    entry.order = { ...entry.order, status: 'CANCEL_REQUESTED', statusText: 'Запрошена отмена' }; save();
+    response = demoDetail(entry);
   } else throw new ApiError(404, 'Этот раздел недоступен в демонстрационном прототипе. Вернитесь в каталог.');
   return structuredClone(response) as T;
 }

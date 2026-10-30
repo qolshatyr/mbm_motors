@@ -43,6 +43,7 @@ class PartnerSecurityTest {
   @Autowired MockMvc mvc;
   @MockitoBean PartnerRepository partners;
   @MockitoBean JdbcTemplate jdbc;
+  @MockitoBean java.time.Clock clock;
   @MockitoBean CatalogViewService catalog;
 
   @DynamicPropertySource

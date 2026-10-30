@@ -167,6 +167,29 @@ class AdminSecurityTest {
   }
 
   @Test
+  void cancellationNeedsStaffAndCsrfAndRecordsTheSignedInStaff() throws Exception {
+    mvc.perform(post("/admin/api/requests/5/cancellation").with(user("staff").roles("STAFF")))
+        .andExpect(status().isForbidden());
+    mvc.perform(
+            post("/admin/api/requests/5/cancellation")
+                .with(user("viewer").roles("USER"))
+                .with(csrf()))
+        .andExpect(status().isForbidden());
+    mvc.perform(post("/admin/api/requests/5/cancellation").with(csrf()))
+        .andExpect(status().isUnauthorized());
+    verifyNoInteractions(service);
+    when(service.cancel(5, "staff"))
+        .thenThrow(new StaffRequestService.Problem(409, "Заявка уже отмечена отменённой."));
+    mvc.perform(
+            post("/admin/api/requests/5/cancellation")
+                .with(user("staff").roles("STAFF"))
+                .with(csrf()))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.detail").value("Заявка уже отмечена отменённой."));
+    verify(service).cancel(5, "staff");
+  }
+
+  @Test
   void boundedPagesAndNumbersRejectBadInputBeforeQuery() throws Exception {
     for (String page : List.of("-1", "100001", "1.5", "word", "999999999999999999999")) {
       mvc.perform(get("/admin/api/requests").param("page", page).with(user("staff").roles("STAFF")))
@@ -201,7 +224,8 @@ class AdminSecurityTest {
                         "Test store",
                         1,
                         "3 000 ₸",
-                        StaffRequestService.delivery("WAITING_CONFIGURATION"))),
+                        StaffRequestService.delivery("WAITING_CONFIGURATION"),
+                        null)),
                 0,
                 20,
                 1,
@@ -230,7 +254,8 @@ class AdminSecurityTest {
                     List.of(
                         new StaffRequestService.Item(
                             1, "Snapshot part", "TEST", "шт", 1, "3 000 ₸", "3 000 ₸")),
-                    StaffRequestService.delivery("WAITING_CONFIGURATION"))));
+                    StaffRequestService.delivery("WAITING_CONFIGURATION"),
+                    null)));
     mvc.perform(get("/admin/api/requests/123").with(user("staff").roles("STAFF")))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.customerName").value("Synthetic customer"))
