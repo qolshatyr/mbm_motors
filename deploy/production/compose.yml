@@ -1,6 +1,14 @@
 # Production stack for one budget VPS. See docs/Deployment.md.
+# Logs are rotated: at most 5 × 10 MB per container (the privacy policy relies on this).
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "5"
+
 services:
   db:
+    logging: *logging
     image: postgres:17.6
     restart: unless-stopped
     environment:
@@ -16,6 +24,7 @@ services:
       retries: 10
 
   app:
+    logging: *logging
     image: eclipse-temurin:21-jre-noble
     restart: unless-stopped
     depends_on:
@@ -47,6 +56,7 @@ services:
       TZ: Asia/Almaty
 
   caddy:
+    logging: *logging
     image: caddy:2.10
     restart: unless-stopped
     depends_on:
@@ -58,6 +68,7 @@ services:
       SITE_ADDRESS: ${SITE_ADDRESS:?Set SITE_ADDRESS in .env}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./privacy.html:/srv/privacy.html:ro
       - caddy_data:/data
       - caddy_config:/config
 

@@ -52,8 +52,14 @@
    шифрования копий хранит владелец; разработчику нужен только SSH-доступ к серверу.
 2. Домен `mbmautomotors.kz` — проверить, свободен ли он, и зарегистрировать на компанию.
 3. Сервер Cloud 2-4-50, Ubuntu 24.04, вход по SSH-ключу.
-4. В DNS домена — A-запись `mbmautomotors.kz` на IP сервера. `SITE_ADDRESS` в `.env` —
-   `mbmautomotors.kz`. Пока запись не распространилась, можно начать с адреса `sslip.io` ниже.
+4. DNS домена. В карточке домена hoster.kz включите «Управление ресурсными записями
+   (DNS хостинг)» — пока он выключен, серверы `ns1–3.hoster.kz` отвечают REFUSED. Хостер
+   создаёт записи по умолчанию на свой IP: измените A-записи `mbmautomotors.kz.` и
+   `www.mbmautomotors.kz.` на IP сервера, MX, TXT (SPF) и `mail` оставьте для почты.
+   Проверка: `dig +short @8.8.8.8 mbmautomotors.kz`. Затем `SITE_ADDRESS=mbmautomotors.kz`
+   в `.env` и `docker compose up -d`; Caddy получает сертификаты для домена и `www`, а `www`
+   перенаправляет на основной адрес. Пока записи нет, можно начать с адреса `sslip.io` ниже.
+   Автопродление домена в hoster.kz по умолчанию выключено — решение владельца.
 5. Дальше — раздел «Первая установка».
 
 ## Адрес сайта без домена
@@ -159,7 +165,7 @@ mkdir -p /opt/mbm
 ```sh
 python3 scripts/build_site.py
 scp target/mbm-motors-0.0.1-SNAPSHOT.jar user@server:/opt/mbm/app.jar
-scp deploy/production/{compose.yml,Caddyfile,backup.sh,restore_check.sh,env.example} user@server:/opt/mbm/
+scp deploy/production/{compose.yml,Caddyfile,privacy.html,backup.sh,restore_check.sh,env.example} user@server:/opt/mbm/
 ```
 
 На сервере:
@@ -321,7 +327,8 @@ docker compose run --rm -e MBM_PARTNER_LOGIN=turbo \
 
 ```sh
 chmod +x /opt/mbm/backup.sh /opt/mbm/restore_check.sh
-crontab -e   # 30 3 * * * /opt/mbm/backup.sh >> /opt/mbm/backup.log 2>&1
+echo '30 21 * * * /opt/mbm/backup.sh >> /opt/mbm/backup.log 2>&1' | crontab -
+# часы сервера в UTC: 21:30 UTC = 02:30 по Алматы
 ```
 
 `backup.sh` делает дамп, проверяет, что архив цел и дамп дописан до конца, и хранит копии
@@ -343,20 +350,34 @@ crontab -e   # 30 3 * * * /opt/mbm/backup.sh >> /opt/mbm/backup.log 2>&1
 Все команды на сервере выполняйте под тем же пользователем, от имени которого cron
 запускает `backup.sh`: настройки rclone у каждого пользователя свои.
 
-**1. rclone на компьютере с браузером.** Он нужен один раз — чтобы войти в Google: у сервера
-браузера нет. Linux: `sudo apt install rclone`; Windows и macOS — с
-[rclone.org/downloads](https://rclone.org/downloads/).
+**1. rclone одной версии на компьютере с браузером и на сервере.** Компьютер нужен один раз —
+чтобы войти в Google: у сервера браузера нет. В apt Ubuntu 24.04 — старая 1.60, поэтому
+ставьте официальным установщиком в обоих местах: `curl https://rclone.org/install.sh | sudo bash`
+(на сервере нужен `unzip`); версии сравните `rclone version`.
 
-**2. Подключение Google Drive на сервере.** `sudo apt install rclone`, затем `rclone config`
-и ответы по порядку:
+**Свой client_id Google.** Общий client_id rclone для Drive отключается в 2026 году, поэтому
+нужен свой (бесплатно, в том же аккаунте Google):
+
+1. [console.cloud.google.com](https://console.cloud.google.com/): новый проект `MBM Backups`,
+   APIs & Services → включить **Google Drive API**.
+2. Google Auth Platform: Branding — имя, почта поддержки и разработчика, домашняя страница
+   `https://mbmautomotors.kz`, политика `https://mbmautomotors.kz/privacy`, authorized domain
+   `mbmautomotors.kz`. Data Access — один scope `https://www.googleapis.com/auth/drive.file`.
+3. Clients → Create OAuth client → **Desktop app**; Client ID и secret — в менеджер паролей.
+4. Audience: **External** и **In production**. Internal работает только для Google Workspace
+   (с `@gmail.com` — «Ошибка 403: org_internal»), а в Testing вход сбрасывается через 7 дней.
+   In production требует домашнюю страницу и политику (`privacy.html`, отдаёт Caddy).
+   При входе Google предупредит, что приложение не проверено: «Дополнительно» → перейти.
+   Для `drive.file` проверка Google не нужна.
+
+**2. Подключение Google Drive на сервере.** `rclone config` и ответы по порядку:
 
 | Вопрос rclone | Ответ |
 |---|---|
 | `n/s/q>` | `n` (новое подключение) |
 | `name>` | `gdrive` |
 | `Storage>` | `drive` |
-| `client_id>`, `client_secret>` | Enter (пусто) |
-| `Continue using the shared client_id anyway?` (если спросит) | `y` |
+| `client_id>`, `client_secret>` | свои Client ID и secret |
 | `scope>` | `drive.file` — rclone видит только свои файлы, остальной диск владельца ему недоступен |
 | `service_account_file>` | Enter |
 | `Edit advanced config?` (если спросит) | `n` |
@@ -366,7 +387,8 @@ rclone покажет команду вида `rclone authorize "drive" "eyJ…"
 из шага 1: откроется браузер — войдите в аккаунт Google владельца и разрешите доступ.
 В терминале компьютера появится ответ между `--->` и `<---End paste`; скопируйте его
 и вставьте на сервере в `config_token>`. Затем `Configure this as a Shared Drive?` → `n`
-и `y` (`Yes this is OK`), чтобы сохранить.
+и `y` (`Yes this is OK`), чтобы сохранить. Если вход прервался, подключение остаётся без
+`token`: повторите вход командой `rclone config reconnect gdrive:` (с двоеточием).
 
 Если `rclone authorize` ругается на формат, версии rclone на компьютере и сервере слишком
 разные: поставьте на компьютер ту же версию (`rclone version` на сервере) с rclone.org.

@@ -5,5 +5,18 @@
 		Strict-Transport-Security "max-age=31536000"
 		-Server
 	}
-	reverse_proxy app:8080
+	# Public privacy policy, also linked from the Google OAuth app used for backups.
+	handle /privacy {
+		root * /srv
+		rewrite * /privacy.html
+		file_server
+	}
+	handle {
+		reverse_proxy app:8080
+	}
+}
+
+# www.<address> gets its own certificate and redirects to the main address.
+www.{$SITE_ADDRESS} {
+	redir https://{$SITE_ADDRESS}{uri} permanent
 }
