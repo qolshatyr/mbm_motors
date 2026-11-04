@@ -9,7 +9,7 @@ import { Cart } from '../features/cart/Cart';
 import { Receipt } from '../features/checkout/Receipt';
 import { Account } from '../features/account/Account';
 import { Login } from '../features/auth/Login';
-import { safeReturn, useMe } from '../features/auth/session';
+import { safeReturn, signInPath, useMe } from '../features/auth/session';
 import { useCart } from '../features/cart/cartQueries';
 import { pickupText, salesContacts, warehouseMapUrl } from '../shared/contacts';
 import { EmptyState, Notice } from '../shared/ui/Feedback';
@@ -49,7 +49,7 @@ function PartnerApp() {
   let content;
   if (me.isPending) content = <div className="loading-state" role="status"><span className="spinner" aria-hidden="true" />Проверяем вход…</div>;
   else if (me.isError) content = <Notice error><p>Не удалось проверить вход. Проверьте соединение и попробуйте ещё раз.</p><button type="button" className="button" onClick={() => void me.refetch()}>Повторить</button></Notice>;
-  else if (signedOut) content = location.pathname === '/login' ? <Login /> : <Navigate replace to={`/login?from=${encodeURIComponent(location.pathname + location.search)}`} />;
+  else if (signedOut) content = location.pathname === '/login' ? <Login /> : <Navigate replace to={signInPath(location.pathname + location.search)} />;
   else content = <Routes>
     <Route path="/" element={<Home />} />
     <Route path="/search" element={<Catalog />} />

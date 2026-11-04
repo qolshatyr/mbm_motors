@@ -62,39 +62,63 @@ public class CatalogViewService {
       int page,
       String sort,
       CatalogFilter filter) {
+    return list(query, storeId, available, false, page, sort, filter);
+  }
+
+  /**
+   * {@code orderable} keeps only products with a positive price and stock, for showcases. A query
+   * matches when every word is found in the name, article or code (in any order); a whole article
+   * typed with spaces still matches. When nothing matches, the search is repeated with typo
+   * tolerance and the page is marked {@code approximate}.
+   */
+  @Transactional(readOnly = true)
+  public CatalogPage list(
+      String query,
+      String storeId,
+      boolean available,
+      boolean orderable,
+      int page,
+      String sort,
+      CatalogFilter filter) {
     String q = query == null ? "" : query.strip();
-    if (q.length() > 120 || page < 0 || page > 1_000_000) throw new BadCatalogQuery();
+    if (q.length() > 120) throw new BadCatalogQuery("Запрос должен быть не длиннее 120 символов.");
+    if (page < 0 || page > 1_000_000) throw new BadCatalogQuery("Неверный номер страницы.");
     CatalogFilter tags = (filter == null ? CatalogFilter.NONE : filter).normalized();
     String order =
         switch (sort == null || sort.isEmpty() ? "name" : sort) {
           case "name" -> "lower(p.name),p.id";
           case "price" -> "(o.price is null or o.price<=0),o.price,lower(p.name),p.id";
           case "stock" -> "o.quantity desc nulls last,lower(p.name),p.id";
-          default -> throw new BadCatalogQuery();
+          default -> throw new BadCatalogQuery("Неизвестная сортировка.");
         };
     List<StoreView> stores = stores();
     StoreView store = requireStore(stores, storeId);
     Freshness freshness = freshness();
-    Where where = where(store.id(), available, q, tags);
-    Long count =
-        jdbc.queryForObject(
-            "select count(*) from products p join product_offers o on o.product_id=p.id"
-                + where.sql(),
-            Long.class,
-            where.params().toArray());
-    long total = count == null ? 0 : count;
+    Scope scope = new Scope(store.id(), available, orderable, q, false);
+    long total = count(scope.where(tags));
+    if (total == 0 && Search.fuzzyWorthy(q)) {
+      Scope fuzzy = scope.withTypos();
+      long approximate = count(fuzzy.where(tags));
+      if (approximate > 0) {
+        scope = fuzzy;
+        total = approximate;
+      }
+    }
+    Where where = scope.where(tags);
     int pages = (int) ((total + PAGE_SIZE - 1) / PAGE_SIZE);
     if (page > 0 && page >= pages) throw new CatalogNotFound();
     List<Object> queryParams = new ArrayList<>(where.params());
     String compactQuery = q.replaceAll("[^\\p{L}\\p{N}]", "").toLowerCase(Locale.ROOT);
     if (!compactQuery.isEmpty()) {
-      // Quick order relies on an exact article/code match being on the first page.
-      order =
+      // Quick order relies on an exact article, cross number or code match being on the first
+      // page; among such matches, products that can be ordered now come first.
+      String exact =
           "(regexp_replace(lower(coalesce(p.sku,'')), '[^[:alnum:]]', '', 'g')=?"
-              + " or regexp_replace(lower(coalesce(p.code,'')), '[^[:alnum:]]', '', 'g')=?) desc,"
-              + order;
-      queryParams.add(compactQuery);
-      queryParams.add(compactQuery);
+              + " or regexp_replace(lower(coalesce(p.code,'')), '[^[:alnum:]]', '', 'g')=?"
+              + " or exists(select 1 from regexp_split_to_table(lower(coalesce(p.sku,'')), '\\s+')"
+              + " as n(part) where regexp_replace(n.part, '[^[:alnum:]]', '', 'g')=?))";
+      order = exact + " desc,(" + exact + " and o.price>0 and o.quantity>0) desc," + order;
+      for (int i = 0; i < 6; i++) queryParams.add(compactQuery);
     }
     queryParams.add(PAGE_SIZE);
     queryParams.add((long) page * PAGE_SIZE);
@@ -115,25 +139,45 @@ public class CatalogViewService {
         freshness.text(),
         freshness.stale(),
         tags,
-        facets(store.id(), available, q, tags));
+        facets(scope, tags),
+        scope.fuzzy);
   }
 
-  private Facets facets(String storeId, boolean available, String q, CatalogFilter f) {
+  private long count(Where where) {
+    Long count =
+        jdbc.queryForObject(
+            "select count(*) from products p join product_offers o on o.product_id=p.id"
+                + where.sql(),
+            Long.class,
+            where.params().toArray());
+    return count == null ? 0 : count;
+  }
+
+  private Facets facets(Scope scope, CatalogFilter f) {
     var noCategory = new CatalogFilter(null, null, f.make(), f.model(), f.brands());
     var noCar = new CatalogFilter(f.section(), f.subsection(), null, null, f.brands());
     return new Facets(
-        facet(where(storeId, available, q, noCategory), "SECTION", null),
+        facet(scope.where(noCategory), "SECTION", null),
         f.section() == null
             ? List.of()
-            : facet(
-                where(storeId, available, q, noCategory.with(f.section(), null)),
-                "SUBSECTION",
-                f.section()),
-        facet(where(storeId, available, q, noCar), "MAKE", null),
+            : facet(scope.where(noCategory.with(f.section(), null)), "SUBSECTION", f.section()),
+        facet(scope.where(noCar), "MAKE", null),
         f.make() == null
             ? List.of()
-            : facet(where(storeId, available, q, f.withCar(f.make(), null)), "MODEL", f.make()),
-        facet(where(storeId, available, q, f.withBrands(List.of())), "BRAND", null));
+            : facet(scope.where(f.withCar(f.make(), null)), "MODEL", f.make()),
+        facet(scope.where(f.withBrands(List.of())), "BRAND", null));
+  }
+
+  /** What the list is narrowed by, apart from tag filters. */
+  private record Scope(
+      String storeId, boolean available, boolean orderable, String q, boolean fuzzy) {
+    Scope withTypos() {
+      return new Scope(storeId, available, orderable, q, true);
+    }
+
+    Where where(CatalogFilter tags) {
+      return CatalogViewService.where(this, tags);
+    }
   }
 
   private List<FacetValue> facet(Where where, String kind, String parent) {
@@ -155,25 +199,16 @@ public class CatalogViewService {
         params.toArray());
   }
 
-  private static Where where(String storeId, boolean available, String q, CatalogFilter tags) {
+  private static Where where(Scope scope, CatalogFilter tags) {
     String where = " where o.store_id=?";
     List<Object> params = new ArrayList<>();
-    params.add(storeId);
-    if (available) where += " and o.quantity > 0";
-    if (!q.isEmpty()) {
-      where +=
-          " and (p.name ilike ? escape '!' or coalesce(p.sku,'') ilike ? escape '!' or coalesce(p.code,'') ilike ? escape '!'";
-      String pattern = "%" + escapeLike(q) + "%";
-      params.add(pattern);
-      params.add(pattern);
-      params.add(pattern);
-      String compact = q.replaceAll("[^\\p{L}\\p{N}]", "").toLowerCase(Locale.ROOT);
-      if (!compact.isEmpty()) {
-        where +=
-            " or regexp_replace(lower(coalesce(p.sku,'')), '[^[:alnum:]]', '', 'g') like ? escape '!'";
-        params.add("%" + escapeLike(compact) + "%");
-      }
-      where += ")";
+    params.add(scope.storeId());
+    if (scope.available() || scope.orderable()) where += " and o.quantity > 0";
+    if (scope.orderable()) where += " and o.price > 0";
+    if (!scope.q().isEmpty()) {
+      Search.Condition text = Search.condition(scope.q(), scope.fuzzy());
+      where += " and " + text.sql();
+      params.addAll(text.params());
     }
     String tag = " and exists(select 1 from product_tags t where t.product_id=p.id and t.kind=";
     if (tags.section() != null) {
@@ -298,7 +333,7 @@ public class CatalogViewService {
     return stores.stream()
         .filter(s -> s.id().equals(selected))
         .findFirst()
-        .orElseThrow(BadCatalogQuery::new);
+        .orElseThrow(() -> new BadCatalogQuery("Склад не найден. Откройте каталог заново."));
   }
 
   private Freshness freshness() {
@@ -391,7 +426,8 @@ public class CatalogViewService {
       String lastSyncText,
       boolean stale,
       CatalogFilter filter,
-      Facets facets) {}
+      Facets facets,
+      boolean approximate) {}
 
   /**
    * CloudShop tag filters; null means «any». A subsection needs its section and a model its make.
@@ -411,9 +447,9 @@ public class CatalogViewService {
       String model = value(this.model);
       if ((subsection != null && section == null)
           || (model != null && make == null)
-          || brands.size() > 20) throw new BadCatalogQuery();
+          || brands.size() > 20) throw new BadCatalogQuery(FILTER_PROBLEM);
       List<String> selected = brands.stream().map(CatalogFilter::value).distinct().toList();
-      if (selected.contains(null)) throw new BadCatalogQuery();
+      if (selected.contains(null)) throw new BadCatalogQuery(FILTER_PROBLEM);
       return new CatalogFilter(section, subsection, make, model, selected);
     }
 
@@ -432,7 +468,7 @@ public class CatalogViewService {
     private static String value(String text) {
       if (text == null || text.isBlank()) return null;
       String value = text.strip();
-      if (value.length() > 120) throw new BadCatalogQuery();
+      if (value.length() > 120) throw new BadCatalogQuery(FILTER_PROBLEM);
       return value;
     }
   }
@@ -492,7 +528,14 @@ public class CatalogViewService {
 
   private record Freshness(String text, boolean stale) {}
 
-  public static class BadCatalogQuery extends RuntimeException {}
+  static final String FILTER_PROBLEM = "Проверьте фильтры каталога: выберите значения из списка.";
+
+  /** Its message says which parameter is wrong and is shown to the partner. */
+  public static class BadCatalogQuery extends RuntimeException {
+    public BadCatalogQuery(String message) {
+      super(message);
+    }
+  }
 
   public static class CatalogNotFound extends RuntimeException {}
 }

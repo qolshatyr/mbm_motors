@@ -8,7 +8,7 @@ import re
 from playwright.sync_api import expect, sync_playwright
 
 import fixtures
-from common import BASE, DSN, api, csrf_headers, no_overflow, passed, sign_in, watch_errors
+from common import BASE, DSN, PASSWORD, api, csrf_headers, no_overflow, passed, sign_in, watch_errors
 
 ONE, TWO_LEFT = fixtures.product_id(1), fixtures.product_id(4)
 SUCCESS = re.compile(r'/checkout/success\?key=')
@@ -58,7 +58,7 @@ with sync_playwright() as p:
 
     headers = csrf_headers(context)
     assert context.request.post(BASE + '/api/cart/update', headers=headers,
-                                form={'productId': ONE, 'quantity': '0'}).status == 409
+                                form={'productId': ONE, 'quantity': '0'}).status == 400
     assert context.request.post(BASE + '/api/cart/add', headers=headers, form={
         'productId': fixtures.product_id(2), 'storeId': fixtures.SKLAD, 'quantity': '1'}).status == 409
     assert context.request.post(BASE + '/api/cart/clear', form={}).status == 403
@@ -229,6 +229,33 @@ with sync_playwright() as p:
     expect(page.get_by_role('heading', name='Корзина пока пуста')).to_be_visible()
     assert cart_count(context) == 0
     passed('Быстрый заказ: найдено / цена уточняется / не найдено, добавление в корзину; очистка корзины')
+
+    page.get_by_role('link', name='Быстрый заказ').first.click()
+    page.get_by_label('Список артикулов').fill(f'{fixtures.sku(4)} 2\n{fixtures.sku(4)} 1')
+    rows = page.locator('.quick-row')
+    expect(rows).to_have_count(2)
+    expect(rows.nth(0)).to_contain_text('Найдено')
+    expect(rows.nth(1)).to_contain_text('Остаток уже взят строкой выше')
+    expect(page.get_by_role('status').filter(has_text='Готово к добавлению')).to_have_text('Готово к добавлению: 1 из 2')
+    passed('Быстрый заказ: повтор артикула не берёт больше остатка (2 шт.)')
+
+    page.goto(BASE + f'/products/{fixtures.product_id(6)}')
+    page.get_by_role('button', name='В корзину', exact=True).dblclick()
+    expect(page.get_by_role('button', name=re.compile('^Добавить ещё'))).to_be_visible()
+    assert cart_count(context) == 1, cart_count(context)
+    page.goto(BASE + '/account')
+    page.get_by_role('button', name='Выйти').click()
+    expect(page).to_have_url(BASE + '/login')
+    page.get_by_label('Логин', exact=True).fill(fixtures.ALFA)
+    page.get_by_label('Пароль', exact=True).fill(PASSWORD)
+    page.get_by_role('button', name='Войти', exact=True).click()
+    expect(page).to_have_url(BASE + '/')
+    assert cart_count(context) == 1, cart_count(context)
+    page.goto(BASE + '/basket')
+    page.get_by_role('button', name='Очистить корзину').click()
+    page.get_by_role('dialog').get_by_role('button', name='Очистить', exact=True).click()
+    expect(page.get_by_role('heading', name='Корзина пока пуста')).to_be_visible()
+    passed('Двойной клик «В корзину» добавляет 1 шт.; выход ведёт на /login без возврата; корзина сохраняется после нового входа')
 
     with fixtures.connect(DSN) as db:
         rows = db.execute('''select p.login, d.state, d.customer_id, d.sale_id from local_orders o

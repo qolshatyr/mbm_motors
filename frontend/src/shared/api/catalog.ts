@@ -4,7 +4,7 @@ export { ApiError } from './http';
 export interface Store { id: string; name: string }
 /** Texts are for display; `canAdd`, `price` and `availableQuantity` drive add/blocked decisions. */
 export interface Product { id: string; name: string; sku: string | null; code: string | null; unit: string | null; priceText: string; stockText: string; imageUrl: string | null; brand: string | null; canAdd: boolean; price: number | null; availableQuantity: number | null }
-export interface CatalogPage { products: Product[]; query: string; storeId: string; storeName: string; stores: Store[]; page: number; totalPages: number; totalProducts: number; lastSyncText: string | null; stale: boolean; filter: CatalogFilter; facets: Facets }
+export interface CatalogPage { products: Product[]; query: string; storeId: string; storeName: string; stores: Store[]; page: number; totalPages: number; totalProducts: number; lastSyncText: string | null; stale: boolean; filter: CatalogFilter; facets: Facets; approximate?: boolean }
 export interface Stores { stores: Store[]; defaultStoreId: string }
 export interface Offer { storeId: string; storeName: string; priceText: string; stockText: string; canAdd: boolean; unavailabilityReason: string | null }
 export interface Detail { product: Product; offers: Offer[]; selectedStore: string; lastSyncText: string | null; stale: boolean; classification: Classification }

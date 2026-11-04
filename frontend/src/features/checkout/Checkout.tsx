@@ -24,7 +24,7 @@ export function Checkout({ onLockChange }: { onLockChange?: (locked: boolean) =>
   const restartOrigin = useRef<HTMLElement | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [fields, setFields] = useState<CheckoutFields>({ customerName: '', phone: '', comment: '', consent: false });
-  const prefill = useRef<{ customerName: string; phone: string } | null>(null);
+  const prefill = useRef<{ customerName: string; phone: string; consent: boolean } | null>(null);
   const submitted = useRef<OrderSubmission | null>(null);
   const sending = useRef(false);
   const errorToFocus = useRef<string | null>(null);
@@ -110,9 +110,9 @@ export function Checkout({ onLockChange }: { onLockChange?: (locked: boolean) =>
   // Prefill once from the partner profile; never overwrite what the partner typed.
   useEffect(() => {
     if (prefill.current || !preview.data) return;
-    const contact = { customerName: preview.data.contact?.customerName ?? me.data?.contactName ?? '', phone: preview.data.contact?.phone ?? me.data?.phone ?? '' };
+    const contact = { customerName: preview.data.contact?.customerName ?? me.data?.contactName ?? '', phone: preview.data.contact?.phone ?? me.data?.phone ?? '', consent: Boolean(preview.data.contact?.consentGiven) };
     prefill.current = contact;
-    setFields((old) => ({ ...old, customerName: old.customerName || contact.customerName, phone: old.phone || contact.phone }));
+    setFields((old) => ({ ...old, customerName: old.customerName || contact.customerName, phone: old.phone || contact.phone, consent: old.consent || contact.consent }));
   }, [preview.data, me.data]);
   const data = preview.data;
   const locked = uncertain || busy || preview.isFetching || preview.isError;
@@ -123,8 +123,8 @@ export function Checkout({ onLockChange }: { onLockChange?: (locked: boolean) =>
     return () => cancelAnimationFrame(frame);
   }, [errors, locked]);
   useEffect(() => {
-    const initial = prefill.current ?? { customerName: '', phone: '' };
-    if (uncertain || (fields.customerName === initial.customerName && fields.phone === initial.phone && !fields.comment && !fields.consent)) return;
+    const initial = prefill.current ?? { customerName: '', phone: '', consent: false };
+    if (uncertain || (fields.customerName === initial.customerName && fields.phone === initial.phone && !fields.comment && fields.consent === initial.consent)) return;
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);

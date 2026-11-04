@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { catalogHref, fetchProducts } from '../../shared/api/catalog';
+import { plural } from '../../shared/plural';
 import { useCartQuantities } from '../cart/cartQueries';
 import { ProductTile } from '../catalog/ProductRow';
 import { useDefaultStore } from '../catalog/useStore';
@@ -28,7 +29,7 @@ export function Home() {
   // The whole catalog: its facets give the sections and makes with product counts.
   const all = catalogParams(store.id);
   const catalog = useQuery({ queryKey: ['products', all.toString()], queryFn: ({ signal }) => fetchProducts(all, signal), enabled: Boolean(store.id), staleTime: 30000 });
-  const inStock = catalogParams(store.id, { available: 'true' });
+  const inStock = catalogParams(store.id, { available: 'true', orderable: 'true', sort: 'stock' });
   const first = useQuery({ queryKey: ['products', inStock.toString()], queryFn: ({ signal }) => fetchProducts(inStock, signal), enabled: Boolean(store.id), staleTime: 30000 });
   const items = first.data?.products.slice(0, 8) ?? [];
   const sections = catalog.data?.facets.sections ?? [];
@@ -37,7 +38,7 @@ export function Home() {
     <section className="home-hero" aria-labelledby="home-title">
       <div className="home-hero-copy">
         <p className="hero-kicker">ЗАПЧАСТИ ДЛЯ КОРЕЙСКИХ АВТО</p>
-        <h1 id="home-title">Нужная деталь со склада в Алматы</h1>
+        <h1 id="home-title">Нужная деталь со склада MBM под Алматы</h1>
         <p className="hero-sub">Ищите по артикулу, коду или марке автомобиля. Оптовые цены и наличие склада — сразу в каталоге.</p>
       </div>
       <div className="home-hero-media"><img src={`${photos}hero.jpg`} alt="" /></div>
@@ -64,7 +65,7 @@ export function Home() {
       <ul className="category-grid">{sections.map((item) => <li key={item.name}><Link to={catalogHref({ section: item.name })} className="category-tile">
         <span className="category-media" aria-hidden="true">{sectionPhotos[item.name] && <img src={`${photos}categories/${sectionPhotos[item.name]}.jpg`} alt="" loading="lazy" />}</span>
         <span className="category-name">{item.name}</span>
-        <span className="category-count">{item.count.toLocaleString('ru-RU')} позиций</span>
+        <span className="category-count">{item.count.toLocaleString('ru-RU')} {plural(item.count, 'позиция', 'позиции', 'позиций')}</span>
       </Link></li>)}</ul>
     </section>}
     <section className="home-section b2b-panel" aria-labelledby="b2b-title">
@@ -78,8 +79,8 @@ export function Home() {
         <div className="b2b-actions"><Link to="/quick-order" className="button button-light">Быстрый заказ</Link><Link to="/account" className="button button-outline-light">Кабинет</Link></div>
       </div>
     </section>
-    {(first.isPending || items.length > 0) && <section className="home-section" aria-labelledby="home-stock-title">
-      <div className="section-heading"><h2 id="home-stock-title">В наличии на складе</h2><Link to="/search?available=true">Весь каталог →</Link></div>
+    {items.length > 0 && <section className="home-section" aria-labelledby="home-stock-title">
+      <div className="section-heading"><h2 id="home-stock-title">Можно заказать сейчас</h2><Link to="/search?available=true">Весь каталог →</Link></div>
       {first.isPending ? <div className="loading-state" role="status"><span className="spinner" aria-hidden="true" />Загружаем позиции…</div>
         : <ul className="tile-grid">{items.map((product) => <ProductTile key={product.id} product={product} storeId={first.data!.storeId} inCart={quantities.get(product.id) ?? 0} />)}</ul>}
     </section>}

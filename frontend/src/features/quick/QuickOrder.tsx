@@ -29,12 +29,27 @@ export function parseList(text: string): { lines: ParsedLine[]; extra: number } 
 const money = (value: number) => `${value.toLocaleString('ru-RU', { maximumFractionDigits: 2 })} ₸`;
 
 type Status = { tone: 'ok' | 'warn' | 'muted' | 'pending'; label: string; product?: Product; addQuantity?: number; sum?: number | null };
-function status(line: ParsedLine, lookup: { isPending: boolean; isError: boolean; data?: { products: Product[] } }, inCart: (id: string) => number): Status {
+
+/** A line matches the whole article or code, or one of the cross numbers listed in the article field. */
+export function matches(product: Pick<Product, 'sku' | 'code'>, key: string) {
+  if (normalizeCode(product.sku) === key || normalizeCode(product.code) === key) return true;
+  return (product.sku ?? '').split(/\s+/).some((part) => part && normalizeCode(part) === key);
+}
+
+/** Among products with the same article, one that can be ordered now wins. */
+export function pick(products: Product[], key: string): { product?: Product; variants: number } {
+  const found = products.filter((item) => matches(item, key));
+  const orderable = found.filter((item) => availability(item) === 'ok');
+  return { product: orderable[0] ?? found[0], variants: orderable.length };
+}
+
+/** {@code reserved}: quantities already taken by earlier lines of the same list. */
+export function status(line: ParsedLine, lookup: { isPending: boolean; isError: boolean; data?: { products: Product[] } }, inCart: (id: string) => number, reserved: Map<string, number> = new Map()): Status {
   if (!line.key) return { tone: 'muted', label: 'Не найдено' };
   if (line.quantity < 1) return { tone: 'warn', label: 'Проверьте количество' };
   if (lookup.isPending) return { tone: 'pending', label: 'Ищем…' };
   if (lookup.isError) return { tone: 'warn', label: 'Ошибка поиска' };
-  const product = lookup.data?.products.find((item) => normalizeCode(item.sku) === line.key || normalizeCode(item.code) === line.key);
+  const { product, variants } = pick(lookup.data?.products ?? [], line.key);
   if (!product) return { tone: 'muted', label: 'Не найдено' };
   const state = availability(product);
   if (state === 'price') return { tone: 'warn', label: 'Цена уточняется', product };
@@ -42,10 +57,13 @@ function status(line: ParsedLine, lookup: { isPending: boolean; isError: boolean
   if (state === 'unknown') return { tone: 'warn', label: 'Наличие уточняется', product };
   const stock = Math.min(999, Math.floor(product.availableQuantity ?? 0));
   const already = inCart(product.id);
-  const left = stock - already;
-  if (left <= 0) return { tone: 'warn', label: `Уже в корзине: ${already}`, product };
+  const earlier = reserved.get(product.id) ?? 0;
+  const left = stock - already - earlier;
+  if (left <= 0) return { tone: 'warn', label: earlier > 0 ? 'Остаток уже взят строкой выше' : `Уже в корзине: ${already}`, product };
   const take = Math.min(line.quantity, left);
-  return { tone: 'ok', label: take < line.quantity ? `Есть ${take} из ${line.quantity}` : 'Найдено', product, addQuantity: take, sum: product.price! * take };
+  reserved.set(product.id, earlier + take);
+  const label = take < line.quantity ? `Есть ${take} из ${line.quantity}` : variants > 1 ? `Найдено · вариантов: ${variants}` : 'Найдено';
+  return { tone: 'ok', label, product, addQuantity: take, sum: product.price! * take };
 }
 
 export function QuickOrder() {
@@ -67,7 +85,8 @@ export function QuickOrder() {
     return { queryKey: ['products', params.toString(), 'line', line.line], queryFn: ({ signal }: { signal: AbortSignal }) => fetchProducts(params, signal), enabled: Boolean(store.id && line.key && line.quantity >= 1), staleTime: 60000 };
   }) });
   const quantities = useCartQuantities();
-  const rows = parsed.lines.map((line, index) => ({ line, status: status(line, lookups[index], (id) => quantities.get(id) ?? 0) }));
+  const reserved = new Map<string, number>();
+  const rows = parsed.lines.map((line, index) => ({ line, status: status(line, lookups[index], (id) => quantities.get(id) ?? 0, reserved) }));
   const ready = rows.filter((row) => row.status.tone === 'ok' && row.status.product && (row.status.addQuantity ?? 0) > 0);
   const total = ready.reduce((sum, row) => sum + (row.status.sum ?? 0), 0);
   const pending = rows.some((row) => row.status.tone === 'pending') || text !== checked;
@@ -103,7 +122,7 @@ export function QuickOrder() {
           : <ul className="quick-rows">{rows.map(({ line, status: item }) => <li key={line.line} className="quick-row">
             <div className="quick-row-main">
               <p><span className="code">{item.product?.sku || line.input || `Строка ${line.line}`}</span><span className={`tag tag-${item.tone}`}>{item.label}</span></p>
-              <p className="quick-row-name">{item.product ? <Link to={productHref(item.product.id)}>{item.product.name}</Link> : item.tone === 'pending' ? '' : 'Артикул не найден на складе'}</p>
+              <p className="quick-row-name">{item.product ? <><Link to={productHref(item.product.id)}>{item.product.name}</Link>{item.product.brand && <span className="muted"> · {item.product.brand}</span>}</> : item.tone === 'pending' ? '' : 'Артикул не найден на складе'}</p>
             </div>
             <div className="quick-row-sum"><p>{item.sum != null ? money(item.sum) : '—'}</p><p className="muted">{item.tone === 'ok' && item.product ? `${item.addQuantity} шт. × ${item.product.priceText}` : `${line.quantity} шт.`}</p></div>
           </li>)}</ul>}

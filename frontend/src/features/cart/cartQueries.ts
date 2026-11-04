@@ -1,4 +1,5 @@
 import { useIsMutating, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRef } from 'react';
 import { changeCart, fetchCart } from '../../shared/api/cart';
 
 export function useCartBusy() { return useIsMutating({ mutationKey: ['cart'] }) > 0; }
@@ -51,5 +52,18 @@ export function useBulkAdd() {
       }
     }
     return result;
+  };
+}
+
+/**
+ * Runs one cart change at a time from a control. A double click fires twice before React re-renders
+ * the disabled button; the ref closes that gap. Call {@code release} when the change settles.
+ */
+export function useSingleFlight() {
+  const running = useRef(false);
+  return (start: (release: () => void) => void) => {
+    if (running.current) return;
+    running.current = true;
+    start(() => { running.current = false; });
   };
 }

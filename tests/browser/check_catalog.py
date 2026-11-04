@@ -2,6 +2,7 @@
 """Partner sign-in, home page, catalog, product page and sign-out on synthetic fixtures. Read-only."""
 import json
 import re
+from urllib.parse import unquote
 
 from playwright.sync_api import expect, sync_playwright
 
@@ -37,7 +38,7 @@ with sync_playwright() as p:
     passed('Без входа каталог закрыт; неверный пароль и заблокированный партнёр отклонены; после входа — возврат на исходный адрес')
 
     page.goto(BASE + '/')
-    expect(page.get_by_role('heading', name='Нужная деталь со склада в Алматы')).to_be_visible()
+    expect(page.get_by_role('heading', name='Нужная деталь со склада MBM под Алматы')).to_be_visible()
     expect(page.locator('.make-button')).to_have_count(2)
     expect(page.locator('.category-tile')).to_have_count(2)
     expect(page.locator('.product-tile')).to_have_count(8)
@@ -135,11 +136,16 @@ with sync_playwright() as p:
     page.goto(BASE + f'/products/{NO_PRICE}')
     expect(page.locator('.buy-blocked')).to_contain_text('Цена этой позиции уточняется')
     expect(page.get_by_role('button', name='В корзину', exact=True)).to_have_count(0)
+    price_request = page.get_by_role('link', name='Узнать цену в WhatsApp')
+    expect(price_request).to_have_attribute('href', re.compile(r'^https://wa\.me/\d+\?text='))
+    assert 'Подскажите цену' in unquote(price_request.get_attribute('href'))
     page.goto(BASE + f'/products/{NO_STOCK}')
     expect(page.locator('.buy-blocked')).to_be_visible()
     page.goto(BASE + '/products/not-an-id')
-    expect(page.get_by_role('alert')).to_be_visible()
-    passed('Карточка товара: цена СКЛАДА, применимость, похожие товары; без цены и без остатка — объяснение вместо кнопки')
+    expect(page.get_by_role('heading', name='Товар не найден')).to_be_visible()
+    expect(page.get_by_role('button', name='Повторить')).to_have_count(0)
+    expect(page).to_have_title('Товар не найден — MBM AutoMotors')
+    passed('Карточка товара: цена СКЛАДА, применимость, похожие товары; без цены — объяснение и запрос цены; несуществующий товар — «Товар не найден»')
 
     page.goto(BASE + '/search')
     expect(page.locator('.product-row')).to_have_count(24)

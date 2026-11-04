@@ -202,8 +202,9 @@ export async function demoRequest<T>(url: string, options: RequestInit = {}): Pr
     const compact = lower.replace(/[^\p{L}\p{N}]/gu, '');
     const filter = readFilter(params);
     if ((filter.subsection && !filter.section) || (filter.model && !filter.make)) throw new ApiError(400, 'Проверьте параметры поиска.');
-    const searched = demoProducts.filter((item) => (!lower || `${item.name} ${item.sku} ${item.code}`.toLocaleLowerCase('ru-RU').includes(lower) || (compact && `${item.sku}`.toLocaleLowerCase('ru-RU').replace(/[^\p{L}\p{N}]/gu, '').includes(compact))) && (params.get('available') !== 'true' || item.stock > 0));
-    const filtered = searched.filter((item) => matches(item, filter));
+    const words = lower.split(/\s+/).filter(Boolean);
+    const searched = demoProducts.filter((item) => (!lower || words.every((word) => `${item.name} ${item.sku} ${item.code}`.toLocaleLowerCase('ru-RU').includes(word)) || (compact && `${item.sku}`.toLocaleLowerCase('ru-RU').replace(/[^\p{L}\p{N}]/gu, '').includes(compact))) && (params.get('available') !== 'true' || item.stock > 0));
+    const filtered = searched.filter((item) => matches(item, filter) && (params.get('orderable') !== 'true' || (item.price > 0 && item.stock > 0)));
     const sort = params.get('sort');
     if (sort && !['name', 'price', 'stock'].includes(sort)) throw new ApiError(400, 'Неизвестная сортировка.');
     const sorted = [...filtered].sort(sort === 'price' ? (a, b) => (a.price || 1e12) - (b.price || 1e12) : sort === 'stock' ? (a, b) => b.stock - a.stock : (a, b) => a.name.localeCompare(b.name, 'ru'));

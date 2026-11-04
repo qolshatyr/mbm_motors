@@ -3,7 +3,7 @@ import type { Product } from '../../shared/api/catalog';
 import { availability } from '../../shared/api/catalog';
 import { QtyStepper } from '../../shared/ui/QtyStepper';
 import { useToast } from '../../shared/ui/Toast';
-import { useCartAction, useCartBusy } from '../cart/cartQueries';
+import { useCartAction, useCartBusy, useSingleFlight } from '../cart/cartQueries';
 
 export const productHref = (id: string) => `/products/${encodeURIComponent(id)}`;
 
@@ -12,6 +12,7 @@ export function AddControl({ product, storeId, inCart, size = 'md' }: { product:
   const action = useCartAction();
   const busy = useCartBusy();
   const toast = useToast();
+  const once = useSingleFlight();
   const state = availability(product);
   const stock = product.availableQuantity;
   const disabled = busy || !storeId;
@@ -19,10 +20,11 @@ export function AddControl({ product, storeId, inCart, size = 'md' }: { product:
     const fields: Record<string, string> = { productId: product.id };
     if (kind === 'add') { fields.storeId = storeId; fields.quantity = String(quantity ?? 1); }
     if (kind === 'update') fields.quantity = String(quantity);
-    action.mutate({ action: kind, fields }, {
+    once((release) => action.mutate({ action: kind, fields }, {
       onSuccess: () => { if (announce) toast({ text: announce, action: { label: 'Открыть корзину', to: '/basket' } }); },
       onError: (error) => toast({ text: error.message, error: true }),
-    });
+      onSettled: release,
+    }));
   }
   if (inCart > 0) return <QtyStepper size={size} label={`Количество «${product.name}» в корзине`} value={inCart} min={0} disabled={disabled} canIncrease={stock === null || inCart < stock}
     onChange={(next) => next <= 0 ? run('remove', undefined, `Убрано из корзины: ${product.name}`) : next > inCart && next - inCart === 1 ? run('add', 1) : run('update', next)} />;

@@ -42,7 +42,7 @@ export function Account({ partner }: { partner: Partner }) {
   return <>
     <div className="account-head">
       <div><p className="muted">Личный кабинет</p><h1 className="page-title">{partner.company}</h1><p className="muted">{[partner.contactName, partner.phone].filter(Boolean).join(', ')}</p></div>
-      <div className="account-actions"><span className="tag tag-ok tag-lg">Оптовая цена</span><button type="button" className="button" disabled={logout.isPending} onClick={() => logout.mutate(undefined, { onSuccess: () => navigate('/login', { replace: true }) })}>{logout.isPending ? 'Выходим…' : 'Выйти'}</button></div>
+      <div className="account-actions"><span className="tag tag-ok tag-lg">Оптовая цена</span><button type="button" className="button" disabled={logout.isPending} onClick={() => logout.mutate()}>{logout.isPending ? 'Выходим…' : 'Выйти'}</button></div>
     </div>
     {logout.isError && <Notice error>Не удалось выйти. Проверьте соединение и попробуйте ещё раз.</Notice>}
     <section aria-labelledby="orders-title" className="account-orders" aria-busy={orders.isFetching}>

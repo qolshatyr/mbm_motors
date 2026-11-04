@@ -35,7 +35,7 @@ public class CartService {
         throw new CartProblem("В корзину можно добавить не более 50 разных товаров.");
       Cart.Entry old = cart.entries.get(productId);
       int total = quantity + (old == null ? 0 : old.quantity());
-      validateQuantity(total);
+      if (total > 999) throw new CartProblem("В одной строке корзины может быть не больше 999 шт.");
       Data product = load(productId, storeId);
       requireValid(product, total, stale());
       cart.storeId = storeId;
@@ -206,8 +206,7 @@ public class CartService {
   }
 
   private static void validateQuantity(int quantity) {
-    if (quantity < 1 || quantity > 999)
-      throw new CartProblem("Укажите целое количество от 1 до 999.");
+    if (quantity < 1 || quantity > 999) throw new InvalidQuantity();
   }
 
   private static void requireValid(Data product, int quantity, boolean stale) {
@@ -253,6 +252,13 @@ public class CartService {
   public static class CartProblem extends RuntimeException {
     public CartProblem(String message) {
       super(message);
+    }
+  }
+
+  /** A malformed request rather than a conflict with the cart or stock: HTTP 400. */
+  public static class InvalidQuantity extends CartProblem {
+    public InvalidQuantity() {
+      super("Укажите целое количество от 1 до 999.");
     }
   }
 }
