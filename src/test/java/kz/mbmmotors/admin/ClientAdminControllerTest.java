@@ -1,6 +1,8 @@
 package kz.mbmmotors.admin;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -47,7 +49,41 @@ class ClientAdminControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{}"))
         .andExpect(status().isForbidden());
+    mvc.perform(
+            post("/admin/api/clients/turbo/details")
+                .with(user("staff").roles("STAFF"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+        .andExpect(status().isForbidden());
     verifyNoInteractions(service);
+  }
+
+  @Test
+  void detailsUpdateReturnsTheClient() throws Exception {
+    when(service.update(eq("turbo"), any()))
+        .thenReturn(
+            new ClientAdminService.Client(
+                "turbo",
+                "ТОО «Turbo Plus»",
+                "Айгерим",
+                "+77025550011",
+                null,
+                true,
+                Instant.parse("2026-10-21T00:00:00Z"),
+                null,
+                new ClientAdminService.Customer("NONE", null)));
+    mvc.perform(
+            post("/admin/api/clients/turbo/details")
+                .with(user("staff").roles("STAFF"))
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"company\":\"ТОО «Turbo Plus»\",\"contactName\":\"Айгерим\",\"phone\":\"+77025550011\"}"))
+        .andExpect(status().isOk())
+        .andExpect(header().string("Cache-Control", "no-store"))
+        .andExpect(jsonPath("$.company").value("ТОО «Turbo Plus»"));
+    verify(service)
+        .update(eq("turbo"), argThat(d -> d.contactName().equals("Айгерим") && d.bin() == null));
   }
 
   @Test

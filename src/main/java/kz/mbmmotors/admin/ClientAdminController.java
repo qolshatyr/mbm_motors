@@ -29,7 +29,10 @@ public class ClientAdminController {
     return noStore(HttpStatus.OK, clients.list(q));
   }
 
-  /** The password is chosen in the form and shown to staff once; it is stored only as a hash. */
+  /**
+   * The password is typed or generated in the form and shown to staff once; it is stored only as a
+   * hash.
+   */
   @PostMapping("/admin/api/clients")
   ResponseEntity<ClientAdminService.Client> create(
       @RequestBody ClientAdminService.NewClient request) {
@@ -40,6 +43,12 @@ public class ClientAdminController {
   ResponseEntity<Void> password(@PathVariable String login, @RequestBody Password request) {
     clients.changePassword(login, request.password());
     return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
+  }
+
+  @PostMapping("/admin/api/clients/{login}/details")
+  ResponseEntity<ClientAdminService.Client> details(
+      @PathVariable String login, @RequestBody ClientAdminService.Details request) {
+    return noStore(HttpStatus.OK, clients.update(login, request));
   }
 
   @PostMapping("/admin/api/clients/{login}/enabled")

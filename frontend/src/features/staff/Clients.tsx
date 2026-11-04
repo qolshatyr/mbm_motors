@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { FormEvent, ReactNode, SyntheticEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '../../shared/api/http';
-import { changeClientPassword, createClient, createClientCustomer, fetchClients, generatePassword, linkClientCustomer, loginFromCompany, setClientEnabled } from '../../shared/api/staff';
-import type { NewClient, StaffClient } from '../../shared/api/staff';
+import { changeClientPassword, createClient, createClientCustomer, fetchClients, generatePassword, linkClientCustomer, loginFromCompany, passwordProblem, setClientEnabled, updateClient } from '../../shared/api/staff';
+import type { ClientDetails, NewClient, StaffClient } from '../../shared/api/staff';
 import { Button } from '../../shared/ui/Button';
 import { EmptyState, Notice } from '../../shared/ui/Feedback';
 
@@ -52,20 +52,14 @@ function statusOf(client: StaffClient) {
 
 function ClientRow({ client, customerCreation, onCredentials, onError }: { client: StaffClient; customerCreation: boolean; onCredentials: (value: Credentials) => void; onError: (value: string) => void }) {
   const queryClient = useQueryClient();
-  const [confirm, setConfirm] = useState<'password' | 'block' | null>(null);
+  const [dialog, setDialog] = useState<'edit' | 'password' | 'block' | null>(null);
   const status = statusOf(client);
   const refresh = () => queryClient.invalidateQueries({ queryKey: clientsKey });
-  const password = useMutation({
-    mutationFn: async () => { const value = generatePassword(); await changeClientPassword(client.login, value); return value; },
-    onSuccess: (value) => { onError(''); onCredentials({ company: client.company, login: client.login, password: value, note: 'Старый пароль больше не действует; открытые сессии клиента завершены.' }); },
-    onError: (error) => onError(message(error)),
-  });
   const block = useMutation({
     mutationFn: () => setClientEnabled(client.login, !client.enabled),
     onSuccess: () => { onError(''); void refresh(); },
     onError: (error) => onError(message(error)),
   });
-  const busy = password.isPending || block.isPending;
   return <li className={`client-row ${client.enabled ? '' : 'is-blocked'}`}>
     <div className="client-main">
       <p className="client-title"><strong>{client.company}</strong><span className={`client-tag client-tag-${status.tone}`}>{status.text}</span></p>
@@ -74,16 +68,85 @@ function ClientRow({ client, customerCreation, onCredentials, onError }: { clien
       <CustomerCard client={client} customerCreation={customerCreation} onError={onError} />
     </div>
     <div className="client-actions">
-      <Button disabled={busy} onClick={() => setConfirm('password')}>Новый пароль</Button>
-      <Button disabled={busy} onClick={() => client.enabled ? setConfirm('block') : block.mutate()}>{client.enabled ? 'Заблокировать' : 'Разблокировать'}</Button>
+      <Button onClick={() => setDialog('edit')}>Изменить</Button>
+      <Button onClick={() => setDialog('password')}>Новый пароль</Button>
+      <Button disabled={block.isPending} onClick={() => client.enabled ? setDialog('block') : block.mutate()}>{client.enabled ? 'Заблокировать' : 'Разблокировать'}</Button>
     </div>
-    {confirm && <ConfirmDialog
-      title={confirm === 'password' ? `Новый пароль для «${client.company}»?` : `Заблокировать «${client.company}»?`}
-      text={confirm === 'password' ? 'Старый пароль перестанет работать, клиент выйдет со всех устройств. Новый пароль покажем один раз.' : 'Клиент сразу потеряет доступ к сайту. Заявки и история сохранятся; разблокировать можно в любой момент.'}
-      action={confirm === 'password' ? 'Выдать новый пароль' : 'Заблокировать'}
-      onCancel={() => setConfirm(null)}
-      onConfirm={() => { setConfirm(null); if (confirm === 'password') password.mutate(); else block.mutate(); }} />}
+    {dialog === 'edit' && <EditClientDialog client={client} onClose={() => setDialog(null)} onSaved={() => { onError(''); setDialog(null); void refresh(); }} />}
+    {dialog === 'password' && <PasswordDialog client={client} onClose={() => setDialog(null)}
+      onChanged={(value) => { onError(''); setDialog(null); onCredentials({ company: client.company, login: client.login, password: value, note: 'Старый пароль больше не действует; открытые сессии клиента завершены.' }); }} />}
+    {dialog === 'block' && <ConfirmDialog
+      title={`Заблокировать «${client.company}»?`}
+      text="Клиент сразу потеряет доступ к сайту. Заявки и история сохранятся; разблокировать можно в любой момент."
+      action="Заблокировать"
+      onCancel={() => setDialog(null)}
+      onConfirm={() => { setDialog(null); block.mutate(); }} />}
   </li>;
+}
+
+/** Edits the client card on the site; the login is the account key and stays as is. */
+function EditClientDialog({ client, onClose, onSaved }: { client: StaffClient; onClose: () => void; onSaved: () => void }) {
+  const modal = useModal(onClose);
+  const [form, setForm] = useState<ClientDetails>({ company: client.company, contactName: client.contactName, phone: client.phone, bin: client.bin ?? '' });
+  const [error, setError] = useState('');
+  const save = useMutation({ mutationFn: () => updateClient(client.login, form), onSuccess: onSaved, onError: (failure) => setError(message(failure)) });
+  const update = (field: keyof ClientDetails, value: string) => setForm((current) => ({ ...current, [field]: value }));
+  const ready = form.company.trim() && form.contactName.trim() && form.phone.trim();
+  function submit(event: FormEvent) { event.preventDefault(); if (ready && !save.isPending) save.mutate(); }
+  return <dialog ref={modal.ref} className="confirmation-dialog client-dialog" aria-labelledby="client-edit-title" onCancel={modal.onCancel}>
+    <form onSubmit={submit} className="client-dialog-form">
+      <h2 id="client-edit-title">Данные клиента</h2>
+      <p className="client-meta">Логин <span className="code">{client.login}</span> не меняется.</p>
+      <ClientDetailsFields form={form} onChange={update} />
+      {client.customer.state === 'LINKED' && <p className="credentials-note">Привязанная карточка CloudShop не меняется — название и телефон в CloudShop при необходимости исправьте вручную.</p>}
+      {error && <Notice error>{error}</Notice>}
+      <div className="dialog-actions"><Button type="button" onClick={onClose}>Отмена</Button><Button primary type="submit" disabled={!ready || save.isPending}>{save.isPending ? 'Сохраняем…' : 'Сохранить'}</Button></div>
+    </form>
+  </dialog>;
+}
+
+/** New password typed by staff or generated; shown once in the credentials dialog afterwards. */
+function PasswordDialog({ client, onClose, onChanged }: { client: StaffClient; onClose: () => void; onChanged: (password: string) => void }) {
+  const modal = useModal(onClose);
+  const [password, setPassword] = useState(generatePassword);
+  const [error, setError] = useState('');
+  const change = useMutation({ mutationFn: () => changeClientPassword(client.login, password), onSuccess: () => onChanged(password), onError: (failure) => setError(message(failure)) });
+  const problem = passwordProblem(password);
+  function submit(event: FormEvent) { event.preventDefault(); if (!problem && !change.isPending) change.mutate(); }
+  return <dialog ref={modal.ref} className="confirmation-dialog client-dialog" aria-labelledby="client-password-title" onCancel={modal.onCancel}>
+    <form onSubmit={submit} className="client-dialog-form">
+      <h2 id="client-password-title">Новый пароль для «{client.company}»</h2>
+      <p>Старый пароль перестанет работать, клиент выйдет со всех устройств.</p>
+      <PasswordField value={password} onChange={setPassword} problem={problem} />
+      {error && <Notice error>{error}</Notice>}
+      <div className="dialog-actions"><Button type="button" onClick={onClose}>Отмена</Button><Button primary type="submit" disabled={Boolean(problem) || change.isPending}>{change.isPending ? 'Сохраняем…' : 'Сохранить пароль'}</Button></div>
+    </form>
+  </dialog>;
+}
+
+function ClientDetailsFields({ form, onChange }: { form: ClientDetails; onChange: (field: keyof ClientDetails, value: string) => void }) {
+  return <>
+    <Field label="Компания"><input value={form.company} onChange={(event) => onChange('company', event.target.value)} placeholder="ТОО «…»" maxLength={120} required /></Field>
+    <div className="client-form-pair">
+      <Field label="БИН"><input className="code" value={form.bin} onChange={(event) => onChange('bin', event.target.value)} placeholder="12 цифр" inputMode="numeric" maxLength={14} /></Field>
+      <Field label="Телефон"><input type="tel" value={form.phone} onChange={(event) => onChange('phone', event.target.value)} placeholder="+7 7__ ___ __ __" maxLength={32} required /></Field>
+    </div>
+    <Field label="Контактное лицо"><input value={form.contactName} onChange={(event) => onChange('contactName', event.target.value)} maxLength={80} required /></Field>
+  </>;
+}
+
+/** Visible on purpose: staff hand the password over and must see exactly what they typed. */
+function PasswordField({ value, onChange, problem }: { value: string; onChange: (value: string) => void; problem: string }) {
+  const id = useId();
+  const invalid = Boolean(value && problem);
+  return <div className="field">
+    <label className="field-label" htmlFor={id}>Пароль</label>
+    <div className="client-password">
+      <input id={id} className="code" value={value} onChange={(event) => onChange(event.target.value)} maxLength={72} spellCheck={false} autoComplete="new-password" autoCapitalize="off" aria-invalid={invalid} aria-describedby={`${id}-hint`} required />
+      <Button type="button" onClick={() => onChange(generatePassword())}>Сгенерировать</Button>
+    </div>
+    <p id={`${id}-hint`} className={invalid ? 'field-error' : 'field-hint'}>{invalid ? problem : 'Впишите свой или сгенерируйте: от 10 символов'}</p>
+  </div>;
 }
 
 /** The CloudShop customer card that receives the client's orders. */
@@ -137,20 +200,15 @@ function NewClientForm({ customerCreation, onCreated }: { customerCreation: bool
     setForm((current) => ({ ...current, [field]: value, ...(field === 'company' && !loginEdited ? { login: loginFromCompany(value) } : {}) }));
     if (field === 'login') { setLoginEdited(true); setLoginTaken(false); }
   }
-  const ready = form.company.trim() && form.contactName.trim() && form.phone.trim() && /^[a-z0-9._-]{3,64}$/.test(form.login);
+  const ready = form.company.trim() && form.contactName.trim() && form.phone.trim() && /^[a-z0-9._-]{3,64}$/.test(form.login) && !passwordProblem(form.password);
   function submit(event: FormEvent) { event.preventDefault(); if (ready && !create.isPending) create.mutate(); }
   return <form className="client-form" onSubmit={submit} aria-labelledby="new-client-title">
     <h2 id="new-client-title">Новый клиент</h2>
-    <Field label="Компания"><input value={form.company} onChange={(event) => update('company', event.target.value)} placeholder="ТОО «…»" maxLength={120} required /></Field>
-    <div className="client-form-pair">
-      <Field label="БИН"><input className="code" value={form.bin} onChange={(event) => update('bin', event.target.value)} placeholder="12 цифр" inputMode="numeric" maxLength={14} /></Field>
-      <Field label="Телефон"><input type="tel" value={form.phone} onChange={(event) => update('phone', event.target.value)} placeholder="+7 7__ ___ __ __" maxLength={32} required /></Field>
-    </div>
-    <Field label="Контактное лицо"><input value={form.contactName} onChange={(event) => update('contactName', event.target.value)} maxLength={80} required /></Field>
+    <ClientDetailsFields form={form} onChange={update} />
     <div className="client-form-access">
       <Field label="Логин"><input className="code" value={form.login} onChange={(event) => update('login', event.target.value.toLowerCase())} placeholder="login" maxLength={64} spellCheck={false} autoComplete="off" aria-invalid={loginTaken} required /></Field>
       {loginTaken && <p className="client-form-error">Такой логин уже занят</p>}
-      <div className="field"><span className="field-label">Пароль</span><div className="client-password"><output className="code" aria-label="Сгенерированный пароль">{form.password}</output><Button type="button" onClick={() => setForm((current) => ({ ...current, password: generatePassword() }))}>Другой</Button></div></div>
+      <PasswordField value={form.password} onChange={(value) => update('password', value)} problem={passwordProblem(form.password)} />
     </div>
     {error && !loginTaken && <Notice error>{error}</Notice>}
     <Button primary type="submit" className="button-lg" disabled={!ready || create.isPending}>{create.isPending ? 'Создаём…' : 'Создать учётную запись'}</Button>

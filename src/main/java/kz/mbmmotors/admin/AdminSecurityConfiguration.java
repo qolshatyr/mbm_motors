@@ -62,6 +62,7 @@ public class AdminSecurityConfiguration {
                     .requestMatchers(
                         HttpMethod.POST,
                         "/admin/api/clients",
+                        "/admin/api/clients/{login}/details",
                         "/admin/api/clients/{login}/password",
                         "/admin/api/clients/{login}/enabled",
                         "/admin/api/clients/{login}/customer",
