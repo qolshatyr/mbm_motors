@@ -171,4 +171,30 @@ class CartServiceTest {
     assertThat(cart.itemCount()).isZero();
     assertThat(cart.storeId()).isNull();
   }
+
+  @Test
+  void addAvailableCapsToStockAndExplainsWhatWasNotAdded() {
+    var capped = service.addAvailable(cart, PRODUCT, STORE, 6);
+    assertThat(capped.quantity()).isEqualTo(4);
+    assertThat(capped.problem()).isEqualTo("Остаток меньше, чем в заявке.");
+    assertThat(cart.itemCount()).isEqualTo(4);
+    var none = service.addAvailable(cart, PRODUCT, STORE, 1);
+    assertThat(none.quantity()).isZero();
+    assertThat(none.problem()).contains("превышает остаток");
+    assertThat(cart.itemCount()).isEqualTo(4);
+  }
+
+  @Test
+  void addAvailableAddsWholeQuantityOrNothingForUnavailableProduct() {
+    var whole = service.addAvailable(cart, PRODUCT, STORE, 3);
+    assertThat(whole.quantity()).isEqualTo(3);
+    assertThat(whole.problem()).isNull();
+    service.clear(cart);
+    price = BigDecimal.ZERO;
+    assertThat(service.addAvailable(cart, PRODUCT, STORE, 1).problem()).contains("Цену");
+    missing = true;
+    assertThat(service.addAvailable(cart, PRODUCT, STORE, 1).problem()).contains("недоступен");
+    assertThat(service.addAvailable(cart, "not-an-id", STORE, 1).quantity()).isZero();
+    assertThat(cart.isEmpty()).isTrue();
+  }
 }

@@ -45,6 +45,7 @@ class PartnerSecurityTest {
   @MockitoBean JdbcTemplate jdbc;
   @MockitoBean java.time.Clock clock;
   @MockitoBean CatalogViewService catalog;
+  @MockitoBean kz.mbmmotors.cart.CartService carts;
 
   @DynamicPropertySource
   static void staff(DynamicPropertyRegistry properties) {

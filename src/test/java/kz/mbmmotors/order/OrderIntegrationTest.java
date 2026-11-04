@@ -323,5 +323,30 @@ class OrderIntegrationTest {
     carts.add(cart, PRODUCT, STORE, 2);
     mvc.perform(get("/api/checkout").session(session).with(SIGNED_IN)).andExpect(status().isOk());
     assertNotEquals(issuedKey, state.key());
+
+    carts.clear(cart);
+    jdbc.update("update product_offers set quantity=1, price=2700 where product_id=?", PRODUCT);
+    var reorder =
+        post("/api/account/orders/" + number + "/reorder").session(session).with(SIGNED_IN);
+    mvc.perform(post("/api/account/orders/" + number + "/reorder").session(session).with(SIGNED_IN))
+        .andExpect(status().isForbidden());
+    mvc.perform(
+            post("/api/account/orders/MBM-999999/reorder")
+                .session(session)
+                .with(SIGNED_IN)
+                .with(csrf()))
+        .andExpect(status().isNotFound());
+    mvc.perform(reorder.with(csrf()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.lines[0].ordered").value(2))
+        .andExpect(jsonPath("$.lines[0].added").value(1))
+        .andExpect(jsonPath("$.lines[0].problem").value("Остаток меньше, чем в заявке."))
+        .andExpect(jsonPath("$.itemCount").value(1));
+    assertEquals(1, cart.itemCount());
+    assertEquals(
+        "CANCEL_REQUESTED",
+        jdbc.queryForObject(
+            "select case when cancel_requested_at is null then 'NO' else 'CANCEL_REQUESTED' end from local_orders",
+            String.class));
   }
 }

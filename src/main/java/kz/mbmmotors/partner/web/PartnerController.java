@@ -1,6 +1,12 @@
 package kz.mbmmotors.partner.web;
 
+import jakarta.servlet.http.HttpSession;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
+import kz.mbmmotors.cart.CartService;
+import kz.mbmmotors.cart.web.SessionCart;
+import kz.mbmmotors.catalog.CatalogViewService;
 import kz.mbmmotors.partner.Partner;
 import kz.mbmmotors.partner.PartnerAccountService;
 import org.springframework.http.CacheControl;
@@ -18,9 +24,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class PartnerController {
   private final PartnerAccountService accounts;
+  private final CartService carts;
 
-  public PartnerController(PartnerAccountService accounts) {
+  public PartnerController(PartnerAccountService accounts, CartService carts) {
     this.accounts = accounts;
+    this.carts = carts;
   }
 
   /** Public endpoint: lets the interface decide between the login screen and the portal. */
@@ -52,6 +60,34 @@ public class PartnerController {
   }
 
   record CancelRequest(String reason) {}
+
+  /**
+   * Puts the lines of an earlier order into the session cart at current prices, as much as the
+   * store has now. The sent order and its CloudShop sale stay as they were.
+   */
+  @PostMapping("/api/account/orders/{number}/reorder")
+  ResponseEntity<Reorder> reorder(
+      @PathVariable String number, Authentication authentication, HttpSession session) {
+    var order = accounts.detail(accounts.current(authentication), number);
+    var cart = SessionCart.of(session);
+    List<ReorderLine> lines = new ArrayList<>();
+    synchronized (cart) {
+      for (var item : order.items()) {
+        var added =
+            carts.addAvailable(
+                cart, item.productId(), CatalogViewService.DEFAULT_STORE, item.quantity());
+        lines.add(
+            new ReorderLine(
+                item.name(), item.sku(), item.quantity(), added.quantity(), added.problem()));
+      }
+      return noStore(new Reorder(lines, cart.itemCount()));
+    }
+  }
+
+  /** {@code added} may be less than {@code ordered}; {@code problem} then says why. */
+  record ReorderLine(String name, String sku, int ordered, int added, String problem) {}
+
+  record Reorder(List<ReorderLine> lines, int itemCount) {}
 
   @ExceptionHandler(PartnerAccountService.AccountProblem.class)
   ResponseEntity<ProblemDetail> problem(PartnerAccountService.AccountProblem error) {
