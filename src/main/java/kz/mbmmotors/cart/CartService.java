@@ -44,6 +44,51 @@ public class CartService {
     }
   }
 
+  /**
+   * Adds as much of {@code quantity} as the store can supply now, for repeating an earlier order.
+   * Never throws for an unavailable product: the outcome says what was added and why not all.
+   */
+  public Added addAvailable(Cart cart, String productId, String storeId, int quantity) {
+    synchronized (cart) {
+      if (quantity < 1) return new Added(0, "Количество в заявке некорректно.");
+      if (!cart.isEmpty() && !cart.storeId.equals(storeId))
+        return new Added(0, "В корзине товары другого магазина.");
+      if (!cart.entries.containsKey(productId) && cart.entries.size() >= 50)
+        return new Added(0, "В корзине уже 50 разных товаров.");
+      Data product;
+      try {
+        product = load(productId, storeId);
+      } catch (CartProblem invalid) {
+        return new Added(0, invalid.getMessage());
+      }
+      Cart.Entry old = cart.entries.get(productId);
+      int existing = old == null ? 0 : old.quantity();
+      int wanted = Math.min(quantity, 999 - existing);
+      if (wanted < 1) return new Added(0, "В корзине уже 999 шт. этого товара.");
+      boolean stale = stale();
+      String problem = problem(product, existing + wanted, stale);
+      int added = wanted;
+      if (problem != null && product != null && product.stock() != null) {
+        int available = product.stock().intValue() - existing;
+        if (available >= 1
+            && available < wanted
+            && problem(product, existing + available, stale) == null) {
+          added = available;
+          problem = "Остаток меньше, чем в заявке.";
+        }
+      }
+      if (added == wanted && problem != null) return new Added(0, problem);
+      cart.storeId = storeId;
+      cart.entries.put(
+          productId,
+          new Cart.Entry(existing + added, old == null ? product.price() : old.acceptedPrice()));
+      return new Added(added, problem);
+    }
+  }
+
+  /** {@code problem} is null when the whole quantity was added. */
+  public record Added(int quantity, String problem) {}
+
   public void update(Cart cart, String productId, int quantity) {
     synchronized (cart) {
       validateQuantity(quantity);

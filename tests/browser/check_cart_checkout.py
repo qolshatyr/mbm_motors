@@ -130,6 +130,30 @@ with sync_playwright() as p:
     assert cart_count(context) == 3
     passed('«Мои заявки»: заявка видна только своему партнёру; «Повторить заказ» возвращает позиции в корзину')
 
+    with fixtures.connect(DSN) as db:
+        ordered = db.execute('select i.product_id, i.quantity from local_order_items i '
+                             'join local_orders o on o.id = i.order_id where o.number = %s',
+                             (int(str(receipt['number']).removeprefix('MBM-')),)).fetchone()
+        stock = db.execute('select quantity from product_offers where product_id = %s and store_id = %s',
+                           (ordered[0], fixtures.SKLAD)).fetchone()[0]
+        db.execute('update product_offers set quantity = 1 where product_id = %s and store_id = %s',
+                   (ordered[0], fixtures.SKLAD))
+    assert context.request.post(BASE + '/api/cart/clear', headers=csrf_headers(context), form={}).ok
+    page.goto(BASE + '/account')
+    order.get_by_role('button', name=f"Повторить заказ {receipt['number']}").click()
+    notice = page.locator('.account-orders .notice')
+    expect(notice).to_contain_text('Добавлено не всё')
+    expect(notice).to_contain_text(f'1 из {ordered[1]} шт.: Остаток меньше, чем в заявке.')
+    assert cart_count(context) == 1
+    with fixtures.connect(DSN) as db:
+        db.execute('update product_offers set quantity = %s where product_id = %s and store_id = %s',
+                   (stock, ordered[0], fixtures.SKLAD))
+    assert context.request.post(BASE + '/api/cart/clear', headers=csrf_headers(context), form={}).ok
+    order.get_by_role('button', name=f"Повторить заказ {receipt['number']}").click()
+    expect(page).to_have_url(BASE + '/basket')
+    assert cart_count(context) == 3
+    passed('«Повторить заказ» при малом остатке кладёт сколько есть и объясняет, чего не хватило')
+
     lost = []
 
     def lose_response(route):

@@ -9,3 +9,7 @@ export interface AccountOrderDetail extends AccountOrder { cancelReason: string 
 export const fetchOrders = (signal?: AbortSignal) => request<{ orders: AccountOrder[] }>('/api/account/orders', { signal });
 export const fetchOrder = (number: string, signal?: AbortSignal) => request<AccountOrderDetail>(`/api/account/orders/${encodeURIComponent(number)}`, { signal });
 export const requestCancel = (number: string, reason: string) => postJson<AccountOrderDetail>(`/api/account/orders/${encodeURIComponent(number)}/cancel-request`, { reason });
+/** added < ordered: only part (or none) went to the cart; problem says why. */
+export interface ReorderLine { name: string; sku: string | null; ordered: number; added: number; problem: string | null }
+export interface ReorderResult { lines: ReorderLine[]; itemCount: number }
+export const reorder = (number: string) => postJson<ReorderResult>(`/api/account/orders/${encodeURIComponent(number)}/reorder`, {});

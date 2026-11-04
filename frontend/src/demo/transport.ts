@@ -121,6 +121,21 @@ function mutateCart(action: string, form: URLSearchParams) {
   changed();
   return cart(action === 'add' ? 'Товар добавлен в корзину.' : 'Количество обновлено.');
 }
+/** Mirrors the server: current prices, capped to stock, an unavailable line is skipped with a reason. */
+function reorder(lines: { id: string; quantity: number }[]) {
+  const result = lines.map(({ id, quantity: ordered }) => {
+    const product = productById(id);
+    const line = state.items.find((item) => item.id === id);
+    const existing = line?.quantity ?? 0;
+    const room = Math.min(ordered, 999 - existing, product.stock - existing);
+    const problem = product.price <= 0 ? 'Цену товара нужно уточнить.' : product.stock <= existing ? 'Товара нет в наличии в выбранном магазине.' : !line && state.items.length >= 50 ? 'В корзине уже 50 разных товаров.' : null;
+    const added = problem ? 0 : Math.max(room, 0);
+    if (added > 0) { if (line) line.quantity += added; else state.items.push({ id, quantity: added }); }
+    return { name: product.name, sku: product.sku || null, ordered, added, problem: problem ?? (added < ordered ? 'Остаток меньше, чем в заявке.' : null) };
+  });
+  changed();
+  return { lines: result, itemCount: state.items.reduce((sum, item) => sum + item.quantity, 0) };
+}
 function checkout(): CheckoutPreview {
   const snapshot = cart();
   const issues = snapshot.itemCount ? [] : ['Корзина пуста. Добавьте товары из каталога.'];
@@ -223,6 +238,11 @@ export async function demoRequest<T>(url: string, options: RequestInit = {}): Pr
     if (entry.order.status === 'CANCEL_REQUESTED') throw new ApiError(409, 'Отмена по этой заявке уже запрошена.');
     entry.order = { ...entry.order, status: 'CANCEL_REQUESTED', statusText: 'Запрошена отмена' }; save();
     response = demoDetail(entry);
+  } else if (method === 'POST' && /^\/api\/account\/orders\/[^/]+\/reorder$/.test(path)) {
+    const number = decodeURIComponent(path.split('/')[4]);
+    const entry = state.orders.find((item) => item.order.number === number);
+    if (!entry) throw new ApiError(404, 'Заявка не найдена.');
+    response = reorder(entry.items);
   } else throw new ApiError(404, 'Этот раздел недоступен в демонстрационном прототипе. Вернитесь в каталог.');
   return structuredClone(response) as T;
 }
