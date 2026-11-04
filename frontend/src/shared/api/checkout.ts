@@ -2,7 +2,8 @@ import type { CartSnapshot } from './cart';
 import { request } from './http';
 import { postForm } from './csrf';
 
-export interface CheckoutContact { customerName: string | null; phone: string | null }
+/** {@code consentGiven}: the partner consented at an earlier order; the box starts checked. */
+export interface CheckoutContact { customerName: string | null; phone: string | null; consentGiven?: boolean }
 export interface CheckoutPreview { cart: CartSnapshot['cart']; revision: string | null; idempotencyKey: string; canSubmit: boolean; issues: string[]; contact?: CheckoutContact | null }
 export interface OrderReceipt { number: string; status: 'RECEIVED'; storeName: string; itemCount: number; totalText: string; createdAt: string; message: string }
 export interface CheckoutFields { customerName: string; phone: string; comment: string; consent: boolean }

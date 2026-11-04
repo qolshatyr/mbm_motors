@@ -30,6 +30,7 @@ class CartApiControllerTest {
   @Autowired MockMvcTester mvc;
   @Autowired JsonMapper json;
   @MockitoBean CartService service;
+  @MockitoBean kz.mbmmotors.cart.CartStore store;
 
   @Test
   void csrfEndpointTokenWorksAsHeaderInSameSessionAndSessionCartIsShared() throws Exception {
@@ -51,6 +52,9 @@ class CartApiControllerTest {
             .exchange();
     assertThat(result).hasStatusOk();
     verify(service).add(same(SessionCart.of(session)), eq("product"), eq("store"), eq(1));
+    // Every change is saved for the partner's next session; viewing saves nothing.
+    verify(store).save(eq("user"), same(SessionCart.of(session)));
+    verify(store).load("user");
     var body = json.readTree(result.getResponse().getContentAsString());
     assertThat(body.path("message").asString()).isEqualTo("Товар добавлен в корзину.");
     assertThat(SessionCart.of(new MockHttpSession())).isNotSameAs(SessionCart.of(session));

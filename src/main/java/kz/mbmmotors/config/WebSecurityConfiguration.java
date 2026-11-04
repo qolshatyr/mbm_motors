@@ -124,7 +124,13 @@ public class WebSecurityConfiguration {
                 auth.requestMatchers(HttpMethod.GET, SPA_ROUTES)
                     .permitAll()
                     .requestMatchers(
-                        HttpMethod.GET, "/api/csrf", "/api/auth/me", "/frontend/**", "/css/**")
+                        HttpMethod.GET,
+                        "/api/csrf",
+                        "/api/auth/me",
+                        "/frontend/**",
+                        "/css/**",
+                        "/robots.txt",
+                        "/favicon.ico")
                     .permitAll()
                     .requestMatchers("/error")
                     .permitAll()

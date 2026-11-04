@@ -40,7 +40,7 @@ class CatalogApiControllerTest {
 
   @Test
   void defaultProductsSerializeDisplayValuesFreshnessAndNullableFields() throws Exception {
-    when(service.list("", null, false, 0, null, NONE)).thenReturn(page());
+    when(service.list("", null, false, false, 0, null, NONE)).thenReturn(page());
     var result = mvc.get().uri("/api/catalog/products").exchange();
     assertThat(result).hasStatusOk();
     var body = json.readTree(result.getResponse().getContentAsString());
@@ -53,12 +53,24 @@ class CatalogApiControllerTest {
     for (String key : List.of("sku", "code", "unit", "imageUrl")) {
       assertThat(product.path(key).isNull()).as(key).isTrue();
     }
-    verify(service).list("", null, false, 0, null, NONE);
+    verify(service).list("", null, false, false, 0, null, NONE);
+  }
+
+  @Test
+  void forwardsOrderableShowcaseFlag() {
+    when(service.list("", null, false, true, 0, "stock", NONE)).thenReturn(page());
+    assertThat(
+            mvc.get()
+                .uri("/api/catalog/products")
+                .param("orderable", "true")
+                .param("sort", "stock"))
+        .hasStatusOk();
+    verify(service).list("", null, false, true, 0, "stock", NONE);
   }
 
   @Test
   void forwardsSearchFiltersAndPageToExistingService() {
-    when(service.list("54610-2T000", "warehouse", true, 2, null, NONE)).thenReturn(page());
+    when(service.list("54610-2T000", "warehouse", true, false, 2, null, NONE)).thenReturn(page());
     assertThat(
             mvc.get()
                 .uri("/api/catalog/products")
@@ -67,7 +79,7 @@ class CatalogApiControllerTest {
                 .param("available", "true")
                 .param("page", "2"))
         .hasStatusOk();
-    verify(service).list("54610-2T000", "warehouse", true, 2, null, NONE);
+    verify(service).list("54610-2T000", "warehouse", true, false, 2, null, NONE);
   }
 
   @Test
@@ -79,16 +91,22 @@ class CatalogApiControllerTest {
       assertThat(result.getResponse().getContentType()).startsWith("application/problem+json");
     }
     verifyNoInteractions(service);
-    when(service.list(anyString(), any(), anyBoolean(), anyInt(), any(), any()))
-        .thenThrow(new CatalogViewService.BadCatalogQuery());
+    when(service.list(anyString(), any(), anyBoolean(), anyBoolean(), anyInt(), any(), any()))
+        .thenThrow(new CatalogViewService.BadCatalogQuery("Склад не найден."));
     var result = mvc.get().uri("/api/catalog/products").param("store", "missing").exchange();
     assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
     assertProblem(result.getResponse().getContentAsString(), 400);
+    // The partner sees which parameter is wrong, not a generic hint about the query length.
+    assertThat(json.readTree(result.getResponse().getContentAsString()).path("detail").asString())
+        .isEqualTo("Склад не найден.");
+    var page = mvc.get().uri("/api/catalog/products").param("page", "abc").exchange();
+    assertThat(json.readTree(page.getResponse().getContentAsString()).path("detail").asString())
+        .isEqualTo("Неверный номер страницы.");
   }
 
   @Test
   void pageOutsideResultsReturnsProblemNotFound() throws Exception {
-    when(service.list("", null, false, 99, null, NONE))
+    when(service.list("", null, false, false, 99, null, NONE))
         .thenThrow(new CatalogViewService.CatalogNotFound());
     var result = mvc.get().uri("/api/catalog/products").param("page", "99").exchange();
     assertThat(result).hasStatus(HttpStatus.NOT_FOUND);
@@ -111,7 +129,7 @@ class CatalogApiControllerTest {
     var filter =
         new CatalogViewService.CatalogFilter(
             "Двигатель", "Поршневая группа", "Hyundai", "Sonata", List.of("NGP", "Mobis"));
-    when(service.list("", null, false, 0, null, filter)).thenReturn(page());
+    when(service.list("", null, false, false, 0, null, filter)).thenReturn(page());
     assertThat(
             mvc.get()
                 .uri("/api/catalog/products")
@@ -121,7 +139,7 @@ class CatalogApiControllerTest {
                 .param("model", "Sonata")
                 .param("brand", "NGP", "Mobis"))
         .hasStatusOk();
-    verify(service).list("", null, false, 0, null, filter);
+    verify(service).list("", null, false, false, 0, null, filter);
   }
 
   @Test
@@ -188,6 +206,7 @@ class CatalogApiControllerTest {
         null,
         true,
         CatalogViewService.CatalogFilter.NONE,
-        new CatalogViewService.Facets(List.of(), List.of(), List.of(), List.of(), List.of()));
+        new CatalogViewService.Facets(List.of(), List.of(), List.of(), List.of(), List.of()),
+        false);
   }
 }

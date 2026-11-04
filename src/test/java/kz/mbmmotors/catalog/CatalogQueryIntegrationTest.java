@@ -239,6 +239,67 @@ class CatalogQueryIntegrationTest {
         .isInstanceOf(CatalogViewService.BadCatalogQuery.class);
   }
 
+  @Test
+  void wordsInAnyOrderRussianModelNamesAndTyposFindProducts() {
+    product("a0", "A1-0 Колодки передние HPT HY SONATA(YF) 09-", "58101-2SA00 SP1374", 5, 7000);
+    product("a1", "Колодки задние AG HY ACCENT/SOLARIS RIO 11-", "58302-1RA30 GDB3537", 2, 0);
+    var words = service.list("sonata колодки", null, false, 0);
+    assertThat(words.products())
+        .extracting(CatalogViewService.ProductView::id)
+        .containsExactly(id("a0"));
+    assertThat(words.approximate()).isFalse();
+    assertThat(service.list("колодки солярис", null, false, 0).products())
+        .extracting(CatalogViewService.ProductView::id)
+        .containsExactly(id("a1"));
+    var typo = service.list("калодки", null, false, 0);
+    assertThat(typo.approximate()).isTrue();
+    assertThat(typo.products())
+        .extracting(CatalogViewService.ProductView::id)
+        .containsExactlyInAnyOrder(id("a0"), id("a1"));
+    // Typo tolerance never turns an unknown article into unrelated products.
+    assertThat(service.list("zzzzqqq", null, false, 0).totalProducts()).isZero();
+    // An article typed with spaces still matches its compact form.
+    assertThat(service.list("58101 2SA00", null, false, 0).products())
+        .extracting(CatalogViewService.ProductView::id)
+        .containsExactly(id("a0"));
+  }
+
+  @Test
+  void crossNumberAndOrderableDuplicateComeFirst() {
+    product("b0", "А Наконечник рулевой без цены", "56820-H8000 L", 3, 0);
+    product("b1", "Б Наконечник рулевой Max Parts", "56820-H8000 L", 2, 1800);
+    product("b2", "В Колодки", "58302-1RA30 GDB3537", 2, 900);
+    assertThat(service.list("56820-H8000 L", null, false, 0).products().getFirst().id())
+        .isEqualTo(id("b1"));
+    assertThat(service.list("GDB3537", null, false, 0).products().getFirst().id())
+        .isEqualTo(id("b2"));
+    var showcase =
+        service.list("", null, false, true, 0, null, CatalogViewService.CatalogFilter.NONE);
+    assertThat(showcase.products())
+        .allSatisfy(p -> assertThat(p.price()).isPositive())
+        .extracting(CatalogViewService.ProductView::id)
+        .doesNotContain(id("b0"));
+  }
+
+  private static String id(String key) {
+    return "ff" + String.format("%022x", key.hashCode() & 0xffffffffL);
+  }
+
+  private void product(String key, String name, String sku, int quantity, int price) {
+    jdbc.update(
+        "insert into products(id,name,sku,code,unit,imported_at) values (?,?,?,?,'шт',now())",
+        id(key),
+        name,
+        sku,
+        "X" + key);
+    jdbc.update(
+        "insert into product_offers(product_id,store_id,quantity,price) values (?,?,?,?)",
+        id(key),
+        CatalogViewService.DEFAULT_STORE,
+        quantity,
+        price);
+  }
+
   private void tag(String id, int position, String name, String kind, String parent) {
     jdbc.update(
         "insert into product_tags(product_id,position,name,kind,parent) values (?,?,?,?,?)",

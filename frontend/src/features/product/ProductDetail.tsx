@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { carName, catalogHref, fetchDetail, fetchProducts, priceUnknown } from '../../shared/api/catalog';
+import { ApiError, carName, catalogHref, fetchDetail, fetchProducts, priceUnknown } from '../../shared/api/catalog';
 import type { Classification } from '../../shared/api/catalog';
 import { Button } from '../../shared/ui/Button';
-import { Notice } from '../../shared/ui/Feedback';
+import { EmptyState, Notice } from '../../shared/ui/Feedback';
 import { QtyStepper } from '../../shared/ui/QtyStepper';
 import { useToast } from '../../shared/ui/Toast';
-import { useCartAction, useCartBusy, useCartQuantities } from '../cart/cartQueries';
+import { useCartAction, useCartBusy, useCartQuantities, useSingleFlight } from '../cart/cartQueries';
 import { PartImage, productHref } from '../catalog/AddControl';
 import { pickupText, useDefaultStore } from '../catalog/useStore';
+import { priceRequestUrl } from '../../shared/contacts';
 
 export function ProductDetail() {
   const { id = '' } = useParams();
@@ -19,25 +20,35 @@ export function ProductDetail() {
   const busy = useCartBusy();
   const toast = useToast();
   const inCart = useCartQuantities().get(id) ?? 0;
+  const once = useSingleFlight();
   const [quantity, setQuantity] = useState(1);
-  useEffect(() => { document.title = detail.data ? `${detail.data.product.name} — MBM AutoMotors` : 'Запчасть — MBM AutoMotors'; }, [detail.data]);
-  useEffect(() => { setQuantity(1); }, [id]);
+  const [limitHint, setLimitHint] = useState('');
+  const missing = detail.error instanceof ApiError && detail.error.status === 404;
+  useEffect(() => { document.title = `${detail.data ? detail.data.product.name : missing ? 'Товар не найден' : 'Запчасть'} — MBM AutoMotors`; }, [detail.data, missing]);
+  useEffect(() => { setQuantity(1); setLimitHint(''); }, [id]);
   const data = detail.data;
   const offer = data?.offers.find((item) => item.storeId === (data.selectedStore || store.id)) ?? data?.offers[0];
   const unknownPrice = data ? (data.product.price === null || data.product.price <= 0) : offer ? priceUnknown(offer.priceText) : true;
   const stock = data?.product.availableQuantity ?? null;
   const canAdd = Boolean(offer?.canAdd) && !unknownPrice;
   const maxQuantity = Math.max(1, Math.min(999, stock ?? 999) - inCart);
+  function changeQuantity(next: number) {
+    const allowed = Math.max(1, Math.min(next, maxQuantity));
+    setLimitHint(next > maxQuantity ? `Можно добавить не больше ${maxQuantity} шт.${inCart ? ` — ещё ${inCart} уже в корзине` : ' — столько есть на складе'}.` : '');
+    setQuantity(allowed);
+  }
   function add() {
     if (!offer || !canAdd || busy) return;
-    action.mutate({ action: 'add', fields: { productId: id, storeId: offer.storeId, quantity: String(quantity) } }, {
-      onSuccess: () => { toast({ text: `Добавлено: ${data!.product.name}, ${quantity} шт.`, action: { label: 'Открыть корзину', to: '/basket' } }); setQuantity(1); },
+    once((release) => action.mutate({ action: 'add', fields: { productId: id, storeId: offer.storeId, quantity: String(quantity) } }, {
+      onSuccess: () => { toast({ text: `Добавлено: ${data!.product.name}, ${quantity} шт.`, action: { label: 'Открыть корзину', to: '/basket' } }); setQuantity(1); setLimitHint(''); },
       onError: (error) => toast({ text: error.message, error: true }),
-    });
+      onSettled: release,
+    }));
   }
   return <>
     <nav className="breadcrumbs" aria-label="Вы здесь"><ol><li><Link to="/">Главная</Link></li><li><Link to="/search">Каталог</Link></li>{data?.classification.section && <li><Link to={catalogHref({ section: data.classification.section })}>{data.classification.section}</Link></li>}<li aria-current="page">{data?.product.name ?? 'Запчасть'}</li></ol></nav>
     {detail.isPending ? <div className="loading-state" role="status"><span className="spinner" aria-hidden="true" />Загружаем запчасть…</div>
+      : missing ? <EmptyState title="Товар не найден"><p>Возможно, его сняли с продажи или ссылка устарела. Найдите позицию по артикулу в каталоге.</p><Link className="button button-primary" to="/search">Перейти в каталог</Link></EmptyState>
       : detail.isError ? <Notice error><p>{detail.error.message}</p><Button onClick={() => void detail.refetch()}>Повторить</Button></Notice>
       : data && <div className="product-layout">
         <PartImage src={data.product.imageUrl} className="part-image-detail" />
@@ -55,9 +66,11 @@ export function ProductDetail() {
               <div className="buy-stock"><p className={`stock ${stock ? 'stock-in' : /^нет/i.test(offer?.stockText ?? '') ? 'stock-out' : 'stock-unknown'}`}>{offer?.stockText ?? 'Нет данных о наличии'}</p><p className="muted">{pickupText}</p></div>
             </div>
             {canAdd ? <div className="buy-actions">
-              <QtyStepper size="lg" label="Количество для добавления" value={quantity} disabled={busy} canIncrease={quantity < maxQuantity} onChange={(next) => setQuantity(Math.max(1, Math.min(next, maxQuantity)))} />
+              <QtyStepper size="lg" label="Количество для добавления" value={quantity} disabled={busy} canIncrease={quantity < maxQuantity} onChange={changeQuantity} />
               <button type="button" className="button button-primary button-lg buy-add" disabled={busy || detail.isFetching} onClick={add}>{busy ? 'Добавляем…' : inCart ? `Добавить ещё · в корзине ${inCart}` : 'В корзину'}</button>
             </div> : <p className="buy-blocked">{unknownPrice ? 'Цена этой позиции уточняется. Пока цена не указана, её нельзя добавить в заявку — уточните у менеджера.' : offer?.unavailabilityReason || 'Сейчас эту позицию нельзя добавить в заявку. Уточните наличие у менеджера.'}</p>}
+            {canAdd && <p className="field-hint" role="status">{limitHint}</p>}
+            {unknownPrice && <a className="button button-primary price-request" href={priceRequestUrl(data.product)} target="_blank" rel="noopener noreferrer">Узнать цену в WhatsApp</a>}
             <p className="buy-note">{data.lastSyncText ? `Наличие обновлено: ${data.lastSyncText}. ` : ''}Наличие не является резервом. Менеджер подтвердит заявку.</p>
             {data.stale && <Notice error>Данные о наличии устарели. Добавление временно недоступно.</Notice>}
           </section>
@@ -75,7 +88,7 @@ export function ProductDetail() {
 /** Up to four other products of the same subsection, or of the section when there is no subsection. */
 function MoreInSection({ id, classification, storeId }: { id: string; classification: Classification; storeId: string | null }) {
   const { section, subsection } = classification;
-  const params = new URLSearchParams({ q: '', available: 'true', page: '0' });
+  const params = new URLSearchParams({ q: '', available: 'true', orderable: 'true', page: '0' });
   if (storeId) params.set('store', storeId);
   if (section) params.set('section', section);
   if (section && subsection) params.set('subsection', subsection);

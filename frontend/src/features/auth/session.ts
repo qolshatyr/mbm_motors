@@ -17,16 +17,28 @@ export function useLogin() {
   return useMutation({
     mutationFn: ({ username, password }: { username: string; password: string }) => login(username, password),
     retry: false,
-    onSuccess: (partner) => { resetSessionData(client); client.setQueryData(meKey, partner); },
+    onSuccess: (partner) => { leaving = false; resetSessionData(client); client.setQueryData(meKey, partner); },
   });
+}
+
+let leaving = false;
+
+/**
+ * Where a signed-out visitor of {@code path} is sent. After «Выйти» the page left is not a place to
+ * return to, so the next sign-in opens the home page.
+ */
+export function signInPath(path: string) {
+  if (leaving) return '/login';
+  return `/login?from=${encodeURIComponent(path)}`;
 }
 
 export function useLogout() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: logout,
+    mutationFn: async () => { leaving = true; await logout(); },
     retry: false,
-    onSettled: async () => {
+    onSettled: async (_data, error) => {
+      if (error) leaving = false;
       resetSessionData(client);
       await client.invalidateQueries({ queryKey: meKey });
     },

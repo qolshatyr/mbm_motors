@@ -5,6 +5,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import kz.mbmmotors.cart.CartService;
+import kz.mbmmotors.cart.CartStore;
 import kz.mbmmotors.cart.web.SessionCart;
 import kz.mbmmotors.catalog.CatalogViewService;
 import kz.mbmmotors.partner.Partner;
@@ -25,8 +26,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class PartnerController {
   private final PartnerAccountService accounts;
   private final CartService carts;
+  private final CartStore savedCarts;
 
-  public PartnerController(PartnerAccountService accounts, CartService carts) {
+  public PartnerController(
+      PartnerAccountService accounts, CartService carts, CartStore savedCarts) {
+    this.savedCarts = savedCarts;
     this.accounts = accounts;
     this.carts = carts;
   }
@@ -69,7 +73,7 @@ public class PartnerController {
   ResponseEntity<Reorder> reorder(
       @PathVariable String number, Authentication authentication, HttpSession session) {
     var order = accounts.detail(accounts.current(authentication), number);
-    var cart = SessionCart.of(session);
+    var cart = SessionCart.of(session, savedCarts, authentication);
     List<ReorderLine> lines = new ArrayList<>();
     synchronized (cart) {
       for (var item : order.items()) {
@@ -80,6 +84,7 @@ public class PartnerController {
             new ReorderLine(
                 item.name(), item.sku(), item.quantity(), added.quantity(), added.problem()));
       }
+      SessionCart.save(savedCarts, authentication, cart);
       return noStore(new Reorder(lines, cart.itemCount()));
     }
   }

@@ -328,6 +328,10 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--red); flex
 .product-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .product-row { background: var(--card); border-radius: var(--r-lg); padding: 14px 18px 14px 14px; display: flex; flex-wrap: wrap; gap: 14px 20px; align-items: center; }
 .product-row-media { flex: 0 0 92px; border-radius: var(--r-md); }
+.product-row-noimage { padding-left: 18px; }
+.results-pending { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; color: var(--n700); font-weight: 600; }
+.results-approximate { margin: 0 0 12px; padding: 10px 14px; border-radius: var(--r-md); background: var(--card); border-left: 4px solid var(--warn-800); }
+.price-request { margin-top: 12px; }
 .product-row-copy { flex: 1 1 240px; min-width: 0; display: grid; gap: 4px; }
 .product-codes { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: var(--text-small); color: var(--n700); }
 .product-codes .code { color: var(--ink); }
@@ -541,7 +545,11 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--red); flex
   .header-cart { padding: 0 6px; }
   .sidebar-facts p:first-child { display: none; }
   .header-search-submit { padding: 0 14px; }
-  .top-strip-inner { min-height: 32px; font-size: 12px; }
+  .top-strip-inner { min-height: 32px; font-size: 12px; justify-content: flex-end; }
+  /* The pickup address is repeated in the footer and at checkout; on a phone it costs two lines. */
+  .top-strip-inner > span { display: none; }
+  .main-content { padding-top: 16px; }
+  .page-title { font-size: 1.75rem; }
   .catalog-sidebar { grid-template-columns: minmax(0, 1fr); padding: 16px; gap: 12px; }
   .catalog-sidebar .sidebar-facts { border-top: 1px solid var(--divider); padding-top: 12px; }
   .results-toolbar { align-items: stretch; }
@@ -551,6 +559,8 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--red); flex
   .product-row-media { flex-basis: 64px; }
   .part-image-row { width: 64px; }
   .product-row-copy { flex-basis: calc(100% - 76px); }
+  .product-row-noimage { padding-left: 12px; }
+  .product-row-noimage .product-row-copy { flex-basis: 100%; }
   .product-row-buy { flex-basis: 100%; justify-content: space-between; gap: 12px; margin-left: 0; }
   .product-row-buy .price { text-align: left; min-width: 0; font-size: 19px; }
   .search-card-selects { grid-auto-flow: row; }

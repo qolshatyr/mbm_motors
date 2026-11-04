@@ -7,7 +7,9 @@ import java.util.List;
 import java.util.function.Consumer;
 import kz.mbmmotors.cart.Cart;
 import kz.mbmmotors.cart.CartService;
+import kz.mbmmotors.cart.CartStore;
 import org.springframework.http.*;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -16,14 +18,16 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 @RequestMapping("/api/cart")
 public class CartApiController {
   private final CartService service;
+  private final CartStore store;
 
-  public CartApiController(CartService service) {
+  public CartApiController(CartService service, CartStore store) {
     this.service = service;
+    this.store = store;
   }
 
   @GetMapping
-  ResponseEntity<CartSnapshot> view(HttpSession session) {
-    return change(session, null, cart -> {});
+  ResponseEntity<CartSnapshot> view(HttpSession session, Authentication partner) {
+    return change(session, partner, null, cart -> {});
   }
 
   @PostMapping(value = "/add", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
@@ -31,44 +35,59 @@ public class CartApiController {
       @RequestParam String productId,
       @RequestParam String storeId,
       @RequestParam(defaultValue = "1") int quantity,
-      HttpSession session) {
+      HttpSession session,
+      Authentication partner) {
     return change(
         session,
+        partner,
         "Товар добавлен в корзину.",
         cart -> service.add(cart, productId, storeId, quantity));
   }
 
   @PostMapping(value = "/update", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
   ResponseEntity<CartSnapshot> update(
-      @RequestParam String productId, @RequestParam int quantity, HttpSession session) {
+      @RequestParam String productId,
+      @RequestParam int quantity,
+      HttpSession session,
+      Authentication partner) {
     return change(
-        session, "Количество обновлено.", cart -> service.update(cart, productId, quantity));
+        session,
+        partner,
+        "Количество обновлено.",
+        cart -> service.update(cart, productId, quantity));
   }
 
   @PostMapping(value = "/confirm-price", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
   ResponseEntity<CartSnapshot> confirmPrice(
-      @RequestParam String productId, @RequestParam BigDecimal expectedPrice, HttpSession session) {
+      @RequestParam String productId,
+      @RequestParam BigDecimal expectedPrice,
+      HttpSession session,
+      Authentication partner) {
     return change(
         session,
+        partner,
         "Цена подтверждена.",
         cart -> service.confirmPrice(cart, productId, expectedPrice));
   }
 
   @PostMapping(value = "/remove", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
-  ResponseEntity<CartSnapshot> remove(@RequestParam String productId, HttpSession session) {
-    return change(session, "Товар удалён из корзины.", cart -> service.remove(cart, productId));
+  ResponseEntity<CartSnapshot> remove(
+      @RequestParam String productId, HttpSession session, Authentication partner) {
+    return change(
+        session, partner, "Товар удалён из корзины.", cart -> service.remove(cart, productId));
   }
 
   @PostMapping(value = "/clear", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
-  ResponseEntity<CartSnapshot> clear(HttpSession session) {
-    return change(session, "Корзина очищена.", service::clear);
+  ResponseEntity<CartSnapshot> clear(HttpSession session, Authentication partner) {
+    return change(session, partner, "Корзина очищена.", service::clear);
   }
 
   private ResponseEntity<CartSnapshot> change(
-      HttpSession session, String message, Consumer<Cart> action) {
-    Cart cart = SessionCart.of(session);
+      HttpSession session, Authentication partner, String message, Consumer<Cart> action) {
+    Cart cart = SessionCart.of(session, store, partner);
     synchronized (cart) {
       action.accept(cart);
+      if (message != null) SessionCart.save(store, partner, cart);
       var view = service.view(cart);
       var items = view.items().stream().map(Item::from).toList();
       var snapshot =
@@ -93,6 +112,8 @@ public class CartApiController {
 
   @ExceptionHandler(CartService.CartProblem.class)
   ProblemDetail cartProblem(CartService.CartProblem error) {
+    if (error instanceof CartService.InvalidQuantity)
+      return problem(HttpStatus.BAD_REQUEST, "urn:mbm:cart:invalid-parameters", error.getMessage());
     return problem(HttpStatus.CONFLICT, "urn:mbm:cart:conflict", error.getMessage());
   }
 

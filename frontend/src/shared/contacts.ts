@@ -10,3 +10,9 @@ export const salesContacts: SalesContact[] = [
 
 /** Warehouse point 43.182987, 76.751679 (2GIS: с. Райымбек, Карасайский район); no street address. */
 export const warehouseMapUrl = 'https://www.google.com/maps/search/?api=1&query=43.182987%2C76.751679';
+
+/** WhatsApp link to the first sales contact with a ready price request for the product. */
+export function priceRequestUrl(product: { name: string; sku: string | null; code: string | null }) {
+  const text = `Здравствуйте! Подскажите цену: ${product.name}${product.sku ? `, артикул ${product.sku}` : ''}${product.code ? `, код ${product.code}` : ''}.`;
+  return `${salesContacts[0].whatsapp}?text=${encodeURIComponent(text)}`;
+}

@@ -237,7 +237,8 @@ public class OrderService {
       List<String> issues,
       Contact contact) {}
 
-  public record Contact(String customerName, String phone) {}
+  /** {@code consentGiven}: the partner consented at an earlier order; the form starts checked. */
+  public record Contact(String customerName, String phone, boolean consentGiven) {}
 
   public record Receipt(
       String number,

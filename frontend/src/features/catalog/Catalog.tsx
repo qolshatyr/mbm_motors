@@ -125,7 +125,7 @@ export function Catalog() {
               </optgroup>
               : <option key={make.name} value={JSON.stringify([make.name, null])}>{make.name} ({make.count})</option>)}
           </select>
-          <p className="filter-note">Применимость взята из меток CloudShop.</p>
+          <p className="filter-note">Применимость указана по данным склада MBM.</p>
         </div>}
         <div className="sidebar-facts">
           <p><strong>{store.name ?? 'Склад'}</strong><br />{pickupText}</p>
@@ -137,7 +137,7 @@ export function Catalog() {
         <div className="results-toolbar">
           <div className="results-heading">
             <button type="button" className="button button-dark filters-toggle" aria-expanded={filtersOpen} aria-controls="catalog-filters" onClick={() => setFiltersOpen((open) => !open)}>{filtersOpen ? 'Скрыть фильтры' : 'Фильтры'}</button>
-            <h2 id="results-title" tabIndex={-1} className="results-count">{data ? <>Найдено: <b>{data.totalProducts.toLocaleString('ru-RU')}</b>{query && <> по запросу «{query}»</>}</> : 'Результаты'}</h2>
+            <h2 id="results-title" tabIndex={-1} className="results-count">{data ? <>Найдено: <b>{data.totalProducts.toLocaleString('ru-RU')}</b>{data.query && <> по запросу «{data.query}»</>}</> : 'Результаты'}</h2>
           </div>
           <fieldset className="segmented"><legend className="sr-only">Сортировка</legend>
             {catalogSorts.map((item) => <label key={item.value} className={sort === item.value ? 'is-active' : undefined}><input type="radio" name="sort" value={item.value} checked={sort === item.value} onChange={() => change({ sort: item.value === 'name' ? '' : item.value })} />{item.label}</label>)}
@@ -149,6 +149,9 @@ export function Catalog() {
           : products.isPending ? <div className="loading-state" role="status"><span className="spinner" aria-hidden="true" />Загружаем каталог…</div>
           : products.isError ? <Notice error><p>{products.error instanceof ApiError ? products.error.message : 'Не удалось загрузить каталог.'}</p><div className="actions"><button type="button" className="button" onClick={() => void products.refetch()}>Повторить</button><button type="button" className="button" onClick={reset}>Сбросить фильтры</button></div></Notice>
           : data && <>
+            {products.fetchStatus === 'paused' ? <Notice error><p>Нет связи с интернетом. Ниже — прежний результат{data.query ? ` по запросу «${data.query}»` : ''}; поиск продолжится, когда связь восстановится.</p></Notice>
+              : products.isPlaceholderData && <p className="results-pending" role="status"><span className="spinner" aria-hidden="true" />Ищем{query ? ` «${query}»` : ''}…</p>}
+            {data.approximate && data.products.length > 0 && <p className="results-approximate">Точных совпадений нет — показаны похожие названия. Проверьте написание запроса.</p>}
             {data.products.length === 0 ? <div className="empty-panel"><h3>Товары не найдены</h3><p>Проверьте артикул или попробуйте более короткое название. Можно снять фильтры или отправить список артикулов через быстрый заказ.</p><div className="actions"><button type="button" className="button button-dark" onClick={reset}>Показать весь каталог</button><Link to="/quick-order" className="button">Быстрый заказ</Link></div></div>
               : <ul className="product-list">{data.products.map((product) => <ProductRow key={product.id} product={product} storeId={data.storeId} inCart={quantities.get(product.id) ?? 0} />)}</ul>}
             {data.totalPages > 1 && <nav className="pagination" aria-label="Страницы каталога">{data.page > 0 ? <Link className="button" to={pageLink(data.page - 1)} rel="prev">Назад</Link> : <span className="button button-disabled" aria-disabled="true">Назад</span>}<span>Страница {data.page + 1} из {data.totalPages}</span>{data.page + 1 < data.totalPages ? <Link className="button" to={pageLink(data.page + 1)} rel="next">Далее</Link> : <span className="button button-disabled" aria-disabled="true">Далее</span>}</nav>}

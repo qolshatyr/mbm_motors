@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpSession;
 import java.net.URI;
 import java.util.UUID;
 import kz.mbmmotors.cart.CartService;
+import kz.mbmmotors.cart.CartStore;
 import kz.mbmmotors.cart.web.SessionCart;
 import kz.mbmmotors.order.*;
 import kz.mbmmotors.partner.PartnerAccountService;
@@ -17,17 +18,21 @@ public class CheckoutController {
       org.slf4j.LoggerFactory.getLogger(CheckoutController.class);
   private final OrderService orders;
   private final PartnerAccountService partners;
+  private final CartStore carts;
 
-  public CheckoutController(OrderService orders, PartnerAccountService partners) {
+  public CheckoutController(OrderService orders, PartnerAccountService partners, CartStore carts) {
     this.orders = orders;
     this.partners = partners;
+    this.carts = carts;
   }
 
   @GetMapping("/api/checkout")
   ResponseEntity<OrderService.Preview> preview(HttpSession session, Authentication authentication) {
     var partner = partners.current(authentication);
-    var contact = new OrderService.Contact(partner.contactName(), partner.phone());
-    var cart = SessionCart.of(session);
+    var contact =
+        new OrderService.Contact(
+            partner.contactName(), partner.phone(), partners.consentGiven(partner));
+    var cart = SessionCart.of(session, carts, authentication);
     synchronized (cart) {
       return ResponseEntity.ok()
           .cacheControl(CacheControl.noStore())
@@ -49,7 +54,7 @@ public class CheckoutController {
     var command =
         SubmitOrder.validate(idempotencyKey, revision, customerName, phone, comment, consent);
     var partner = partners.current(authentication);
-    var cart = SessionCart.of(session);
+    var cart = SessionCart.of(session, carts, authentication);
     synchronized (cart) {
       var checkout = state(session);
       var result = orders.submit(cart, checkout, command, partner.id());
@@ -57,6 +62,8 @@ public class CheckoutController {
       if (result.created()) {
         cart.clearSelection();
         checkout.completed();
+        SessionCart.save(carts, authentication, cart);
+        partners.recordConsent(partner);
         log.info(
             "Local order received: number={}, itemCount={}",
             result.receipt().number(),

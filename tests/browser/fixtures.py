@@ -58,7 +58,7 @@ def connect(dsn):
 
 def seed(dsn, password_hash):
     with connect(dsn) as c:
-        c.execute('truncate delivery_outbox, local_order_items, local_orders, partners, product_tags, '
+        c.execute('truncate partner_cart_items, delivery_outbox, local_order_items, local_orders, partners, product_tags, '
                   'product_images, product_offers, products, sync_runs')
         for i in range(1, PRODUCTS + 1):
             pid = product_id(i)

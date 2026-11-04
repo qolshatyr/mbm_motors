@@ -4,8 +4,9 @@ import { AddControl, PartImage, productHref, stockTone } from './AddControl';
 
 export function ProductRow({ product, storeId, inCart }: { product: Product; storeId: string; inCart: number }) {
   const unknown = product.price === null || product.price <= 0;
-  return <li className="product-row">
-    <Link to={productHref(product.id)} tabIndex={-1} aria-hidden="true" className="product-row-media"><PartImage src={product.imageUrl} className="part-image-row" /></Link>
+  // Without a photo the placeholder only takes room from the article and name.
+  return <li className={`product-row${product.imageUrl ? '' : ' product-row-noimage'}`}>
+    {product.imageUrl && <Link to={productHref(product.id)} tabIndex={-1} aria-hidden="true" className="product-row-media"><PartImage src={product.imageUrl} className="part-image-row" /></Link>}
     <div className="product-row-copy">
       <p className="product-codes">{product.sku ? <span className="code">{product.sku}</span> : <span>Артикул не указан</span>}{product.code && <span>Код {product.code}</span>}{product.brand && <span className="product-brand">{product.brand}</span>}</p>
       <h3><Link to={productHref(product.id)}>{product.name}</Link></h3>

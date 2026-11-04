@@ -42,3 +42,6 @@ docs/catalog/*.xlsx
 .venv-catalog/
 docs/category format.xlsx
 .~lock.*#
+
+# Screenshots of the production site (partner prices); kept locally, see SITE_AUDIT.md
+site-audit/

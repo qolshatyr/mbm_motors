@@ -42,6 +42,25 @@ public class PartnerAccountService {
         .orElseThrow(() -> new AccountProblem(401, "Учётная запись недоступна. Войдите снова."));
   }
 
+  /** Whether the partner has already consented to the processing of order contacts. */
+  @Transactional(readOnly = true)
+  public boolean consentGiven(Partner partner) {
+    return Boolean.TRUE.equals(
+        jdbc.queryForObject(
+            "select order_consent_at is not null from partners where id=?",
+            Boolean.class,
+            partner.id()));
+  }
+
+  /** Records the first consent; later orders show it as already given. */
+  @Transactional
+  public void recordConsent(Partner partner) {
+    jdbc.update(
+        "update partners set order_consent_at=? where id=? and order_consent_at is null",
+        java.sql.Timestamp.from(clock.instant()),
+        partner.id());
+  }
+
   @Transactional(readOnly = true)
   public Orders orders(Partner partner) {
     return new Orders(

@@ -27,6 +27,7 @@ public class CatalogApiController {
       @RequestParam(defaultValue = "") String q,
       @RequestParam(required = false) String store,
       @RequestParam(defaultValue = "false") boolean available,
+      @RequestParam(defaultValue = "false") boolean orderable,
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(required = false) String sort,
       @RequestParam(required = false) String section,
@@ -38,6 +39,7 @@ public class CatalogApiController {
         q,
         store,
         available,
+        orderable,
         page,
         sort,
         new CatalogViewService.CatalogFilter(section, subsection, make, model, brand));
@@ -49,15 +51,23 @@ public class CatalogApiController {
     return catalog.detail(id, store);
   }
 
-  @ExceptionHandler({
-    CatalogViewService.BadCatalogQuery.class,
-    MethodArgumentTypeMismatchException.class
-  })
-  ProblemDetail badQuery() {
-    var problem =
-        ProblemDetail.forStatusAndDetail(
-            HttpStatus.BAD_REQUEST,
-            "Проверьте параметры поиска. Запрос должен быть не длиннее 120 символов; выберите точку из списка.");
+  @ExceptionHandler(CatalogViewService.BadCatalogQuery.class)
+  ProblemDetail badQuery(CatalogViewService.BadCatalogQuery error) {
+    return invalid(error.getMessage());
+  }
+
+  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+  ProblemDetail badParameter(MethodArgumentTypeMismatchException error) {
+    return invalid(
+        switch (error.getName()) {
+          case "page" -> "Неверный номер страницы.";
+          case "available", "orderable" -> "Неверное значение фильтра наличия.";
+          default -> "Проверьте параметры поиска.";
+        });
+  }
+
+  private static ProblemDetail invalid(String detail) {
+    var problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
     problem.setType(URI.create("urn:mbm:catalog:invalid-query"));
     return problem;
   }
