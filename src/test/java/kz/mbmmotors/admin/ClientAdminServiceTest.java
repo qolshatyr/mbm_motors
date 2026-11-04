@@ -123,6 +123,36 @@ class ClientAdminServiceTest {
         .isEqualTo(404);
   }
 
+  @Test
+  void detailsUpdateIsValidatedAndNormalized() {
+    when(partners.updateDetails(any())).thenReturn(true);
+    service.update(
+        " Turbo ",
+        new ClientAdminService.Details(" ТОО «Turbo Plus» ", "Айгерим", "8 702 555 00 11", ""));
+    verify(partners)
+        .updateDetails(
+            argThat(
+                p ->
+                    p.login().equals("turbo")
+                        && p.company().equals("ТОО «Turbo Plus»")
+                        && p.phone().equals("+77025550011")
+                        && p.bin() == null));
+    assertThatThrownBy(
+            () ->
+                service.update(
+                    "turbo", new ClientAdminService.Details("", "Айгерим", "+77025550011", null)))
+        .extracting(e -> ((ClientAdminService.Problem) e).status())
+        .isEqualTo(400);
+    when(partners.updateDetails(argThat(p -> p.login().equals("ghost")))).thenReturn(false);
+    assertThatThrownBy(
+            () ->
+                service.update(
+                    "ghost", new ClientAdminService.Details("ТОО", "Ерлан", "+77015551234", null)))
+        .extracting(e -> ((ClientAdminService.Problem) e).status())
+        .isEqualTo(404);
+    verifyNoInteractions(cards);
+  }
+
   private static PartnerRepository.Client client(String customerId, String state) {
     return new PartnerRepository.Client(
         "turbo",

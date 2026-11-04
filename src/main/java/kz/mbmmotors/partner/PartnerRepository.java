@@ -96,6 +96,18 @@ public class PartnerRepository {
         == 1;
   }
 
+  /** Replaces staff-entered details; the login, password and CloudShop link stay unchanged. */
+  public boolean updateDetails(NewPartner details) {
+    return jdbc.update(
+            "update partners set company=?, contact_name=?, phone=?, bin=? where login=?",
+            details.company(),
+            details.contactName(),
+            details.phone(),
+            details.bin(),
+            details.login())
+        == 1;
+  }
+
   public boolean setEnabled(String login, boolean enabled) {
     return jdbc.update("update partners set enabled=? where login=?", enabled, login) == 1;
   }

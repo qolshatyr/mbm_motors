@@ -63,6 +63,26 @@ class PartnerRepositoryIntegrationTest {
   }
 
   @Test
+  void detailsUpdateKeepsCredentialsAndCard() {
+    partners.linkCustomer("turbo", "6ac110842dd87801040fed88");
+    var before = partners.find("turbo").orElseThrow();
+    var details =
+        NewPartner.validate(
+            "turbo", "ТОО «Turbo Plus»", "Айгерим", "8 702 555 00 11", "123456789012");
+    assertThat(partners.updateDetails(details)).isTrue();
+    var after = partners.find("turbo").orElseThrow();
+    assertThat(after.company()).isEqualTo("ТОО «Turbo Plus»");
+    assertThat(after.contactName()).isEqualTo("Айгерим");
+    assertThat(after.phone()).isEqualTo("+77025550011");
+    assertThat(partners.client("turbo").orElseThrow().bin()).isEqualTo("123456789012");
+    assertThat(after.passwordHash()).isEqualTo(before.passwordHash());
+    assertThat(after.credentialsVersion()).isEqualTo(before.credentialsVersion());
+    assertThat(after.cloudshopCustomerId()).isEqualTo("6ac110842dd87801040fed88");
+    assertThat(partners.updateDetails(NewPartner.validate("ghost", "ТОО", "Ерлан", "+77015551234")))
+        .isFalse();
+  }
+
+  @Test
   void cardRequestIsClaimedOnceAndRetriedOnlyAfterCheck() {
     assertThat(partners.claimCustomerRequest("turbo", false)).isTrue();
     assertThat(partners.claimCustomerRequest("turbo", false)).isFalse();

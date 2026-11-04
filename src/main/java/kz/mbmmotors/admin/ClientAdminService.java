@@ -78,6 +78,23 @@ public class ClientAdminService {
     if (!partners.changePassword(key(login), encoder.encode(password))) throw notFound();
   }
 
+  /**
+   * Edits the client card on the site. The login stays the account key; an already linked CloudShop
+   * card is not changed and keeps its own name and phone.
+   */
+  public Client update(String login, Details request) {
+    NewPartner details;
+    try {
+      details =
+          NewPartner.validate(
+              key(login), request.company(), request.contactName(), request.phone(), request.bin());
+    } catch (IllegalArgumentException invalid) {
+      throw new Problem(400, invalid.getMessage());
+    }
+    if (!partners.updateDetails(details)) throw notFound();
+    return find(login);
+  }
+
   public Client setEnabled(String login, boolean enabled) {
     if (!partners.setEnabled(key(login), enabled)) throw notFound();
     return find(login);
@@ -159,6 +176,8 @@ public class ClientAdminService {
       return "NewClient[login=" + login + "]";
     }
   }
+
+  public record Details(String company, String contactName, String phone, String bin) {}
 
   public record Clients(List<Client> clients, boolean customerCreation) {}
 

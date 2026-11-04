@@ -43,14 +43,23 @@ export const reconcileRequest = (number: string, result: 'FOUND' | 'NOT_CREATED'
 export type CustomerState = 'NONE' | 'PENDING' | 'UNKNOWN' | 'LINKED';
 export interface StaffClient { login: string; company: string; contactName: string; phone: string; bin: string | null; enabled: boolean; createdAt: string; lastLoginAt: string | null; customer: { state: CustomerState; id: string | null } }
 export interface StaffClients { clients: StaffClient[]; customerCreation: boolean }
-export interface NewClient { login: string; company: string; contactName: string; phone: string; bin: string; password: string }
+export interface ClientDetails { company: string; contactName: string; phone: string; bin: string }
+export interface NewClient extends ClientDetails { login: string; password: string }
 const clientPath = (login: string) => `/admin/api/clients/${encodeURIComponent(login)}`;
 export const fetchClients = (query: string, signal: AbortSignal) => request<StaffClients>(`/admin/api/clients?q=${encodeURIComponent(query)}`, { signal });
 export const createClient = (client: NewClient) => postJson<StaffClient>('/admin/api/clients', client);
+export const updateClient = (login: string, details: ClientDetails) => postJson<StaffClient>(`${clientPath(login)}/details`, details);
 export const changeClientPassword = (login: string, password: string) => postJson<void>(`${clientPath(login)}/password`, { password });
 export const setClientEnabled = (login: string, enabled: boolean) => postJson<StaffClient>(`${clientPath(login)}/enabled`, { enabled });
 export const linkClientCustomer = (login: string, customerId: string) => postJson<StaffClient>(`${clientPath(login)}/customer`, { customerId });
 export const createClientCustomer = (login: string, checkedInCloudShop: boolean) => postJson<StaffClient>(`${clientPath(login)}/customer/create`, { checkedInCloudShop });
+
+/** Same rule as the server: at least 10 characters and at most 72 UTF-8 bytes (BCrypt limit). */
+export function passwordProblem(password: string) {
+  if (password.length < 10) return 'Не короче 10 символов';
+  if (new TextEncoder().encode(password).length > 72) return 'Не длиннее 72 байт (кириллица — 2 байта на букву)';
+  return '';
+}
 
 const PASSWORD_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
 /** 12 characters without look-alikes (0/O, 1/l/I), from the browser's cryptographic generator. */
