@@ -9,5 +9,10 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>MBM AutoMotors — оптовый портал</title>
   </head>
-  <body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body>
+  <body>
+    <!-- Shown by boot.js only if the application did not start (an outdated browser); React replaces it on start. -->
+    <div id="root"><div id="boot-note" class="boot-note" hidden><p><strong>Сайт не открылся.</strong></p><p>Скорее всего, браузер на этом устройстве устарел. Обновите его или откройте сайт в свежем Chrome, Safari или Яндекс Браузере — можно с другого телефона или компьютера.</p><p>Если не получается — напишите своему менеджеру MBM.</p></div></div>
+    <script src="/boot.js"></script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
