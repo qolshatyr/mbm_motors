@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ApiError } from '../../shared/api/http';
+import { PasswordInput } from '../../shared/ui/PasswordInput';
 import { salesContacts } from '../../shared/contacts';
 import { safeReturn, useLogin } from './session';
 
@@ -24,7 +25,7 @@ export function Login() {
         loginMutation.mutate({ username: username.trim(), password }, { onSuccess: () => navigate(safeReturn(params.get('from')), { replace: true }) });
       }}>
         <div className="field"><label htmlFor="login-username">Логин</label><input id="login-username" name="username" autoComplete="username" autoCapitalize="none" spellCheck={false} required maxLength={64} placeholder="Логин от менеджера" value={username} onChange={(event) => setUsername(event.target.value)} aria-describedby={message ? 'login-error' : undefined} aria-invalid={Boolean(message)} /></div>
-        <div className="field"><label htmlFor="login-password">Пароль</label><input id="login-password" name="password" type="password" autoComplete="current-password" required maxLength={128} value={password} onChange={(event) => setPassword(event.target.value)} aria-describedby={message ? 'login-error' : undefined} aria-invalid={Boolean(message)} /></div>
+        <div className="field"><label htmlFor="login-password">Пароль</label><PasswordInput id="login-password" name="password" autoComplete="current-password" required maxLength={128} value={password} onChange={(event) => setPassword(event.target.value)} aria-describedby={message ? 'login-error' : undefined} aria-invalid={Boolean(message)} /></div>
         {message && <p id="login-error" ref={errorRef} tabIndex={-1} className="form-error" role="alert">{message}</p>}
         <button type="submit" className="button button-primary button-lg" disabled={loginMutation.isPending}>{loginMutation.isPending ? 'Входим…' : 'Войти'}</button>
       </form>
