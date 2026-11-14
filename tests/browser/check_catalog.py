@@ -51,6 +51,15 @@ with sync_playwright() as p:
     expect(page.locator('#header-query')).to_have_value('mbmtest007')
     passed('Главная: марки, категории и товары склада; поиск без дефисов находит артикул и переживает перезагрузку')
 
+    # Older phones (Safari before 17, Chrome before 113) have no URLSearchParams.size; the header search must not depend on it.
+    page.evaluate('delete URLSearchParams.prototype.size')
+    page.locator('#header-query').fill('MBM-TEST-005')
+    page.get_by_role('search').filter(has=page.locator('#header-query')).get_by_role('button', name='Найти').click()
+    expect(page).to_have_url(BASE + '/search?q=MBM-TEST-005')
+    expect(page.locator('.product-row')).to_have_count(1)
+    expect(page.locator('.product-row').first).to_contain_text(fixtures.sku(5))
+    passed('Поиск в шапке по кнопке «Найти» работает и в браузере без URLSearchParams.size')
+
     page.goto(BASE + '/search')
     expect(page.locator('#results-title')).to_have_text(f'Найдено: {fixtures.PRODUCTS}')
     expect(page.locator('.product-row')).to_have_count(24)

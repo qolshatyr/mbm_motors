@@ -69,6 +69,7 @@ ul { margin: 0; }
 .field label, .field-label { font-size: var(--text-small); color: var(--n800); font-weight: 600; }
 .field input, .field textarea, .quick-input textarea { width: 100%; min-width: 0; min-height: 48px; padding: 11px 16px; border: 1px solid var(--control-line); border-radius: var(--r-sm); background: var(--card); color: var(--ink); font-size: 16px; }
 .field textarea { resize: vertical; }
+.boot-note { max-width: 520px; margin: 48px auto; padding: 24px; display: grid; gap: 12px; border-radius: var(--r-sm); background: var(--card); color: var(--ink); font-size: 16px; line-height: 1.5; }
 .password-input { position: relative; }
 .field .password-input input { padding-right: 52px; }
 .password-toggle { position: absolute; top: 2px; right: 2px; bottom: 2px; width: 44px; display: grid; place-items: center; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--muted); cursor: pointer; }

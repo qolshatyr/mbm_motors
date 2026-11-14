@@ -97,9 +97,9 @@ function Header({ partner }: { partner: Partner | null }) {
   if (!partner) return <header className="portal-header"><div className="page-width portal-header-inner"><Brand /></div></header>;
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const next = new URLSearchParams();
-    if (query.trim()) next.set('q', query.trim());
-    navigate(`/search${next.size ? `?${next}` : ''}`);
+    // No URLSearchParams.size here: Safari before 17 and Chrome before 113 lack it and the query was dropped.
+    const q = query.trim();
+    navigate(q ? `/search?q=${encodeURIComponent(q)}` : '/search');
   }
   const count = cart.data && !cart.isError ? cart.data.itemCount : null;
   const initial = (partner.company.replace(/[^\p{L}\p{N}]/gu, ' ').trim().split(/\s+/).find((word) => !/^(сто|тоо|ип|ооо)$/i.test(word)) ?? partner.login).slice(0, 1).toLocaleUpperCase('ru-RU');
